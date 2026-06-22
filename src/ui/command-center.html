@@ -8,9 +8,10 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
   <style>
-    :root { color-scheme: dark; --bg:#0b1220; --card:#101a2b; --muted:#9fb0c9; --accent:#4ea2ff; --ok:#20c997; --warn:#f59f00; --danger:#ff6b6b; }
-    body { margin:0; font-family: Inter, system-ui, Arial, sans-serif; background:var(--bg); color:#eaf2ff; }
-    header { padding:14px 18px; border-bottom:1px solid #21304c; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    :root { color-scheme: dark; --bg:#0b1220; --card:#101a2b; --muted:#9fb0c9; --accent:#4ea2ff; --ok:#20c997; --warn:#f59f00; --danger:#ff6b6b; --header-h:62px; }
+    html, body { height:100%; }
+    body { margin:0; font-family: Inter, system-ui, Arial, sans-serif; background:var(--bg); color:#eaf2ff; display:flex; flex-direction:column; overflow:hidden; }
+    header { padding:14px 18px; border-bottom:1px solid #21304c; display:flex; justify-content:space-between; gap:12px; align-items:center; flex-shrink:0; }
     .brand { font-weight:700; letter-spacing:.3px; }
     .small { color:var(--muted); font-size:12px; }
     .auth { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -18,11 +19,13 @@
     button { cursor:pointer; background:#193356; }
     button:hover { background:#214271; }
     button:disabled { opacity:.45; cursor:not-allowed; }
-    main { padding:12px; display:grid; grid-template-columns:220px 1fr; gap:12px; min-height:calc(100vh - 70px);}
-    nav { background:var(--card); border:1px solid #23344f; border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:6px; }
+    main { padding:12px; display:grid; grid-template-columns:220px 1fr; gap:12px; flex:1; min-height:0; overflow:hidden; }
+    nav { background:var(--card); border:1px solid #23344f; border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:6px; overflow:auto; }
     nav button { text-align:left; }
-    section { display:none; background:var(--card); border:1px solid #23344f; border-radius:12px; padding:12px; }
-    section.active { display:block; }
+    main > div { min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+    section { display:none; background:var(--card); border:1px solid #23344f; border-radius:12px; padding:12px; min-height:0; overflow:auto; }
+    section.active { display:flex; flex-direction:column; flex:1; }
+    #camera.active { overflow:hidden; }
     .grid { display:grid; grid-template-columns:repeat(4,minmax(120px,1fr)); gap:10px; margin-bottom:12px;}
     .kpi { background:#0f2137; border:1px solid #294466; border-radius:10px; padding:10px; }
     .kpi .v { font-size:24px; font-weight:700; }
@@ -36,13 +39,18 @@
     .role-admin { background:rgba(78,162,255,.25); color:#9fd0ff; }
     .role-operator { background:rgba(32,201,151,.2); color:#7bf6cd; }
     .role-viewer { background:rgba(159,176,201,.2); color:#c8d6ea; }
-    .pre { white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; background:#0a1322; border:1px solid #22354f; border-radius:8px; padding:8px; max-height:220px; overflow:auto; }
+    .pre { white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; background:#0a1322; border:1px solid #22354f; border-radius:8px; padding:8px; max-height:180px; overflow:auto; }
     .statusline { font-size:12px; color:var(--muted);}
-    .player-wrap { background:#060d18; border:1px solid #294466; border-radius:10px; overflow:hidden; margin:10px 0; min-height:280px; position:relative; }
-    #livePlayer { width:100%; max-height:420px; background:#000; display:block; }
-    #webrtcFrame { width:100%; height:420px; border:0; display:none; }
-    .player-placeholder { padding:40px; text-align:center; color:var(--muted); }
-    .url-list { font-size:12px; color:var(--muted); margin-top:8px; }
+    .camera-toolbar { flex-shrink:0; }
+    .player-wrap { background:#060d18; border:1px solid #294466; border-radius:10px; overflow:hidden; margin:8px 0; flex:1; min-height:200px; position:relative; display:flex; align-items:center; justify-content:center; }
+    #dockPlayer, #dronePlayer { width:100%; height:100%; max-height:none; background:#000; display:block; object-fit:contain; }
+    #webrtcFrame { width:100%; height:100%; min-height:200px; border:0; display:none; }
+    .player-placeholder { padding:24px; text-align:center; color:var(--muted); position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+    .url-list { font-size:12px; color:var(--muted); margin-top:4px; flex-shrink:0; }
+    .stream-statusline { font-size:12px; color:var(--ok); margin:4px 0; flex-shrink:0; min-height:18px; }
+    .advanced-panel, .debug-panel { flex-shrink:0; margin-top:6px; font-size:12px; color:var(--muted); }
+    .advanced-panel summary, .debug-panel summary { cursor:pointer; color:#9fd0ff; margin-bottom:6px; }
+    .advanced-panel[open], .debug-panel[open] { margin-bottom:8px; }
     .url-list code { color:#b8d4ff; word-break:break-all; }
     .overlay { position:fixed; inset:0; background:rgba(5,10,20,.92); display:flex; align-items:center; justify-content:center; z-index:100; }
     .overlay.hidden { display:none; }
@@ -87,6 +95,11 @@
     .telemetry-banner { font-size:12px; padding:8px 10px; border-radius:8px; margin-bottom:10px; border:1px solid #3a5578; background:#0c1628; }
     .telemetry-banner.warn { border-color:#7a5a20; color:#ffca75; }
     .telemetry-banner.ok { border-color:#20664a; color:#7bf6cd; }
+    .camera-split { display:grid; grid-template-columns:1fr 1fr; gap:10px; flex:1; min-height:0; }
+    .camera-panel { display:flex; flex-direction:column; min-height:0; background:#0c1628; border:1px solid #294466; border-radius:10px; overflow:hidden; }
+    .camera-panel-head { padding:8px 10px; font-size:12px; font-weight:600; color:#9fd0ff; border-bottom:1px solid #294466; flex-shrink:0; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .camera-panel .player-wrap { margin:0; border:0; border-radius:0; flex:1; min-height:160px; }
+    .camera-panel .stream-statusline { padding:6px 10px; font-size:11px; flex-shrink:0; }
     @media(max-width:960px){ main{grid-template-columns:1fr;} nav{flex-direction:row; overflow:auto;} .grid{grid-template-columns:repeat(2,1fr);} .ops-layout{grid-template-columns:1fr;} }
   </style>
 </head>
@@ -176,29 +189,49 @@
       </section>
 
       <section id="camera">
-        <h3>Live Camera Panel</h3>
-        <p class="statusline">Select the <strong>drone</strong> for aerial FPV. Use dock only for the indoor dock camera. If OpenAPI returns 403, paste a FH2 Livestream Sharing link from FlightHub → Share.</p>
-        <div class="row">
+        <h3 style="margin:0 0 6px">Live Camera Panel</h3>
+        <p class="statusline">Dual live view — dock indoor camera and drone FPV side by side, like FlightHub cockpit.</p>
+        <div class="row camera-toolbar">
           <select id="camDevice"></select>
-          <select id="camSource" title="Camera source">
-            <option value="drone">Drone camera (FPV)</option>
-            <option value="dock">Dock camera</option>
-          </select>
-          <button id="loadStream">Start / Refresh Stream</button>
+          <button id="loadStream">Start / Refresh Streams</button>
           <button id="snapshotBtn">Telemetry Snapshot</button>
-        </div>
-        <div class="row">
-          <input id="fh2ShareUrl" placeholder="FH2 Livestream Sharing URL (fallback when API 403)" style="flex:1;min-width:240px" />
-          <a id="openFh2Share" href="#" target="_blank" rel="noopener" style="display:none;font-size:12px">Open share link</a>
           <a id="openFh2Cockpit" href="#" target="_blank" rel="noopener" style="display:none;font-size:12px">Open FlightHub cockpit</a>
         </div>
-        <div class="player-wrap" id="playerWrap">
-          <div class="player-placeholder" id="playerPlaceholder">Select a device and load stream to start the player.</div>
-          <video id="livePlayer" controls playsinline style="display:none"></video>
-          <iframe id="webrtcFrame" title="WebRTC player" allow="autoplay; fullscreen"></iframe>
+        <div class="camera-split">
+          <div class="camera-panel" id="dockPanel">
+            <div class="camera-panel-head">
+              <span>Dock camera</span>
+              <span class="small" id="dockMeta">indoor</span>
+            </div>
+            <div class="player-wrap">
+              <div class="player-placeholder" id="dockPlaceholder">Waiting for dock stream…</div>
+              <video id="dockPlayer" controls playsinline muted style="display:none"></video>
+            </div>
+            <div class="stream-statusline" id="dockStatus"></div>
+          </div>
+          <div class="camera-panel" id="dronePanel">
+            <div class="camera-panel-head">
+              <span>Drone FPV</span>
+              <span class="small" id="droneMeta">wide camera</span>
+            </div>
+            <div class="player-wrap">
+              <div class="player-placeholder" id="dronePlaceholder">Waiting for drone stream…</div>
+              <video id="dronePlayer" controls playsinline muted style="display:none"></video>
+            </div>
+            <div class="stream-statusline" id="droneStatus"></div>
+          </div>
         </div>
-        <div class="url-list" id="streamUrls"></div>
-        <div class="pre" id="streamInfo">Stream metadata will appear here.</div>
+        <details class="advanced-panel">
+          <summary>Manual fallback (only if automatic stream fails)</summary>
+          <div class="row">
+            <input id="fh2ShareUrl" placeholder="FH2 Livestream Sharing URL" style="flex:1;min-width:200px" />
+            <a id="openFh2Share" href="#" target="_blank" rel="noopener" style="display:none;font-size:12px">Open share link</a>
+          </div>
+        </details>
+        <details class="debug-panel">
+          <summary>Technical details</summary>
+          <div class="pre" id="streamInfo">Stream metadata will appear here.</div>
+        </details>
       </section>
 
       <section id="ops">
@@ -272,6 +305,8 @@
       fleetMap: null,
       fleetMarkers: {},
       whepPc: null,
+      volcSessions: { dock: null, drone: null },
+      volcMod: null,
     };
     const LIVE_INTERVAL_MS = 10_000;
     const $ = (id) => document.getElementById(id);
@@ -335,7 +370,7 @@
         setTimeout(() => state.fleetMap.invalidateSize(), 120);
       }
       if (btn.dataset.tab === "camera" && $("camDevice").value && state.session) {
-        $("loadStream").click();
+        loadAllStreams();
       }
     });
 
@@ -472,7 +507,32 @@
       updateRoleUi();
     };
 
-    function destroyPlayer() {
+    async function loadVolcMod() {
+      if (!state.volcMod) {
+        state.volcMod = await import("https://cdn.jsdelivr.net/npm/@volcengine/rtc@4.68.5/+esm");
+        window.VERTC = state.volcMod.default;
+      }
+      return state.volcMod;
+    }
+
+    async function destroyVolcSlot(slot) {
+      const session = state.volcSessions[slot];
+      if (!session) return;
+      session.gen += 1;
+      const { engine, joined } = session;
+      state.volcSessions[slot] = null;
+      if (!engine) return;
+      if (joined) {
+        try {
+          await engine.leaveRoom();
+        } catch (_) {}
+      }
+      try {
+        if (window.VERTC?.destroyEngine) window.VERTC.destroyEngine(engine);
+      } catch (_) {}
+    }
+
+    async function destroyPlayer() {
       if (state.hls) {
         state.hls.destroy();
         state.hls = null;
@@ -481,17 +541,126 @@
         state.whepPc.close();
         state.whepPc = null;
       }
-      const video = $("livePlayer");
-      video.pause();
-      video.srcObject = null;
-      video.removeAttribute("src");
-      video.style.display = "none";
-      $("webrtcFrame").style.display = "none";
-      $("playerPlaceholder").style.display = "block";
+      await destroyVolcSlot("dock");
+      await destroyVolcSlot("drone");
+      for (const id of ["dockPlayer", "dronePlayer"]) {
+        const video = $(id);
+        if (!video) continue;
+        video.pause();
+        video.srcObject = null;
+        video.removeAttribute("src");
+        video.style.display = "none";
+      }
+      for (const id of ["dockPlaceholder", "dronePlaceholder"]) {
+        const el = $(id);
+        if (el) el.style.display = "flex";
+      }
     }
 
-    async function playWhep(url) {
-      const video = $("livePlayer");
+    async function playVolc(slot, volc, video, placeholder, statusEl) {
+      const gen = (state.volcSessions[slot]?.gen ?? 0) + 1;
+      state.volcSessions[slot] = { engine: null, joined: false, gen };
+
+      placeholder.textContent = "Connecting to live camera…";
+      placeholder.style.display = "flex";
+      statusEl.textContent = "";
+
+      const mod = await loadVolcMod();
+      if (state.volcSessions[slot]?.gen !== gen) return;
+
+      const VERTC = mod.default;
+      const { StreamIndex, MediaType, RoomProfileType } = mod;
+      const engine = VERTC.createEngine(volc.appId, { autoPlayPolicy: 1 });
+      state.volcSessions[slot] = { engine, joined: false, gen };
+
+      const attachRemote = async (userId, mediaType) => {
+        if (userId === volc.userId) return;
+        if (state.volcSessions[slot]?.gen !== gen) return;
+        try {
+          await engine.subscribeStream(userId, mediaType ?? MediaType.AUDIO_AND_VIDEO);
+          await engine.setRemoteVideoPlayer(StreamIndex.STREAM_INDEX_MAIN, {
+            userId,
+            renderDom: video,
+          });
+          video.muted = false;
+          video.style.display = "block";
+          placeholder.style.display = "none";
+          statusEl.textContent = "● Live";
+        } catch (e) {
+          console.warn(`[${slot}] attach remote`, userId, e);
+        }
+      };
+
+      engine.on(VERTC.events.onUserPublishStream, ({ userId, mediaType }) => {
+        attachRemote(userId, mediaType).catch(() => {});
+      });
+
+      engine.on(VERTC.events.onUserJoined, ({ userInfo }) => {
+        const uid = userInfo?.userId || userInfo?.uid;
+        if (uid && uid !== volc.userId) {
+          setTimeout(() => attachRemote(uid, MediaType.AUDIO_AND_VIDEO).catch(() => {}), 400);
+        }
+      });
+
+      engine.on(VERTC.events.onError, (err) => {
+        if (state.volcSessions[slot]?.gen !== gen) return;
+        const msg = err?.message || err?.msg || "RTC connection failed";
+        if (msg === "leave_room") return;
+        placeholder.textContent = `Live stream error: ${msg}`;
+        placeholder.style.display = "flex";
+        statusEl.textContent = "";
+      });
+
+      try {
+        await engine.joinRoom(
+          volc.token,
+          volc.roomId,
+          { userId: volc.userId },
+          {
+            isAutoPublish: false,
+            isAutoSubscribeAudio: true,
+            isAutoSubscribeVideo: true,
+            roomProfileType: RoomProfileType?.live ?? RoomProfileType?.communication,
+          },
+        );
+        if (state.volcSessions[slot]?.gen !== gen) return;
+        state.volcSessions[slot].joined = true;
+
+        if (typeof engine.getRemoteUsers === "function") {
+          const remoteUsers = await engine.getRemoteUsers();
+          for (const user of remoteUsers || []) {
+            const uid = user.userId || user.uid || user;
+            await attachRemote(uid, MediaType.AUDIO_AND_VIDEO);
+          }
+        }
+
+        const deviceSn = volc.roomId.split("_")[0];
+        if (deviceSn && deviceSn !== volc.userId) {
+          setTimeout(() => attachRemote(deviceSn, MediaType.AUDIO_AND_VIDEO).catch(() => {}), 800);
+        }
+
+        setTimeout(() => {
+          if (state.volcSessions[slot]?.gen !== gen) return;
+          if (video.style.display !== "block") {
+            placeholder.textContent =
+              slot === "dock"
+                ? "No dock video yet. In FlightHub cockpit, open Dock tab and tap Enable on livestream."
+                : "No drone video yet. Drone may be offline or FPV stream not publishing.";
+            placeholder.style.display = "flex";
+          }
+        }, 12000);
+      } catch (e) {
+        if (state.volcSessions[slot]?.gen !== gen) return;
+        const msg = e?.message || String(e);
+        if (msg !== "leave_room") {
+          placeholder.textContent = `Could not join stream: ${msg}`;
+          placeholder.style.display = "flex";
+        }
+        throw e;
+      }
+    }
+
+    async function playWhep(url, video, placeholder, statusEl) {
       const pc = new RTCPeerConnection();
       state.whepPc = pc;
       pc.addTransceiver("video", { direction: "recvonly" });
@@ -511,88 +680,116 @@
       const answer = await res.text();
       await pc.setRemoteDescription({ type: "answer", sdp: answer });
       video.style.display = "block";
+      placeholder.style.display = "none";
+      statusEl.textContent = "● Live";
     }
 
-    function mountPlayer(playback) {
-      destroyPlayer();
-      const video = $("livePlayer");
-      const iframe = $("webrtcFrame");
-      const placeholder = $("playerPlaceholder");
-      const urls = $("streamUrls");
+    function mountPanelPlayer(slot, data, video, placeholder, statusEl) {
+      const playback = data.playback || { type: "none", viewerNote: data.note };
+      statusEl.textContent = playback.viewerNote || data.note || "";
 
-      let html = "";
-      if (playback.hlsUrl) html += `<div>HLS: <code>${playback.hlsUrl}</code></div>`;
-      if (playback.rtmpUrl) html += `<div>RTMP: <code>${playback.rtmpUrl}</code> (use VLC or RTMP client)</div>`;
-      if (playback.webrtcUrl) html += `<div>WHEP/WebRTC: <code>${playback.webrtcUrl}</code></div>`;
-      if (playback.url && !playback.hlsUrl && !playback.rtmpUrl && !playback.webrtcUrl) {
-        html += `<div>Primary: <code>${playback.url}</code></div>`;
-      }
-      urls.innerHTML = html || `<div>${playback.viewerNote}</div>`;
-
-      if (!playback.url || playback.type === "none") {
-        placeholder.textContent = playback.viewerNote;
-        placeholder.style.display = "block";
+      if (!data.streamingSupported || playback.type === "none") {
+        placeholder.textContent = playback.viewerNote || data.note || "Stream unavailable.";
+        placeholder.style.display = "flex";
         return;
       }
 
-      placeholder.style.display = "none";
+      if (playback.type === "volc" && playback.volc) {
+        playVolc(slot, playback.volc, video, placeholder, statusEl).catch((e) => {
+          const msg = e?.message || String(e);
+          if (msg !== "leave_room") {
+            placeholder.textContent = `Could not start player: ${msg}`;
+            placeholder.style.display = "flex";
+          }
+        });
+        return;
+      }
 
-      const isShareUrl =
-        playback.url.includes("fh.dji.com") ||
-        playback.url.includes("dji.com/share") ||
-        playback.viewerNote?.includes("Livestream Sharing");
-
-      if (isShareUrl && playback.url.startsWith("http")) {
-        iframe.src = playback.url;
-        iframe.style.display = "block";
-        const openShare = $("openFh2Share");
-        openShare.href = playback.url;
-        openShare.style.display = "inline-block";
+      if (playback.url?.startsWith("app_id=")) {
+        placeholder.textContent = "Stream credentials received but player not configured.";
+        placeholder.style.display = "flex";
         return;
       }
 
       if (playback.type === "hls" && playback.url) {
         video.style.display = "block";
+        placeholder.style.display = "none";
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = playback.url;
         } else if (window.Hls && Hls.isSupported()) {
           state.hls = new Hls();
           state.hls.loadSource(playback.url);
           state.hls.attachMedia(video);
-        } else {
-          placeholder.textContent = "HLS.js not available in this browser.";
-          placeholder.style.display = "block";
         }
+        statusEl.textContent = "● Live";
         return;
       }
 
       if (playback.type === "webrtc" && playback.url?.includes("whep")) {
-        playWhep(playback.url).catch((e) => {
-          placeholder.textContent = `WHEP player failed: ${e.message}. Open stream URL in FH2 cockpit or enable livestream API permission.`;
-          placeholder.style.display = "block";
+        playWhep(playback.url, video, placeholder, statusEl).catch((e) => {
+          placeholder.textContent = `WHEP failed: ${e.message}`;
+          placeholder.style.display = "flex";
         });
         return;
       }
 
-      if ((playback.type === "http" || playback.type === "webrtc") && playback.url?.startsWith("http")) {
-        if (playback.type === "webrtc" || playback.url.includes("webrtc") || playback.url.includes("whep")) {
-          iframe.src = playback.url;
-          iframe.style.display = "block";
-          return;
-        }
+      if (playback.url?.startsWith("http")) {
         video.style.display = "block";
         video.src = playback.url;
+        placeholder.style.display = "none";
+        statusEl.textContent = "● Live";
         return;
       }
 
-      if (playback.type === "rtmp") {
-        placeholder.innerHTML = `RTMP stream active. Browsers cannot play RTMP natively.<br>Copy: <code>${playback.rtmpUrl || playback.url}</code>`;
-        placeholder.style.display = "block";
-        return;
+      placeholder.textContent = playback.viewerNote || "No playable stream URL.";
+      placeholder.style.display = "flex";
+    }
+
+    async function loadAllStreams() {
+      const sn = $("camDevice").value;
+      if (!sn) return alert("Select a device first");
+
+      const shareUrl = $("fh2ShareUrl").value.trim();
+      if (shareUrl) localStorage.setItem("shamalFh2ShareUrl", shareUrl);
+
+      const dockParams = new URLSearchParams({ camera: "dock" });
+      const droneParams = new URLSearchParams({ camera: "drone" });
+      if (shareUrl) {
+        dockParams.set("share_url", shareUrl);
+        droneParams.set("share_url", shareUrl);
       }
 
-      placeholder.textContent = playback.viewerNote;
-      placeholder.style.display = "block";
+      const telemSn =
+        state.devices.find((d) => d.serialNumber === sn)?.role === "gateway"
+          ? state.devices.find((d) => d.role === "drone")?.serialNumber || sn
+          : sn;
+
+      await destroyPlayer();
+
+      const droneDev = state.devices.find((d) => d.role === "drone");
+      const dockDev = state.devices.find((d) => d.role === "gateway");
+      $("dockMeta").textContent = dockDev?.online ? "online" : "offline";
+      $("droneMeta").textContent = droneDev?.online ? "online" : "offline";
+
+      try {
+        const [dockRes, droneRes, telem] = await Promise.all([
+          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
+          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
+          api(`/v1/marafiq/devices/${encodeURIComponent(telemSn)}/telemetry/latest`),
+        ]);
+
+        state.streamLoaded = true;
+        mountPanelPlayer("dock", dockRes.data, $("dockPlayer"), $("dockPlaceholder"), $("dockStatus"));
+        mountPanelPlayer("drone", droneRes.data, $("dronePlayer"), $("dronePlaceholder"), $("droneStatus"));
+
+        $("streamInfo").textContent = JSON.stringify(
+          { dock: dockRes.data, drone: droneRes.data, telemetry: telem.data, telemetryMeta: telem.meta },
+          null,
+          2,
+        );
+      } catch (e) {
+        $("streamInfo").textContent = "Stream error: " + e.message;
+      }
     }
 
     function ensureFleetMap() {
@@ -681,6 +878,10 @@
       }
     }
 
+    $("camDevice").onchange = () => {
+      if (state.activeTab === "camera" && state.session) loadAllStreams();
+    };
+
     async function loadFleet(opts = {}) {
       const [sum, devices, positionsRes] = await Promise.all([
         api("/v1/marafiq/fleet/summary"),
@@ -727,41 +928,7 @@
       });
     }
 
-    $("loadStream").onclick = async () => {
-      const sn = $("camDevice").value;
-      if (!sn) return alert("Select a device first");
-      const shareUrl = $("fh2ShareUrl").value.trim();
-      if (shareUrl) localStorage.setItem("shamalFh2ShareUrl", shareUrl);
-      const params = new URLSearchParams();
-      params.set("camera", $("camSource").value);
-      if (shareUrl) params.set("share_url", shareUrl);
-      const streamPath = `/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${params}`;
-      const telemSn =
-        state.devices.find((d) => d.serialNumber === sn)?.role === "gateway"
-          ? state.devices.find((d) => d.role === "drone")?.serialNumber || sn
-          : sn;
-      try {
-        const [stream, telem] = await Promise.all([
-          api(streamPath),
-          api(`/v1/marafiq/devices/${encodeURIComponent(telemSn)}/telemetry/latest`),
-        ]);
-        const data = stream.data;
-        state.streamLoaded = true;
-        mountPlayer(data.playback || { type: "none", viewerNote: data.note || data.playback?.viewerNote });
-        const dev = state.devices.find((d) => d.serialNumber === sn);
-        const hint =
-          dev?.role === "gateway" && $("camSource").value === "drone"
-            ? `\nNote: streaming drone FPV for gateway selection (telemetry from paired drone).`
-            : "";
-        $("streamInfo").textContent =
-          (data.note || "") +
-          hint +
-          "\n\n" +
-          JSON.stringify({ stream: data, telemetry: telem.data, telemetryMeta: telem.meta }, null, 2);
-      } catch (e) {
-        $("streamInfo").textContent = "Stream error: " + e.message;
-      }
-    };
+    $("loadStream").onclick = () => loadAllStreams();
 
     $("snapshotBtn").onclick = async () => {
       const sn = $("camDevice").value;

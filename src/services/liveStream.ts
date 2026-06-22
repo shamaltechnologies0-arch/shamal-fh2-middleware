@@ -1,4 +1,12 @@
-export type PlaybackType = "none" | "hls" | "rtmp" | "webrtc" | "http";
+export type PlaybackType = "none" | "hls" | "rtmp" | "webrtc" | "http" | "volc";
+
+export interface VolcRtcCredentials {
+  appId: string;
+  roomId: string;
+  userId: string;
+  token: string;
+  expireTime?: number;
+}
 
 export interface StreamPlayback {
   type: PlaybackType;
@@ -6,8 +14,36 @@ export interface StreamPlayback {
   rtmpUrl: string | null;
   webrtcUrl: string | null;
   hlsUrl: string | null;
+  volc: VolcRtcCredentials | null;
   embeddable: boolean;
   viewerNote: string;
+}
+
+/** Parse FH2 volc pull credentials (query-string form from /live-stream/start). */
+export function parseVolcStreamUrl(raw: string): VolcRtcCredentials | null {
+  try {
+    const query = raw.startsWith("http")
+      ? new URL(raw).search
+      : raw.startsWith("?")
+        ? raw
+        : `?${raw}`;
+    const params = new URLSearchParams(query.startsWith("?") ? query.slice(1) : query);
+    const appId = params.get("app_id");
+    const roomId = params.get("room_id");
+    const userId = params.get("user_id");
+    const token = params.get("token");
+    if (!appId || !roomId || !userId || !token) return null;
+    const expireRaw = params.get("expire_time");
+    return {
+      appId,
+      roomId,
+      userId,
+      token,
+      expireTime: expireRaw ? Number(expireRaw) : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function collectUrls(node: unknown, out: string[] = []): string[] {
@@ -56,6 +92,7 @@ export function buildPlayback(
       rtmpUrl: null,
       webrtcUrl: null,
       hlsUrl: null,
+      volc: null,
       embeddable: false,
       viewerNote:
         "No active live stream URL from FlightHub yet. Start live push in FlightHub/Dock, then refresh.",
@@ -92,6 +129,7 @@ export function buildPlayback(
     rtmpUrl,
     webrtcUrl,
     hlsUrl,
+    volc: null,
     embeddable,
     viewerNote,
   };

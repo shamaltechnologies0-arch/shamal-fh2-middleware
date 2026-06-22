@@ -13,6 +13,7 @@ import type {
   IFh2Client,
 } from "./types.js";
 import { resolveStreamTarget } from "../services/deviceCameras.js";
+import { parseVolcStreamUrl } from "../services/liveStream.js";
 import type { LiveStreamOptions } from "./types.js";
 
 function normalizeMappingRow(row: Record<string, unknown>): Fh2MappingModel {
@@ -178,6 +179,7 @@ export class LiveFh2Client implements IFh2Client {
           rtmpUrl: null,
           webrtcUrl: null,
           hlsUrl: null,
+          volc: null,
           embeddable: true,
           viewerNote:
             "FlightHub Livestream Sharing link. If the player is blank, open the link in FlightHub (some share pages block iframe embed).",
@@ -189,8 +191,11 @@ export class LiveFh2Client implements IFh2Client {
     if (cameraIndex && online) {
       try {
         const started = await this.startLiveStream(streamSn, cameraIndex);
+        const urlType = started.urlType.toLowerCase();
         const isWhep =
-          started.url.includes("whep") || started.urlType.toLowerCase() === "srs";
+          started.url.includes("whep") || urlType === "srs";
+        const volc =
+          urlType === "volc" ? parseVolcStreamUrl(started.url) : null;
         return {
           deviceSerialNumber: deviceSn,
           online,
@@ -198,17 +203,29 @@ export class LiveFh2Client implements IFh2Client {
           liveCapacity: { camera_index: cameraIndex, url: started.url, stream_sn: streamSn },
           cameraIndex,
           expireTs: started.expireTs,
-          playback: {
-            type: isWhep ? "webrtc" : started.url.includes(".m3u8") ? "hls" : "http",
-            url: started.url,
-            rtmpUrl: null,
-            webrtcUrl: isWhep ? started.url : null,
-            hlsUrl: started.url.includes(".m3u8") ? started.url : null,
-            embeddable: true,
-            viewerNote: isWhep
-              ? "FlightHub WHEP live stream — WebRTC player in Shamal Platform."
-              : "FlightHub live stream URL from /live-stream/start.",
-          },
+          playback: volc
+            ? {
+                type: "volc",
+                url: started.url,
+                rtmpUrl: null,
+                webrtcUrl: null,
+                hlsUrl: null,
+                volc,
+                embeddable: true,
+                viewerNote: "Live camera via FlightHub RTC — connecting…",
+              }
+            : {
+                type: isWhep ? "webrtc" : started.url.includes(".m3u8") ? "hls" : "http",
+                url: started.url,
+                rtmpUrl: null,
+                webrtcUrl: isWhep ? started.url : null,
+                hlsUrl: started.url.includes(".m3u8") ? started.url : null,
+                volc: null,
+                embeddable: true,
+                viewerNote: isWhep
+                  ? "FlightHub WHEP live stream — WebRTC player in Shamal Platform."
+                  : "FlightHub live stream URL from /live-stream/start.",
+              },
           note: `Live stream via OpenAPI (${label}, SN ${streamSn}).`,
         };
       } catch (err) {
@@ -257,6 +274,7 @@ export class LiveFh2Client implements IFh2Client {
           rtmpUrl: null,
           webrtcUrl: null,
           hlsUrl: null,
+          volc: null,
           embeddable: false,
           viewerNote:
             "Could not start FlightHub live stream (403). Enable Device Management + Livestream on the Organization Key in FlightHub Sync, or paste a FH2 Livestream Sharing URL below.",

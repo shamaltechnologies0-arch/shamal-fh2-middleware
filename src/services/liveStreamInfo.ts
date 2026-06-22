@@ -25,6 +25,7 @@ export function buildLiveStreamInfo(
       rtmpUrl: "rtmp://demo.shamal.local/live/drone",
       webrtcUrl: null,
       hlsUrl: DEMO_HLS,
+      volc: null,
       embeddable: true,
       viewerNote:
         "Mock mode demo HLS player. In live mode, FlightHub issues RTMP/WebRTC URLs when a session is active.",

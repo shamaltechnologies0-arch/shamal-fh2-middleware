@@ -5,6 +5,8 @@ declare module "fastify" {
   interface FastifyRequest {
     ccRole?: CcRole;
     ccUsername?: string;
+    allowedProjectCodes?: string[];
+    selectedProjectCode?: string;
     viewerIntegration?: {
       viewerId: string;
       scopes: ViewerApiScope[];

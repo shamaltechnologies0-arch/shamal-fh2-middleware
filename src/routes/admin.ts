@@ -28,6 +28,16 @@ import {
   deleteManagedViewer,
   isManagedViewer,
 } from "../services/viewerUsers.js";
+import {
+  assignViewerToProject,
+  getFh2ProjectSyncStatus,
+  listAssignedViewerIds,
+  listFh2Projects,
+  removeViewerFromAllProjects,
+  removeViewerFromProject,
+  setFh2ProjectLocalStatus,
+  syncFh2ProjectsFromSource,
+} from "../services/fh2Projects.js";
 
 const integrationPatchSchema = z.object({
   enabled: z.boolean(),
@@ -94,6 +104,26 @@ function findAccount(accountId: string) {
 
 function apiBaseFromRequest(request: { headers: { host?: string } }): string {
   return resolveApiBaseUrl(request.headers.host);
+}
+
+function listProjectsWithAssignments() {
+  const viewers = getCcUsers()
+    .filter((u) => u.role === "viewer")
+    .map((u) => ({ id: u.username, displayName: u.displayName }));
+  return listFh2Projects().map((project) => {
+    const assignedViewerIds = listAssignedViewerIds(project.fh2ProjectId);
+    return {
+      ...project,
+      assignedViewers: assignedViewerIds.map((viewerId) => {
+        const viewer = viewers.find((v) => v.id === viewerId);
+        return {
+          viewerId,
+          displayName: viewer?.displayName ?? viewerId,
+        };
+      }),
+      assignedCount: assignedViewerIds.length,
+    };
+  });
 }
 
 function registerIntegrationAccountRoutes(app: FastifyInstance): void {
@@ -205,6 +235,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
         deleteManagedViewer(accountId);
         deleteViewerDashboardPermissions(accountId);
         deleteViewerIntegration(accountId);
+        removeViewerFromAllProjects(accountId);
         return reply.send({
           data: { accountId, deleted: true },
           meta: { source: "shamal-platform" },
@@ -474,6 +505,115 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
 export const adminRoutes: FastifyPluginAsync = async (app) => {
   registerIntegrationAccountRoutes(app);
 
+  app.get(
+    "/v1/marafiq/admin/fh2-projects",
+    { schema: { summary: "List FH2 projects (admin only)", tags: ["Admin"] } },
+    async (request, reply) => {
+      const gate = requireAdmin(request.ccRole);
+      if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
+      return reply.send({
+        data: {
+          projects: listProjectsWithAssignments(),
+          sync: getFh2ProjectSyncStatus(),
+          sourceOfTruth: "FH2",
+        },
+        meta: { source: "shamal-platform" },
+      });
+    },
+  );
+
+  app.post(
+    "/v1/marafiq/admin/fh2-projects/sync",
+    { schema: { summary: "Sync FH2 projects from FlightHub 2 (admin only)", tags: ["Admin"] } },
+    async (request, reply) => {
+      const gate = requireAdmin(request.ccRole);
+      if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
+      try {
+        const synced = await syncFh2ProjectsFromSource();
+        return reply.send({
+          data: {
+            syncedCount: synced.syncedCount,
+            projects: listProjectsWithAssignments(),
+            sync: getFh2ProjectSyncStatus(),
+          },
+          meta: { source: "shamal-platform" },
+        });
+      } catch (err) {
+        return reply.status(502).send({
+          error: "sync_failed",
+          message:
+            "Unable to sync projects from FlightHub 2. Please check FH2 credentials/API access.",
+          details: (err as Error).message,
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/v1/marafiq/admin/fh2-projects/:projectId/assign-viewer",
+    { schema: { summary: "Assign viewer to synced FH2 project (admin only)", tags: ["Admin"] } },
+    async (request, reply) => {
+      const gate = requireAdmin(request.ccRole);
+      if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
+      const { projectId } = request.params as { projectId: string };
+      const { viewerId } = request.body as { viewerId?: string };
+      if (!viewerId) {
+        return reply.status(400).send({ error: "validation_error", message: "viewerId is required" });
+      }
+      try {
+        const viewerSet = new Set(
+          getCcUsers()
+            .filter((u) => u.role === "viewer")
+            .map((u) => u.username),
+        );
+        if (!viewerSet.has(viewerId)) {
+          return reply.status(400).send({
+            error: "validation_error",
+            message: `Only viewer users can be assigned: ${viewerId}`,
+          });
+        }
+        assignViewerToProject(projectId, viewerId);
+        return reply.send({ data: { projectId, viewerId }, meta: { source: "shamal-platform" } });
+      } catch (err) {
+        const message = (err as Error).message;
+        return reply
+          .status(message.includes("not found") ? 404 : 400)
+          .send({ error: "validation_error", message });
+      }
+    },
+  );
+
+  app.delete(
+    "/v1/marafiq/admin/fh2-projects/:projectId/remove-viewer/:viewerId",
+    { schema: { summary: "Remove viewer assignment (admin only)", tags: ["Admin"] } },
+    async (request, reply) => {
+      const gate = requireAdmin(request.ccRole);
+      if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
+      const { projectId, viewerId } = request.params as { projectId: string; viewerId: string };
+      removeViewerFromProject(projectId, viewerId);
+      return reply.send({ data: { projectId, viewerId, removed: true }, meta: { source: "shamal-platform" } });
+    },
+  );
+
+  app.post(
+    "/v1/marafiq/admin/fh2-projects/:projectId/deactivate",
+    { schema: { summary: "Deactivate FH2 project locally (admin only)", tags: ["Admin"] } },
+    async (request, reply) => {
+      const gate = requireAdmin(request.ccRole);
+      if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
+      const { projectId } = request.params as { projectId: string };
+      try {
+        const project = setFh2ProjectLocalStatus(projectId, false);
+        return reply.send({ data: project, meta: { source: "shamal-platform" } });
+      } catch (err) {
+        const message = (err as Error).message;
+        return reply
+          .status(message.includes("not found") ? 404 : 400)
+          .send({ error: "validation_error", message });
+      }
+    },
+  );
+
   // @deprecated backward-compat admin routes
   app.get(
     "/v1/marafiq/admin/viewers",
@@ -558,6 +698,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         deleteManagedViewer(viewerId);
         deleteViewerDashboardPermissions(viewerId);
         deleteViewerIntegration(viewerId);
+        removeViewerFromAllProjects(viewerId);
         return reply.send({
           data: { viewerId, deleted: true },
           meta: { source: "shamal-platform" },

@@ -346,6 +346,13 @@
       <section id="dashboard">
         <h3>Monitoring Dashboard</h3>
         <p class="viewer-note">Live fleet monitoring — map, telemetry, camera, and mission activity.</p>
+        <div class="row" id="viewerProjectPickerWrap" style="display:none; margin-bottom:10px">
+          <label for="viewerProjectPicker" class="small">Project</label>
+          <select id="viewerProjectPicker" style="min-width:220px"></select>
+          <span id="viewerProjectEmpty" class="small" style="display:none;color:#ffb0b0">
+            No project assigned. Please contact your admin.
+          </span>
+        </div>
         <div class="dash-grid" id="dashGrid">
           <div class="dash-card" data-card="fleet" data-permission="fleetOverview" data-zoomable>
             <div class="dash-card-head">
@@ -612,6 +619,43 @@
             <p id="adminViewerStatus" class="admin-status"></p>
           </div>
 
+          <div class="admin-section-title">FH2 Projects</div>
+          <p class="statusline">Projects are created in DJI FlightHub 2. Click Sync to import the latest FH2 project list.</p>
+          <div class="admin-settings-card">
+            <div class="row" style="margin-bottom:10px">
+              <button id="adminSyncProjects">Sync from FlightHub 2</button>
+              <span id="adminProjectSyncMeta" class="small"></span>
+            </div>
+            <table class="admin-viewer-table">
+              <thead>
+                <tr><th>Project</th><th>FH2 ID / Code</th><th>FH2 Status</th><th>Assigned Viewers</th><th>Last Synced</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="adminProjectListBody">
+                <tr><td colspan="6" class="small">Loading…</td></tr>
+              </tbody>
+            </table>
+            <p id="adminProjectStatus" class="admin-status"></p>
+          </div>
+
+          <div class="admin-settings-card">
+            <h4>Assign Viewers to Project</h4>
+            <div class="admin-create-grid">
+              <div>
+                <label for="adminAssignProject">Project</label>
+                <select id="adminAssignProject"></select>
+              </div>
+              <div>
+                <label for="adminAssignViewer">Viewer Account</label>
+                <select id="adminAssignViewer"></select>
+              </div>
+            </div>
+            <div class="row" style="margin-top:10px">
+              <button id="adminAssignViewerBtn">Assign Viewer</button>
+              <button id="adminRemoveViewerBtn" class="admin-delete-btn">Remove Viewer</button>
+            </div>
+            <p id="adminAssignmentStatus" class="admin-status"></p>
+          </div>
+
           <div class="admin-section-title">Dashboard Access Settings</div>
           <p class="statusline">Control which dashboard cards each integration account can see.</p>
           <div class="admin-settings-card">
@@ -756,6 +800,7 @@
       volcSessions: { dock: null, drone: null },
       volcMod: null,
       adminViewers: [],
+      adminProjects: [],
       viewerIntegration: null,
       adminIntegration: null,
       adminIntegrationPlainKey: null,
@@ -921,6 +966,47 @@
           $("viewerClientName").style.display = "none";
         }
       }
+      renderViewerProjectPicker();
+    }
+
+    function selectedProjectCode() {
+      if (!isViewer()) return null;
+      return state.session?.selectedProjectCode || null;
+    }
+
+    function renderViewerProjectPicker() {
+      const wrap = $("viewerProjectPickerWrap");
+      const sel = $("viewerProjectPicker");
+      const empty = $("viewerProjectEmpty");
+      if (!wrap || !sel || !empty) return;
+      if (!isViewer() || !state.session) {
+        wrap.style.display = "none";
+        return;
+      }
+      wrap.style.display = "";
+      const projects = state.session.assignedProjects || [];
+      sel.innerHTML = "";
+      for (const p of projects) {
+        const o = document.createElement("option");
+        o.value = p.projectCode;
+        o.textContent = `${p.projectName} (${p.projectCode})`;
+        sel.appendChild(o);
+      }
+      const fallback = state.session.fallbackProjectCode;
+      if (!projects.length && fallback) {
+        const o = document.createElement("option");
+        o.value = fallback;
+        o.textContent = `Default (${fallback})`;
+        sel.appendChild(o);
+      }
+      const selected = state.session.selectedProjectCode || projects[0]?.projectCode || fallback || "";
+      if (selected) {
+        sel.value = selected;
+        state.session.selectedProjectCode = selected;
+        saveSession(state.session);
+      }
+      sel.style.display = projects.length > 1 ? "" : "none";
+      empty.style.display = projects.length === 0 && !fallback ? "" : "none";
     }
 
     async function syncSessionFromServer() {
@@ -934,6 +1020,19 @@
         state.session.displayName = res.data.displayName;
         saveSession(state.session);
       }
+      if (Array.isArray(res.data?.assignedProjects)) {
+        state.session.assignedProjects = res.data.assignedProjects;
+      }
+      if (res.data?.fallbackProjectCode) {
+        state.session.fallbackProjectCode = res.data.fallbackProjectCode;
+      }
+      if (!state.session.selectedProjectCode) {
+        state.session.selectedProjectCode =
+          state.session.assignedProjects?.[0]?.projectCode ||
+          state.session.fallbackProjectCode ||
+          "";
+      }
+      saveSession(state.session);
       applyViewerDashboardPermissions();
       if (isViewer()) await loadViewerIntegration();
     }
@@ -1230,6 +1329,7 @@
       const listRes = await api("/v1/marafiq/admin/integration-accounts");
       const viewers = listRes.data || [];
       renderAdminViewerList(viewers);
+      await loadAdminProjects();
 
       const sel = $("adminViewerSelect");
       const prev = sel.value;
@@ -1404,6 +1504,121 @@
         setAdminViewerStatus(e.message, "err");
       }
     }
+
+    function setAdminProjectStatus(message, type = "") {
+      const el = $("adminProjectStatus");
+      el.textContent = message;
+      el.className = "admin-status" + (type ? ` ${type}` : "");
+    }
+
+    function setAdminAssignmentStatus(message, type = "") {
+      const el = $("adminAssignmentStatus");
+      el.textContent = message;
+      el.className = "admin-status" + (type ? ` ${type}` : "");
+    }
+
+    function renderAdminProjects(projects) {
+      state.adminProjects = projects;
+      const tbody = $("adminProjectListBody");
+      if (!projects.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="small">No FH2 projects synced yet. Click Sync from FlightHub 2.</td></tr>';
+      } else {
+        tbody.innerHTML = projects
+          .map((p) => {
+            const viewers = (p.assignedViewers || []).map((v) => v.displayName).join(", ") || "—";
+            return `<tr>
+              <td>${escapeHtml(p.projectName)}</td>
+              <td><code>${escapeHtml(p.fh2ProjectCode)}</code></td>
+              <td>${escapeHtml(p.fh2Status || "unknown")}</td>
+              <td>${escapeHtml(viewers)}</td>
+              <td>${p.lastSyncedAt ? new Date(p.lastSyncedAt).toLocaleString() : "—"}</td>
+              <td>
+                <button type="button" data-project-sync>Refresh/Sync</button>
+                ${
+                  p.localStatus === "active"
+                    ? `<button type="button" data-project-deactivate="${escapeHtml(p.fh2ProjectId)}">Deactivate (Local)</button>`
+                    : `<span class="small">Locally inactive</span>`
+                }
+              </td>
+            </tr>`;
+          })
+          .join("");
+      }
+
+      const projectSel = $("adminAssignProject");
+      projectSel.innerHTML = "";
+      for (const p of projects) {
+        const o = document.createElement("option");
+        o.value = p.fh2ProjectId;
+        o.textContent = `${p.projectName} (${p.fh2ProjectCode})`;
+        projectSel.appendChild(o);
+      }
+      const viewerSel = $("adminAssignViewer");
+      viewerSel.innerHTML = "";
+      for (const v of state.adminViewers) {
+        const accountId = v.accountId || v.viewerId;
+        const o = document.createElement("option");
+        o.value = accountId;
+        o.textContent = `${v.displayName} (${accountId})`;
+        viewerSel.appendChild(o);
+      }
+    }
+
+    async function loadAdminProjects() {
+      if (!isAdmin()) return;
+      const res = await api("/v1/marafiq/admin/fh2-projects");
+      renderAdminProjects(res.data?.projects || []);
+      const syncMeta = $("adminProjectSyncMeta");
+      const last = res.data?.sync?.lastSyncAt;
+      const err = res.data?.sync?.lastSyncError;
+      syncMeta.textContent = err
+        ? `Last sync failed: ${err}`
+        : last
+          ? `Last sync: ${new Date(last).toLocaleString()}`
+          : "Not synced yet";
+    }
+
+    async function syncAdminProjects() {
+      setAdminProjectStatus("Syncing from FlightHub 2…");
+      await api("/v1/marafiq/admin/fh2-projects/sync", {
+        method: "POST",
+        body: "{}",
+      });
+      setAdminProjectStatus("Projects synced from FlightHub 2.", "ok");
+      await loadAdminProjects();
+    }
+
+    async function assignViewerToProject(remove = false) {
+      const projectId = $("adminAssignProject").value;
+      const viewerId = $("adminAssignViewer").value;
+      if (!projectId || !viewerId) {
+        setAdminAssignmentStatus("Select both project and viewer.", "err");
+        return;
+      }
+      setAdminAssignmentStatus(remove ? "Removing…" : "Assigning…");
+      if (remove) {
+        await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/remove-viewer/${encodeURIComponent(viewerId)}`, {
+          method: "DELETE",
+        });
+      } else {
+        await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/assign-viewer`, {
+          method: "POST",
+          body: JSON.stringify({ viewerId }),
+        });
+      }
+      setAdminAssignmentStatus(remove ? "Viewer removed from project." : "Viewer assigned to project.", "ok");
+      await loadAdminProjects();
+    }
+
+    async function deactivateAdminProject(projectId) {
+      await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/deactivate`, {
+        method: "POST",
+        body: "{}",
+      });
+      setAdminProjectStatus("Project deactivated.", "ok");
+      await loadAdminProjects();
+    }
+
 
     function primaryDrone() {
       return state.devices.find((d) => d.role === "drone");
@@ -1758,6 +1973,18 @@
 
     async function api(path, opts = {}) {
       if (!state.session?.apiKey) throw new Error("Not signed in");
+      let requestPath = path;
+      const projectCode = selectedProjectCode();
+      if (
+        isViewer() &&
+        projectCode &&
+        path.startsWith("/v1/marafiq/") &&
+        !path.startsWith("/v1/marafiq/auth/") &&
+        !path.startsWith("/v1/marafiq/admin/")
+      ) {
+        const sep = path.includes("?") ? "&" : "?";
+        requestPath = `${path}${sep}projectCode=${encodeURIComponent(projectCode)}`;
+      }
       const headers = {
         "X-Api-Key": state.session.apiKey,
         "X-CC-Session": state.session.sessionToken,
@@ -1766,7 +1993,7 @@
       if (opts.body != null && opts.body !== "") {
         headers["Content-Type"] = headers["Content-Type"] || "application/json";
       }
-      const res = await fetch(path, { ...opts, headers });
+      const res = await fetch(requestPath, { ...opts, headers });
       if (res.status === 401) {
         clearSession();
         updateRoleUi();
@@ -1799,6 +2026,12 @@
           sessionToken: body.data.sessionToken,
           username: body.data.username,
           viewerDashboardPermissions: body.data.viewerDashboardPermissions,
+          assignedProjects: body.data.assignedProjects || [],
+          fallbackProjectCode: body.data.fallbackProjectCode || null,
+          selectedProjectCode:
+            body.data.assignedProjects?.[0]?.projectCode ||
+            body.data.fallbackProjectCode ||
+            null,
         });
         updateRoleUi();
         startLiveUpdates();
@@ -2947,6 +3180,10 @@
     async function refreshDashboard() {
       if (isViewer()) {
         await syncSessionFromServer();
+        if (!selectedProjectCode()) {
+          renderViewerProjectPicker();
+          return;
+        }
       }
       await loadFleet();
       if (isViewer()) {
@@ -2998,6 +3235,35 @@
       const btn = e.target.closest("[data-delete-account]");
       if (!btn) return;
       deleteAdminViewer(btn.dataset.deleteAccount).catch((err) => setAdminViewerStatus(err.message, "err"));
+    };
+    $("adminSyncProjects").onclick = () => {
+      syncAdminProjects().catch((e) => setAdminProjectStatus(e.message, "err"));
+    };
+    $("adminAssignViewerBtn").onclick = () => {
+      assignViewerToProject(false).catch((e) => setAdminAssignmentStatus(e.message, "err"));
+    };
+    $("adminRemoveViewerBtn").onclick = () => {
+      assignViewerToProject(true).catch((e) => setAdminAssignmentStatus(e.message, "err"));
+    };
+    $("adminProjectListBody").onclick = (e) => {
+      const syncBtn = e.target.closest("[data-project-sync]");
+      if (syncBtn) {
+        syncAdminProjects().catch((err) => setAdminProjectStatus(err.message, "err"));
+        return;
+      }
+      const deactivateBtn = e.target.closest("[data-project-deactivate]");
+      if (deactivateBtn) {
+        deactivateAdminProject(deactivateBtn.dataset.projectDeactivate).catch((err) =>
+          setAdminProjectStatus(err.message, "err"),
+        );
+        return;
+      }
+    };
+    $("viewerProjectPicker").onchange = () => {
+      if (!state.session) return;
+      state.session.selectedProjectCode = $("viewerProjectPicker").value;
+      saveSession(state.session);
+      refreshDashboard().catch((e) => alert(e.message));
     };
     $("adminIntegrationEnabled").onchange = () => {
       saveAdminIntegrationEnabled().catch((e) => setAdminIntegrationStatusMsg(e.message, "err"));

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { config } from "../config.js";
+import { getFh2RequestContext } from "../services/fh2ProjectContext.js";
 import type { Fh2Response, IFh2Client } from "./types.js";
 import { MockFh2Client } from "./mockAdapter.js";
 import { LiveFh2Client } from "./liveAdapter.js";
@@ -33,6 +34,8 @@ export async function fh2Fetch<T>(
     }
   }
 
+  const ctx = getFh2RequestContext();
+  const selectedProjectCode = ctx.projectCode || config.FH2_PROJECT_UUID;
   const headers: Record<string, string> = {
     "X-User-Token": config.FH2_ORG_TOKEN ?? "",
     "X-Request-Id": randomUUID(),
@@ -40,8 +43,8 @@ export async function fh2Fetch<T>(
     Accept: "application/json",
   };
 
-  if (options.projectScoped !== false && config.FH2_PROJECT_UUID) {
-    headers["X-Project-Uuid"] = config.FH2_PROJECT_UUID;
+  if (options.projectScoped !== false && selectedProjectCode) {
+    headers["X-Project-Uuid"] = selectedProjectCode;
   }
 
   const response = await fetch(url, {
@@ -67,6 +70,8 @@ export async function fh2Post<T>(
   options: { projectScoped?: boolean } = {},
 ): Promise<Fh2Response<T>> {
   const url = new URL(path, config.FH2_BASE_URL);
+  const ctx = getFh2RequestContext();
+  const selectedProjectCode = ctx.projectCode || config.FH2_PROJECT_UUID;
   const headers: Record<string, string> = {
     "X-User-Token": config.FH2_ORG_TOKEN ?? "",
     "X-Request-Id": randomUUID(),
@@ -75,8 +80,8 @@ export async function fh2Post<T>(
     "Content-Type": "application/json",
   };
 
-  if (options.projectScoped !== false && config.FH2_PROJECT_UUID) {
-    headers["X-Project-Uuid"] = config.FH2_PROJECT_UUID;
+  if (options.projectScoped !== false && selectedProjectCode) {
+    headers["X-Project-Uuid"] = selectedProjectCode;
   }
 
   const response = await fetch(url, {

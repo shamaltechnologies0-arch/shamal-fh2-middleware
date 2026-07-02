@@ -2,6 +2,10 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { getCcUsers, login } from "../services/commandCenterAuth.js";
 import { getViewerDashboardPermissions } from "../services/viewerDashboardPermissions.js";
+import {
+  listViewerProjectOptions,
+  resolveFallbackProjectCode,
+} from "../services/fh2Projects.js";
 import { registerViewerGet, registerViewerPost } from "./viewerPaths.js";
 
 const loginSchema = z.object({
@@ -54,6 +58,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
               session.role === "viewer"
                 ? getViewerDashboardPermissions(parsed.data.username.trim())
                 : undefined,
+            assignedProjects:
+              session.role === "viewer"
+                ? listViewerProjectOptions(parsed.data.username.trim())
+                : undefined,
+            fallbackProjectCode: resolveFallbackProjectCode(),
           },
           meta: { source: "shamal-platform" },
         });
@@ -100,6 +109,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
             role === "viewer"
               ? getViewerDashboardPermissions(username)
               : undefined,
+          assignedProjects:
+            role === "viewer" ? listViewerProjectOptions(username) : undefined,
+          fallbackProjectCode: resolveFallbackProjectCode(),
         },
         meta: { source: "shamal-platform" },
       });

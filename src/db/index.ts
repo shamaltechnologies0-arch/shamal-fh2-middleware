@@ -18,8 +18,6 @@ interface WebhookEventDoc {
   received_at: Date;
 }
 
-const memoryEvents: WebhookEventRow[] = [];
-let useMemory = false;
 let client: MongoClient | null = null;
 let eventsCollection: Collection<WebhookEventDoc> | null = null;
 
@@ -33,26 +31,26 @@ function mapDoc(doc: WebhookEventDoc): WebhookEventRow {
   };
 }
 
-export async function initDatabase(): Promise<void> {
-  try {
-    client = new MongoClient(config.MONGODB_URI);
-    await client.connect();
-    eventsCollection = client.db().collection<WebhookEventDoc>("webhook_events");
-    await eventsCollection.createIndex({ received_at: -1 });
-    await eventsCollection.createIndex({ event_type: 1 });
-    useMemory = false;
-  } catch (err) {
-    console.warn(
-      "[db] MongoDB unavailable — using in-memory event store for demo:",
-      (err as Error).message,
+function requireEventsCollection(): Collection<WebhookEventDoc> {
+  if (!eventsCollection) {
+    throw new Error(
+      "MongoDB is not initialized. Ensure MONGODB_URI is set and the server started successfully.",
     );
-    useMemory = true;
-    eventsCollection = null;
-    if (client) {
-      await client.close().catch(() => undefined);
-      client = null;
-    }
   }
+  return eventsCollection;
+}
+
+export async function initDatabase(): Promise<void> {
+  client = new MongoClient(config.MONGODB_URI);
+  await client.connect();
+  eventsCollection = client
+    .db(config.MONGODB_DB_NAME)
+    .collection<WebhookEventDoc>("webhook_events");
+  await eventsCollection.createIndex({ received_at: -1 });
+  await eventsCollection.createIndex({ event_type: 1 });
+  console.info(
+    `[db] MongoDB connected (database: ${config.MONGODB_DB_NAME})`,
+  );
 }
 
 export async function closeDatabase(): Promise<void> {
@@ -76,52 +74,29 @@ export async function insertWebhookEvent(
     received_at: new Date(),
   };
 
-  if (useMemory || !eventsCollection) {
-    memoryEvents.unshift(row);
-    return row;
-  }
-
-  try {
-    await eventsCollection.insertOne({
-      _id: row.id,
-      source,
-      event_type: eventType,
-      payload,
-      received_at: row.received_at,
-    });
-    return row;
-  } catch {
-    useMemory = true;
-    memoryEvents.unshift(row);
-    return row;
-  }
+  const collection = requireEventsCollection();
+  await collection.insertOne({
+    _id: row.id,
+    source,
+    event_type: eventType,
+    payload,
+    received_at: row.received_at,
+  });
+  return row;
 }
 
 export async function listWebhookEvents(
   since?: string,
   limit = 50,
 ): Promise<WebhookEventRow[]> {
-  if (useMemory || !eventsCollection) {
-    let rows = [...memoryEvents];
-    if (since) {
-      const sinceDate = new Date(since);
-      rows = rows.filter((r) => r.received_at > sinceDate);
-    }
-    return rows.slice(0, limit);
-  }
-
-  try {
-    const filter = since ? { received_at: { $gt: new Date(since) } } : {};
-    const docs = await eventsCollection
-      .find(filter)
-      .sort({ received_at: -1 })
-      .limit(limit)
-      .toArray();
-    return docs.map(mapDoc);
-  } catch {
-    useMemory = true;
-    return listWebhookEvents(since, limit);
-  }
+  const collection = requireEventsCollection();
+  const filter = since ? { received_at: { $gt: new Date(since) } } : {};
+  const docs = await collection
+    .find(filter)
+    .sort({ received_at: -1 })
+    .limit(limit)
+    .toArray();
+  return docs.map(mapDoc);
 }
 
 export function mapFh2PayloadToEventType(payload: Record<string, unknown>): string {

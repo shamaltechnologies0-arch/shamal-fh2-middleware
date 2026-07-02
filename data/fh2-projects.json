@@ -1,0 +1,220 @@
+{
+  "projects": [
+    {
+      "fh2ProjectId": "083c9116-70c6-4dc1-baff-ea4051971e15",
+      "fh2ProjectCode": "083c9116-70c6-4dc1-baff-ea4051971e15",
+      "projectName": "Marafiq Kaust Test",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "Marafiq Kaust Test",
+        "introduction": "",
+        "uuid": "083c9116-70c6-4dc1-baff-ea4051971e15",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 22.306931620003503,
+          "longitude": 39.107921155059174
+        },
+        "created_at": 1782036998,
+        "updated_at": 1782293740
+      }
+    },
+    {
+      "fh2ProjectId": "ecb3514e-047f-488b-b686-a958597b95d4",
+      "fh2ProjectCode": "ecb3514e-047f-488b-b686-a958597b95d4",
+      "projectName": "al manar",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "al manar",
+        "introduction": "",
+        "uuid": "ecb3514e-047f-488b-b686-a958597b95d4",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 21.38025380405144,
+          "longitude": 39.68725606493773
+        },
+        "created_at": 1780833450,
+        "updated_at": 1782977560
+      }
+    },
+    {
+      "fh2ProjectId": "5ada0f09-4711-4884-b334-997f4e606eb1",
+      "fh2ProjectCode": "5ada0f09-4711-4884-b334-997f4e606eb1",
+      "projectName": "Almnar",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "Almnar",
+        "introduction": "",
+        "uuid": "5ada0f09-4711-4884-b334-997f4e606eb1",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 21.35327857742189,
+          "longitude": 39.637813109437886
+        },
+        "created_at": 1780823045,
+        "updated_at": 1780823045
+      }
+    },
+    {
+      "fh2ProjectId": "11c4e6e1-2c08-487b-9c19-853869f17273",
+      "fh2ProjectCode": "11c4e6e1-2c08-487b-9c19-853869f17273",
+      "projectName": "madden RAK",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "madden RAK",
+        "introduction": "",
+        "uuid": "11c4e6e1-2c08-487b-9c19-853869f17273",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 27.523345928937683,
+          "longitude": 49.17292740775112
+        },
+        "created_at": 1765094701,
+        "updated_at": 1765094701
+      }
+    },
+    {
+      "fh2ProjectId": "c2e4ff10-46a7-4523-8831-98f212f56ce9",
+      "fh2ProjectCode": "c2e4ff10-46a7-4523-8831-98f212f56ce9",
+      "projectName": "(MAA-S-012) | KAUST",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "(MAA-S-012) | KAUST",
+        "introduction": "Test flight in Kaust ",
+        "uuid": "c2e4ff10-46a7-4523-8831-98f212f56ce9",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 22.30634355568176,
+          "longitude": 39.10764085175552
+        },
+        "created_at": 1764231251,
+        "updated_at": 1764503303
+      }
+    },
+    {
+      "fh2ProjectId": "69b6b284-ab29-423c-ab29-50d8335d88a0",
+      "fh2ProjectCode": "69b6b284-ab29-423c-ab29-50d8335d88a0",
+      "projectName": "Test new drone",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "Test new drone",
+        "introduction": "M4TD",
+        "uuid": "69b6b284-ab29-423c-ab29-50d8335d88a0",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 22.30634112585266,
+          "longitude": 39.10760979618937
+        },
+        "created_at": 1762848888,
+        "updated_at": 1762848888
+      }
+    },
+    {
+      "fh2ProjectId": "431fda13-97ce-4143-841b-5c2a6d715d8f",
+      "fh2ProjectCode": "431fda13-97ce-4143-841b-5c2a6d715d8f",
+      "projectName": "KAUST Project_Test",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "KAUST Project_Test",
+        "introduction": "this is a trial for flight hub 2 , to check all the features available on the website    ",
+        "uuid": "431fda13-97ce-4143-841b-5c2a6d715d8f",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 22.30686367060557,
+          "longitude": 39.10969714098155
+        },
+        "created_at": 1762075771,
+        "updated_at": 1762075771
+      }
+    },
+    {
+      "fh2ProjectId": "a822ecf2-88a2-4114-8f46-26386193ddeb",
+      "fh2ProjectCode": "a822ecf2-88a2-4114-8f46-26386193ddeb",
+      "projectName": "Kaust Test",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "Kaust Test",
+        "introduction": "Testing the Duck to fly for 24 hours = one battery every hour ",
+        "uuid": "a822ecf2-88a2-4114-8f46-26386193ddeb",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 22.306347572843222,
+          "longitude": 39.10762023965891
+        },
+        "created_at": 1759741851,
+        "updated_at": 1762413782
+      }
+    },
+    {
+      "fh2ProjectId": "041b9913-bb27-4573-91b8-3f040f65a058",
+      "fh2ProjectCode": "041b9913-bb27-4573-91b8-3f040f65a058",
+      "projectName": "Maaden 17/09/2025",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "Maaden 17/09/2025",
+        "introduction": "",
+        "uuid": "041b9913-bb27-4573-91b8-3f040f65a058",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 27.52331095078795,
+          "longitude": 49.17283338097579
+        },
+        "created_at": 1758025348,
+        "updated_at": 1760262728
+      }
+    },
+    {
+      "fh2ProjectId": "151ca34e-8267-4d5a-b2c8-df1a741577f7",
+      "fh2ProjectCode": "151ca34e-8267-4d5a-b2c8-df1a741577f7",
+      "projectName": "MAADEN",
+      "fh2Status": "active",
+      "localStatus": "active",
+      "source": "FH2",
+      "lastSyncedAt": "2026-07-02T10:19:31.552Z",
+      "raw": {
+        "name": "MAADEN",
+        "introduction": "",
+        "uuid": "151ca34e-8267-4d5a-b2c8-df1a741577f7",
+        "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
+        "project_work_center_point": {
+          "latitude": 26.4392,
+          "longitude": 50.0944
+        },
+        "created_at": 1757507129,
+        "updated_at": 1757507129
+      }
+    }
+  ],
+  "assignments": {
+    "marafiq": [
+      "083c9116-70c6-4dc1-baff-ea4051971e15"
+    ]
+  },
+  "lastSyncAt": "2026-07-02T10:19:31.552Z"
+}

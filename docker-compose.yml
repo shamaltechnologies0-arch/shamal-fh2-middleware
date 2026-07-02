@@ -6,7 +6,8 @@ services:
     env_file:
       - .env
     environment:
-      MONGODB_URI: mongodb://mongodb:27017/shamal_middleware
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DB_NAME: shamal_middleware
     depends_on:
       mongodb:
         condition: service_healthy

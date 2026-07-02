@@ -46,9 +46,8 @@ const envSchema = z.object({
   MARAFIQ_API_KEYS: z.string().default("demo-marafiq-key"),
   MARAFIQ_IP_ALLOWLIST: z.string().default(""),
   WEBHOOK_SECRET: z.string().default("change-me-webhook-secret"),
-  MONGODB_URI: z
-    .string()
-    .default("mongodb://localhost:27017/shamal_middleware"),
+  MONGODB_URI: z.string().default("mongodb://localhost:27017"),
+  MONGODB_DB_NAME: z.string().default("shamal_middleware"),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
   MARAFIQ_EVENT_CALLBACK_URL: z.preprocess(

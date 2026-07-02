@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Shamal Middleware — Marafiq (legacy)",
-    "description": "Legacy collection name. Use postman/Shamal-FH2-Viewer-Middleware.postman_collection.json. Marafiq is an example viewer company only.",
+    "name": "Shamal FH2 Viewer Middleware",
+    "description": "Canonical /v1/viewer/* routes for external viewer integrators. X-Api-Key auth; legacy /v1/marafiq/* still supported.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -23,7 +23,7 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/devices"
+        "url": "{{baseUrl}}/v1/viewer/devices"
       }
     },
     {
@@ -31,7 +31,7 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/devices/{{deviceSn}}"
+        "url": "{{baseUrl}}/v1/viewer/devices/{{deviceSn}}"
       }
     },
     {
@@ -39,7 +39,23 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/devices/{{deviceSn}}/telemetry/latest"
+        "url": "{{baseUrl}}/v1/viewer/devices/{{deviceSn}}/telemetry/latest"
+      }
+    },
+    {
+      "name": "Fleet summary",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/v1/viewer/fleet/summary"
+      }
+    },
+    {
+      "name": "List docks",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/v1/viewer/docks"
       }
     },
     {
@@ -47,7 +63,7 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/tasks"
+        "url": "{{baseUrl}}/v1/viewer/tasks"
       }
     },
     {
@@ -55,7 +71,7 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/tasks/{{taskId}}"
+        "url": "{{baseUrl}}/v1/viewer/tasks/{{taskId}}"
       }
     },
     {
@@ -63,7 +79,7 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/tasks/{{taskId}}/media"
+        "url": "{{baseUrl}}/v1/viewer/tasks/{{taskId}}/media"
       }
     },
     {
@@ -71,7 +87,7 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/tasks/{{taskId}}/trajectory"
+        "url": "{{baseUrl}}/v1/viewer/tasks/{{taskId}}/trajectory"
       }
     },
     {
@@ -79,7 +95,15 @@
       "request": {
         "method": "GET",
         "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
-        "url": "{{baseUrl}}/v1/marafiq/events"
+        "url": "{{baseUrl}}/v1/viewer/events"
+      }
+    },
+    {
+      "name": "Capabilities",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-Api-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/v1/viewer/capabilities"
       }
     },
     {

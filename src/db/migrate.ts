@@ -1,17 +1,14 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import pg from "pg";
+import { MongoClient } from "mongodb";
 import { config } from "../config.js";
 
-const schemaPath = join(dirname(fileURLToPath(import.meta.url)), "schema.sql");
-
 async function migrate() {
-  const pool = new pg.Pool({ connectionString: config.DATABASE_URL });
-  const sql = readFileSync(schemaPath, "utf-8");
-  await pool.query(sql);
-  console.log("Database migration completed.");
-  await pool.end();
+  const client = new MongoClient(config.MONGODB_URI);
+  await client.connect();
+  const collection = client.db().collection("webhook_events");
+  await collection.createIndex({ received_at: -1 });
+  await collection.createIndex({ event_type: 1 });
+  console.log("MongoDB indexes ensured on webhook_events.");
+  await client.close();
 }
 
 migrate().catch((err) => {

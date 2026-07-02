@@ -1,6 +1,6 @@
-# 5–7 minute demo script (Marafiq)
+# 5–7 minute demo script (external viewer)
 
-**Prerequisites:** Middleware running (`docker compose up` or `npm run dev`). API key: value from `MARAFIQ_API_KEYS`.
+**Prerequisites:** Middleware running (`docker compose up` or `npm run dev`). API key: value from `VIEWER_API_KEYS` (or legacy `MARAFIQ_API_KEYS`).
 
 ```bash
 export BASE=http://localhost:8080
@@ -21,7 +21,7 @@ Point out: `fh2Mode: mock` until FlightHub Sync org key is configured.
 curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices" | jq .
 ```
 
-Show normalized drones/docks for CAFM asset linking (phase 2).
+Show normalized drones/docks for external viewer asset linking.
 
 ## 3. Device + telemetry (1 min)
 
@@ -31,7 +31,7 @@ curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices/$SN" | jq .
 curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices/$SN/telemetry/latest" | jq .
 ```
 
-Explain: snapshot polling every 10–15s in CAFM; live stream is phase 2 / FH2 UI.
+Explain: snapshot polling every 10–15s in viewer platforms; live stream available when enabled by Shamal.
 
 ## 4. Inspection tasks (2 min)
 
@@ -52,10 +52,11 @@ curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/events" | jq .
 
 ## 6. Swagger (30s)
 
-Open `http://localhost:8080/docs` — contract for Marafiq developers without CAFM code.
+Open `http://localhost:8080/docs` — API contract for external viewer developers.
 
 ## Talking points
 
-- Shamal normalizes FlightHub 2; Marafiq never holds DJI keys.
-- Phase 1: read-only operational data.
-- Phase 2: work orders, asset mapping, AI defects (Shamal-built, not DJI).
+- Shamal normalizes FlightHub 2; external viewers never hold DJI keys.
+- Phase 1: read-only operational data through Shamal’s platform.
+- Marafiq is one example viewer company; the same model applies to future viewers.
+- Phase 2: fleet summary, docks, live stream, mapping (Shamal-built viewer surface, not direct FH2 access).

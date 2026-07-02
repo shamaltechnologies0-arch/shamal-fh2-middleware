@@ -1,8 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
 import { config } from "../config.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const capabilitiesRoutes: FastifyPluginAsync = async (app) => {
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/capabilities",
     {
       schema: {

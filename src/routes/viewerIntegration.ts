@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import { getCcUsers } from "../services/commandCenterAuth.js";
 import {
   getViewerIntegrationPublic,
   resolveApiBaseUrl,
@@ -86,9 +87,20 @@ async function integrationProfileHandler(
     });
   }
 
+  const user = getCcUsers().find((u) => u.username === request.ccUsername);
   const apiBaseUrl = apiBaseFromRequest(request);
   const info = getViewerIntegrationPublic(request.ccUsername, apiBaseUrl);
-  return reply.send({ data: info, meta: { source: "shamal-platform" } });
+  return reply.send({
+    data: {
+      ...info,
+      platformApiKey: user?.apiKey ?? null,
+      authHeaders: {
+        restApi: "X-Api-Key",
+        integrationApi: "Authorization: Bearer <integration access key>",
+      },
+    },
+    meta: { source: "shamal-platform" },
+  });
 }
 
 async function integrationAccessKeyHandler(

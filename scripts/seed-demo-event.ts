@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { initDatabase, insertWebhookEvent, pool } from "../src/db/index.js";
+import { closeDatabase, initDatabase, insertWebhookEvent } from "../src/db/index.js";
 
 async function main() {
   await initDatabase();
@@ -10,7 +10,7 @@ async function main() {
     message: "Demo seed event for Marafiq integration test",
   });
   console.log("Seeded event:", row.id, row.event_type);
-  await pool.end();
+  await closeDatabase();
 }
 
 main().catch((e) => {

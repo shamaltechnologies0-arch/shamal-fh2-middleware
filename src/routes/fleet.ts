@@ -2,11 +2,13 @@ import type { FastifyPluginAsync } from "fastify";
 import { createFh2Client } from "../fh2/client.js";
 import { flattenDevices } from "../services/normalize.js";
 import { resolveTelemetry } from "../services/telemetryStore.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const fleetRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/fleet/summary",
     {
       schema: {
@@ -38,7 +40,8 @@ export const fleetRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/fleet/positions",
     {
       schema: {

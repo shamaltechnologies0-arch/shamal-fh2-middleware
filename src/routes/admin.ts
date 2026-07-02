@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { readCcCredentialEnv } from "../config.js";
 import {
@@ -138,14 +139,8 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
         });
       }
 
-      const apiKeys = readCcCredentialEnv().marafiqApiKeys;
-      const apiKey = parsed.data.apiKey?.trim() || apiKeys[0];
-      if (!apiKey || !apiKeys.includes(apiKey)) {
-        return reply.status(400).send({
-          error: "validation_error",
-          message: `apiKey must be one of the configured MARAFIQ_API_KEYS values`,
-        });
-      }
+      const apiKey =
+        parsed.data.apiKey?.trim() || `vwr_${randomBytes(12).toString("hex")}`;
 
       const taken = getCcUsers().some((u) => u.username === parsed.data.username);
       if (taken) {
@@ -160,10 +155,13 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
           ...parsed.data,
           apiKey,
         });
+        const { token } = generateViewerIntegrationToken(record.username);
         return reply.status(201).send({
           data: {
             accountId: record.username,
             displayName: record.displayName,
+            apiKey: record.apiKey,
+            integrationAccessKey: token,
             source: "admin" as const,
             deletable: true,
             permissions: mergeViewerPermissions(null),
@@ -507,14 +505,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           details: parsed.error.flatten(),
         });
       }
-      const apiKeys = readCcCredentialEnv().marafiqApiKeys;
-      const apiKey = parsed.data.apiKey?.trim() || apiKeys[0];
-      if (!apiKey || !apiKeys.includes(apiKey)) {
-        return reply.status(400).send({
-          error: "validation_error",
-          message: `apiKey must be one of the configured MARAFIQ_API_KEYS values`,
-        });
-      }
+      const apiKey =
+        parsed.data.apiKey?.trim() || `vwr_${randomBytes(12).toString("hex")}`;
       const taken = getCcUsers().some((u) => u.username === parsed.data.username);
       if (taken) {
         return reply.status(409).send({
@@ -524,10 +516,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       }
       try {
         const record = createManagedViewer({ ...parsed.data, apiKey });
+        const { token } = generateViewerIntegrationToken(record.username);
         return reply.status(201).send({
           data: {
             viewerId: record.username,
             displayName: record.displayName,
+            apiKey: record.apiKey,
+            integrationAccessKey: token,
             source: "admin" as const,
             deletable: true,
             permissions: mergeViewerPermissions(null),

@@ -1,13 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
 import { createFh2Client } from "../fh2/client.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const streamRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get<{
-    Params: { sn: string };
-    Querystring: { camera?: "drone" | "dock" | "auto"; share_url?: string };
-  }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/devices/:sn/live-stream",
     {
       schema: {
@@ -43,9 +42,14 @@ export const streamRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       try {
-        const info = await fh2.getDeviceLiveStreamInfo(request.params.sn, {
-          camera: request.query.camera,
-          shareUrl: request.query.share_url,
+        const { sn } = request.params as { sn: string };
+        const query = request.query as {
+          camera?: "drone" | "dock" | "auto";
+          share_url?: string;
+        };
+        const info = await fh2.getDeviceLiveStreamInfo(sn, {
+          camera: query.camera,
+          shareUrl: query.share_url,
         });
         return reply.send({ data: info, meta: { source: "flighthub2" } });
       } catch (err) {

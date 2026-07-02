@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import pg from "pg";
+import { type Collection, MongoClient } from "mongodb";
 import { config } from "../config.js";
 
 export interface WebhookEventRow {
@@ -10,33 +10,56 @@ export interface WebhookEventRow {
   received_at: Date;
 }
 
+interface WebhookEventDoc {
+  _id: string;
+  source: string;
+  event_type: string;
+  payload: Record<string, unknown>;
+  received_at: Date;
+}
+
 const memoryEvents: WebhookEventRow[] = [];
 let useMemory = false;
+let client: MongoClient | null = null;
+let eventsCollection: Collection<WebhookEventDoc> | null = null;
 
-export const pool = new pg.Pool({ connectionString: config.DATABASE_URL });
-
-pool.on("error", () => {
-  useMemory = true;
-});
+function mapDoc(doc: WebhookEventDoc): WebhookEventRow {
+  return {
+    id: doc._id,
+    source: doc.source,
+    event_type: doc.event_type,
+    payload: doc.payload,
+    received_at: doc.received_at,
+  };
+}
 
 export async function initDatabase(): Promise<void> {
   try {
-    const { readFileSync } = await import("node:fs");
-    const { dirname, join } = await import("node:path");
-    const { fileURLToPath } = await import("node:url");
-    const schemaPath = join(
-      dirname(fileURLToPath(import.meta.url)),
-      "schema.sql",
-    );
-    const sql = readFileSync(schemaPath, "utf-8");
-    await pool.query(sql);
+    client = new MongoClient(config.MONGODB_URI);
+    await client.connect();
+    eventsCollection = client.db().collection<WebhookEventDoc>("webhook_events");
+    await eventsCollection.createIndex({ received_at: -1 });
+    await eventsCollection.createIndex({ event_type: 1 });
     useMemory = false;
   } catch (err) {
     console.warn(
-      "[db] PostgreSQL unavailable — using in-memory event store for demo:",
+      "[db] MongoDB unavailable — using in-memory event store for demo:",
       (err as Error).message,
     );
     useMemory = true;
+    eventsCollection = null;
+    if (client) {
+      await client.close().catch(() => undefined);
+      client = null;
+    }
+  }
+}
+
+export async function closeDatabase(): Promise<void> {
+  if (client) {
+    await client.close();
+    client = null;
+    eventsCollection = null;
   }
 }
 
@@ -53,19 +76,20 @@ export async function insertWebhookEvent(
     received_at: new Date(),
   };
 
-  if (useMemory) {
+  if (useMemory || !eventsCollection) {
     memoryEvents.unshift(row);
     return row;
   }
 
   try {
-    const result = await pool.query<WebhookEventRow>(
-      `INSERT INTO webhook_events (id, source, event_type, payload)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, source, event_type, payload, received_at`,
-      [row.id, source, eventType, payload],
-    );
-    return result.rows[0]!;
+    await eventsCollection.insertOne({
+      _id: row.id,
+      source,
+      event_type: eventType,
+      payload,
+      received_at: row.received_at,
+    });
+    return row;
   } catch {
     useMemory = true;
     memoryEvents.unshift(row);
@@ -77,7 +101,7 @@ export async function listWebhookEvents(
   since?: string,
   limit = 50,
 ): Promise<WebhookEventRow[]> {
-  if (useMemory) {
+  if (useMemory || !eventsCollection) {
     let rows = [...memoryEvents];
     if (since) {
       const sinceDate = new Date(since);
@@ -87,26 +111,13 @@ export async function listWebhookEvents(
   }
 
   try {
-    if (since) {
-      const result = await pool.query<WebhookEventRow>(
-        `SELECT id, source, event_type, payload, received_at
-         FROM webhook_events
-         WHERE received_at > $1::timestamptz
-         ORDER BY received_at DESC
-         LIMIT $2`,
-        [since, limit],
-      );
-      return result.rows;
-    }
-
-    const result = await pool.query<WebhookEventRow>(
-      `SELECT id, source, event_type, payload, received_at
-       FROM webhook_events
-       ORDER BY received_at DESC
-       LIMIT $1`,
-      [limit],
-    );
-    return result.rows;
+    const filter = since ? { received_at: { $gt: new Date(since) } } : {};
+    const docs = await eventsCollection
+      .find(filter)
+      .sort({ received_at: -1 })
+      .limit(limit)
+      .toArray();
+    return docs.map(mapDoc);
   } catch {
     useMemory = true;
     return listWebhookEvents(since, limit);

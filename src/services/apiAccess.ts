@@ -1,4 +1,5 @@
 import type { CcRole } from "./commandCenterAuth.js";
+import { legacyMarafiqPath } from "../routes/viewerPaths.js";
 
 /** GET paths allowed for viewer role (read-only monitoring). */
 const VIEWER_GET_PREFIXES = [
@@ -20,9 +21,11 @@ const VIEWER_GET_PREFIXES = [
 
 export function isViewerReadOnlyAllowed(method: string, path: string): boolean {
   if (method !== "GET") return false;
-  if (path.startsWith("/v1/marafiq/ops/")) return false;
+  const legacyPath = legacyMarafiqPath(path);
+  if (legacyPath.startsWith("/v1/marafiq/ops/")) return false;
   return VIEWER_GET_PREFIXES.some(
-    (prefix) => path === prefix.replace(/\/$/, "") || path.startsWith(prefix),
+    (prefix) =>
+      legacyPath === prefix.replace(/\/$/, "") || legacyPath.startsWith(prefix),
   );
 }
 
@@ -31,7 +34,9 @@ export function assertRoleAccess(
   method: string,
   path: string,
 ): { allowed: boolean; requiredRole?: CcRole; message?: string } {
-  if (path.startsWith("/v1/marafiq/admin/")) {
+  const legacyPath = legacyMarafiqPath(path);
+
+  if (legacyPath.startsWith("/v1/marafiq/admin/")) {
     if (role !== "admin") {
       return {
         allowed: false,
@@ -62,7 +67,7 @@ export function assertRoleAccess(
     return { allowed: true };
   }
 
-  if (method === "POST" && path.startsWith("/v1/marafiq/ops/")) {
+  if (method === "POST" && legacyPath.startsWith("/v1/marafiq/ops/")) {
     if (role === "operator" || role === "admin") return { allowed: true };
     return {
       allowed: false,
@@ -71,7 +76,7 @@ export function assertRoleAccess(
     };
   }
 
-  if (method === "POST" && /^\/v1\/marafiq\/events\/[^/]+\/ack$/.test(path)) {
+  if (method === "POST" && /^\/v1\/marafiq\/events\/[^/]+\/ack$/.test(legacyPath)) {
     if (role === "operator" || role === "admin") return { allowed: true };
     return {
       allowed: false,

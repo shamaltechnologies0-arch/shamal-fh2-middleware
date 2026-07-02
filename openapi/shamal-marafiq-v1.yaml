@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
-  title: Shamal Middleware API
-  version: 2.0.0
+  title: Shamal FH2 External Viewer Middleware API
+  version: 2.1.0
   description: |
-    REST layer over Shamal’s DJI FlightHub 2 operations.
-    Shamal owns and operates the drone fleet; client platforms display these records.
-    Integrators call Shamal — never DJI credentials directly.
+    Shamal-controlled REST layer over DJI FlightHub 2 operations.
+    External viewer integrators use **canonical** `/v1/viewer/*` paths with `X-Api-Key`.
+    Legacy `/v1/marafiq/*` paths remain supported but are deprecated.
+    Shamal owns FH2 credentials; external viewers never receive DJI access.
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -25,22 +26,21 @@ paths:
       responses:
         "200":
           description: OK
-  /v1/marafiq/devices:
+  /v1/viewer/devices:
     get:
       summary: List Shamal fleet devices from FlightHub 2 (normalized)
       tags: [Devices]
       responses:
         "200":
           description: Device list
-  /v1/marafiq/devices/{sn}:
+  /v1/viewer/devices/{sn}:
     get:
       summary: Device detail with health and state summary
-      description: "Use a serialNumber copied from GET /v1/marafiq/devices. Example: 1581F8HGX254W00A0CHR"
+      description: "Use serialNumber from GET /v1/viewer/devices."
       tags: [Devices]
       parameters:
         - name: sn
           in: path
-          description: "Shamal device serialNumber from GET /v1/marafiq/devices. Do not enter email or username."
           required: true
           schema: { type: string, example: "1581F8HGX254W00A0CHR" }
       responses:
@@ -48,160 +48,129 @@ paths:
           description: Device detail
         "404":
           description: Not found
-  /v1/marafiq/devices/{sn}/telemetry/latest:
+  /v1/viewer/devices/{sn}/telemetry/latest:
     get:
       summary: Latest telemetry snapshot (REST poll)
-      description: "Use a drone serialNumber copied from GET /v1/marafiq/devices."
       tags: [Devices]
       parameters:
         - name: sn
           in: path
-          description: "Shamal drone serialNumber from GET /v1/marafiq/devices. Example: 1581F8HGX254W00A0CHR"
           required: true
-          schema: { type: string, example: "1581F8HGX254W00A0CHR" }
+          schema: { type: string }
       responses:
         "200":
           description: Telemetry snapshot
-  /v1/marafiq/tasks:
+  /v1/viewer/devices/{sn}/live-stream:
     get:
-      summary: List flight tasks
-      description: "Returns Shamal FlightHub 2 inspection/flight tasks. Copy data[].id from this response and use it in the task detail, media, and trajectory endpoints."
-      tags: [Tasks]
-      parameters:
-        - name: sn
-          in: query
-          description: "Optional Shamal device serialNumber from GET /v1/marafiq/devices. Leave empty to use the first project device."
-          schema: { type: string, example: "8UUXN6300A09XS" }
-        - name: begin_at
-          in: query
-          description: "Optional Unix timestamp start time. Leave empty for last 30 days."
-          schema: { type: integer }
-        - name: end_at
-          in: query
-          description: "Optional Unix timestamp end time. Leave empty for now."
-          schema: { type: integer }
-      responses:
-        "200":
-          description: Task list
-  /v1/marafiq/tasks/{id}:
-    get:
-      summary: Flight task detail
-      description: "Use a task id copied from GET /v1/marafiq/tasks → data[].id. Do not enter email or username."
-      tags: [Tasks]
-      parameters:
-        - name: id
-          in: path
-          description: "FlightHub task UUID from GET /v1/marafiq/tasks → data[].id."
-          required: true
-          schema: { type: string, format: uuid, example: "PASTE-TASK-UUID-FROM-TASKS-LIST" }
-      responses:
-        "200":
-          description: Task detail
-  /v1/marafiq/tasks/{id}/trajectory:
-    get:
-      summary: Flight trajectory polyline
-      description: "Use a task id copied from GET /v1/marafiq/tasks → data[].id."
-      tags: [Tasks]
-      parameters:
-        - name: id
-          in: path
-          description: "FlightHub task UUID from GET /v1/marafiq/tasks → data[].id."
-          required: true
-          schema: { type: string, format: uuid, example: "PASTE-TASK-UUID-FROM-TASKS-LIST" }
-      responses:
-        "200":
-          description: Trajectory
-  /v1/marafiq/tasks/{id}/media:
-    get:
-      summary: Inspection media for task
-      description: "Use a task id copied from GET /v1/marafiq/tasks → data[].id. This field is not an email address."
-      tags: [Tasks]
-      parameters:
-        - name: id
-          in: path
-          description: "FlightHub task UUID from GET /v1/marafiq/tasks → data[].id."
-          required: true
-          schema: { type: string, format: uuid, example: "PASTE-TASK-UUID-FROM-TASKS-LIST" }
-      responses:
-        "200":
-          description: Media list
-  /v1/marafiq/capabilities:
-    get:
-      summary: API capabilities (phase 1 + 2)
-      tags: [Meta]
-  /v1/marafiq/fleet/summary:
-    get:
-      summary: Fleet summary for CAFM dashboards
-      tags: [Fleet]
-  /v1/marafiq/fleet/positions:
-    get:
-      summary: Live fleet positions (GPS, battery, altitude)
-      tags: [Fleet]
-  /v1/marafiq/docks:
-    get:
-      summary: List Shamal docks
-      tags: [Docks]
-  /v1/marafiq/docks/{sn}:
-    get:
-      summary: Dock detail
-      tags: [Docks]
-  /v1/marafiq/devices/{sn}/live-stream:
-    get:
-      summary: Live video stream info (Volc/WHEP/RTMP)
-      description: Returns FlightHub live stream credentials. Use camera=dock or camera=drone for dual-view panels.
+      summary: Live video stream info
       tags: [Streams]
       parameters:
         - name: sn
           in: path
           required: true
-          schema: { type: string, example: "8UUXN6300A09XS" }
+          schema: { type: string }
         - name: camera
           in: query
-          schema: { type: string, enum: [drone, dock, auto], default: auto }
-        - name: share_url
-          in: query
-          description: Optional FH2 Livestream Sharing URL fallback
-          schema: { type: string }
+          schema: { type: string, enum: [drone, dock, auto] }
       responses:
         "200":
-          description: Stream playback metadata (type volc, webrtc, hls, etc.)
-  /v1/marafiq/devices/{sn}/telemetry/stream:
+          description: Stream metadata
+  /v1/viewer/devices/{sn}/telemetry/stream:
     get:
       summary: Telemetry SSE stream
       tags: [Telemetry]
-  /v1/marafiq/mapping/models:
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: SSE stream
+  /v1/viewer/tasks:
     get:
-      summary: Cloud mapping / reconstruction models
-      tags: [Mapping]
-  /v1/marafiq/mapping/models/{id}:
+      summary: List flight tasks
+      tags: [Tasks]
+      responses:
+        "200":
+          description: Task list
+  /v1/viewer/tasks/{id}:
     get:
-      summary: Mapping model detail
-      tags: [Mapping]
-  /v1/marafiq/tasks/{id}/trajectory.geojson:
+      summary: Flight task detail
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Task detail
+  /v1/viewer/tasks/{id}/trajectory:
+    get:
+      summary: Flight trajectory polyline
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Trajectory
+  /v1/viewer/tasks/{id}/media:
+    get:
+      summary: Inspection media for task
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Media list
+  /v1/viewer/tasks/{id}/trajectory.geojson:
     get:
       summary: Flight path GeoJSON
       tags: [GIS]
-  /v1/marafiq/tasks/{id}/trajectory.kml:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: GeoJSON
+  /v1/viewer/tasks/{id}/trajectory.kml:
     get:
       summary: Flight path KML
       tags: [GIS]
-  /v1/marafiq/events:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: KML
+  /v1/viewer/media/recent:
+    get:
+      summary: Recent tasks with media file names
+      tags: [Tasks]
+      responses:
+        "200":
+          description: Recent media
+  /v1/viewer/events:
     get:
       summary: Webhook event feed
       tags: [Events]
-      parameters:
-        - name: since
-          in: query
-          schema: { type: string, format: date-time }
-        - name: limit
-          in: query
-          schema: { type: integer, default: 50 }
       responses:
         "200":
           description: Events
-  /v1/marafiq/events/{id}/ack:
+  /v1/viewer/events/{id}/ack:
     post:
-      summary: Acknowledge an event
+      summary: Acknowledge an event (operator/admin)
       tags: [Events]
       parameters:
         - name: id
@@ -211,17 +180,328 @@ paths:
       responses:
         "200":
           description: Acknowledged
-  /v1/marafiq/auth/login:
+  /v1/viewer/fleet/summary:
+    get:
+      summary: Fleet summary
+      tags: [Fleet]
+      responses:
+        "200":
+          description: Fleet summary
+  /v1/viewer/fleet/positions:
+    get:
+      summary: Live fleet positions
+      tags: [Fleet]
+      responses:
+        "200":
+          description: Positions
+  /v1/viewer/docks:
+    get:
+      summary: List Shamal docks
+      tags: [Docks]
+      responses:
+        "200":
+          description: Dock list
+  /v1/viewer/docks/{sn}:
+    get:
+      summary: Dock detail
+      tags: [Docks]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Dock detail
+  /v1/viewer/mapping/models:
+    get:
+      summary: Cloud mapping models
+      tags: [Mapping]
+      responses:
+        "200":
+          description: Model list
+  /v1/viewer/mapping/models/{id}:
+    get:
+      summary: Mapping model detail
+      tags: [Mapping]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Model detail
+  /v1/viewer/capabilities:
+    get:
+      summary: API capabilities
+      tags: [Meta]
+      responses:
+        "200":
+          description: Capabilities
+  /v1/viewer/auth/login:
     post:
-      summary: Shamal Platform login (returns API key + session)
+      summary: Shamal Platform login
       tags: [Auth]
       security: []
       responses:
         "200":
           description: Session token and role
+  /v1/viewer/auth/me:
+    get:
+      summary: Current session and permissions
+      tags: [Auth]
+      responses:
+        "200":
+          description: Session info
+  /v1/marafiq/devices:
+    get:
+      deprecated: true
+      summary: "[Legacy] List devices — use GET /v1/viewer/devices"
+      tags: [Devices, Legacy]
+      responses:
+        "200":
+          description: Device list
+  /v1/marafiq/devices/{sn}:
+    get:
+      deprecated: true
+      summary: "[Legacy] Device detail — use GET /v1/viewer/devices/{sn}"
+      tags: [Devices, Legacy]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Device detail
+  /v1/marafiq/devices/{sn}/telemetry/latest:
+    get:
+      deprecated: true
+      summary: "[Legacy] Telemetry — use GET /v1/viewer/devices/{sn}/telemetry/latest"
+      tags: [Devices, Legacy]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Telemetry snapshot
+  /v1/marafiq/devices/{sn}/live-stream:
+    get:
+      deprecated: true
+      summary: "[Legacy] Live stream — use GET /v1/viewer/devices/{sn}/live-stream"
+      tags: [Streams, Legacy]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Stream metadata
+  /v1/marafiq/devices/{sn}/telemetry/stream:
+    get:
+      deprecated: true
+      summary: "[Legacy] Telemetry SSE — use GET /v1/viewer/devices/{sn}/telemetry/stream"
+      tags: [Telemetry, Legacy]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: SSE stream
+  /v1/marafiq/tasks:
+    get:
+      deprecated: true
+      summary: "[Legacy] List tasks — use GET /v1/viewer/tasks"
+      tags: [Tasks, Legacy]
+      responses:
+        "200":
+          description: Task list
+  /v1/marafiq/tasks/{id}:
+    get:
+      deprecated: true
+      summary: "[Legacy] Task detail — use GET /v1/viewer/tasks/{id}"
+      tags: [Tasks, Legacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Task detail
+  /v1/marafiq/tasks/{id}/trajectory:
+    get:
+      deprecated: true
+      summary: "[Legacy] Trajectory — use GET /v1/viewer/tasks/{id}/trajectory"
+      tags: [Tasks, Legacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Trajectory
+  /v1/marafiq/tasks/{id}/media:
+    get:
+      deprecated: true
+      summary: "[Legacy] Task media — use GET /v1/viewer/tasks/{id}/media"
+      tags: [Tasks, Legacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Media list
+  /v1/marafiq/tasks/{id}/trajectory.geojson:
+    get:
+      deprecated: true
+      summary: "[Legacy] GeoJSON — use GET /v1/viewer/tasks/{id}/trajectory.geojson"
+      tags: [GIS, Legacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: GeoJSON
+  /v1/marafiq/tasks/{id}/trajectory.kml:
+    get:
+      deprecated: true
+      summary: "[Legacy] KML — use GET /v1/viewer/tasks/{id}/trajectory.kml"
+      tags: [GIS, Legacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: KML
+  /v1/marafiq/media/recent:
+    get:
+      deprecated: true
+      summary: "[Legacy] Recent media — use GET /v1/viewer/media/recent"
+      tags: [Tasks, Legacy]
+      responses:
+        "200":
+          description: Recent media
+  /v1/marafiq/events:
+    get:
+      deprecated: true
+      summary: "[Legacy] Events — use GET /v1/viewer/events"
+      tags: [Events, Legacy]
+      responses:
+        "200":
+          description: Events
+  /v1/marafiq/events/{id}/ack:
+    post:
+      deprecated: true
+      summary: "[Legacy] Ack event — use POST /v1/viewer/events/{id}/ack"
+      tags: [Events, Legacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Acknowledged
+  /v1/marafiq/fleet/summary:
+    get:
+      deprecated: true
+      summary: "[Legacy] Fleet summary — use GET /v1/viewer/fleet/summary"
+      tags: [Fleet, Legacy]
+      responses:
+        "200":
+          description: Fleet summary
+  /v1/marafiq/fleet/positions:
+    get:
+      deprecated: true
+      summary: "[Legacy] Fleet positions — use GET /v1/viewer/fleet/positions"
+      tags: [Fleet, Legacy]
+      responses:
+        "200":
+          description: Positions
+  /v1/marafiq/docks:
+    get:
+      deprecated: true
+      summary: "[Legacy] Docks — use GET /v1/viewer/docks"
+      tags: [Docks, Legacy]
+      responses:
+        "200":
+          description: Dock list
+  /v1/marafiq/docks/{sn}:
+    get:
+      deprecated: true
+      summary: "[Legacy] Dock detail — use GET /v1/viewer/docks/{sn}"
+      tags: [Docks, Legacy]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Dock detail
+  /v1/marafiq/mapping/models:
+    get:
+      deprecated: true
+      summary: "[Legacy] Mapping models — use GET /v1/viewer/mapping/models"
+      tags: [Mapping, Legacy]
+      responses:
+        "200":
+          description: Model list
+  /v1/marafiq/mapping/models/{id}:
+    get:
+      deprecated: true
+      summary: "[Legacy] Mapping model — use GET /v1/viewer/mapping/models/{id}"
+      tags: [Mapping, Legacy]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Model detail
+  /v1/marafiq/capabilities:
+    get:
+      deprecated: true
+      summary: "[Legacy] Capabilities — use GET /v1/viewer/capabilities"
+      tags: [Meta, Legacy]
+      responses:
+        "200":
+          description: Capabilities
+  /v1/marafiq/auth/login:
+    post:
+      deprecated: true
+      summary: "[Legacy] Login — use POST /v1/viewer/auth/login"
+      tags: [Auth, Legacy]
+      security: []
+      responses:
+        "200":
+          description: Session token and role
+  /v1/marafiq/auth/me:
+    get:
+      deprecated: true
+      summary: "[Legacy] Session — use GET /v1/viewer/auth/me"
+      tags: [Auth, Legacy]
+      responses:
+        "200":
+          description: Session info
   /webhooks/fh2:
     post:
-      summary: FlightHub 2 webhook receiver (internal)
+      summary: FlightHub 2 webhook receiver (Shamal internal)
       security: []
       responses:
         "202":

@@ -208,6 +208,34 @@
     .integration-scopes .pill { font-size:10px; }
     .integration-example { margin-top:10px; }
     .integration-example pre { font-size:11px; max-height:140px; overflow:auto; }
+    #viewerIntegrationFooter {
+      display:none;
+      position:fixed;
+      left:0; right:0; bottom:0;
+      z-index:40;
+      background:#0a1322;
+      border-top:1px solid #22354f;
+      padding:8px 12px;
+      font-size:11px;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    body.viewer-integration-footer #viewerIntegrationFooter { display:flex; }
+    body.viewer-integration-footer main { padding-bottom:72px; }
+    .footer-chip {
+      display:flex; align-items:center; gap:6px;
+      background:#111c2e; border:1px solid #22354f; border-radius:8px;
+      padding:4px 8px; max-width:280px;
+    }
+    .footer-chip .lbl { color:var(--muted); white-space:nowrap; }
+    .footer-chip .val {
+      font-family:ui-monospace,Menlo,monospace;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;
+    }
+    .footer-chip button { font-size:10px; padding:3px 8px; }
+    #integrationWelcomeModal .modal { max-width:520px; width:94%; }
+    #integrationWelcomeModal .integration-field { margin-bottom:10px; }
     body.viewer-layout .dash-card#dashIntegrationCard { grid-column:1 / -1; }
     @media(min-width:1100px){
       .dash-grid { grid-template-columns:repeat(4,1fr); }
@@ -555,7 +583,7 @@
         <div class="admin-settings">
           <div class="admin-settings-card">
             <h4>Integration Accounts</h4>
-            <p class="statusline">Create integration logins for clients. Accounts created here can be deleted from the panel; accounts defined in <code>.env</code> must be removed there.</p>
+            <p class="statusline">Create viewer logins for external companies. All accounts are stored here — not in <code>.env</code>.</p>
             <table class="admin-viewer-table">
               <thead>
                 <tr><th>Client</th><th>Username</th><th>Source</th><th></th></tr>
@@ -575,7 +603,7 @@
               </div>
               <div class="full">
                 <label for="adminNewViewerName">Client / display name</label>
-                <input id="adminNewViewerName" placeholder="e.g. Marafiq" autocomplete="off" />
+                <input id="adminNewViewerName" placeholder="e.g. Acme Corp" autocomplete="off" />
               </div>
             </div>
             <div class="row" style="margin-top:10px">
@@ -665,7 +693,19 @@
       <div id="cardZoomBody" class="card-zoom-body"></div>
     </div>
   </div>
+  <div id="integrationWelcomeModal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <h3>Your integration credentials</h3>
+      <p class="small">Copy these values to connect your platform to Shamal. You can open this again from the footer bar anytime.</p>
+      <div id="integrationWelcomeBody"></div>
+      <div class="row" style="margin-top:14px">
+        <button type="button" id="integrationWelcomeClose">Got it — open dashboard</button>
+      </div>
+    </div>
+  </div>
+
   <div id="apiToast" class="api-toast">API value copied</div>
+  <footer id="viewerIntegrationFooter" aria-label="Integration credentials"></footer>
 
   <template id="zoomCameraTemplate">
     <p class="statusline">Live camera view — dock camera and drone FPV.</p>
@@ -929,7 +969,8 @@
       const fetchExample = buildIntegrationFetchExample(examplePath);
 
       body.innerHTML = `
-        <p class="small" style="margin:0 0 12px">Use this access key to connect your system with Shamal Platform APIs.</p>
+        <p class="small" style="margin:0 0 12px">Use these credentials to connect your system to Shamal Platform APIs.</p>
+        ${info.platformApiKey ? integrationFieldHtml("REST API key (X-Api-Key)", info.platformApiKey, "intCopyPlatformKey") : ""}
         ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "intCopyBaseUrl")}
         ${integrationFieldHtml("Account ID", info.accountId, "intCopyAccountId")}
         <div class="integration-field">
@@ -995,7 +1036,122 @@
         state.viewerIntegration = null;
       }
       renderViewerIntegrationCard();
+      renderIntegrationFooter();
       applyViewerDashboardPermissions();
+    }
+
+    function integrationWelcomeStorageKey() {
+      const u = state.session?.username;
+      return u ? `shamal.integrationIntro.${u}` : null;
+    }
+
+    function buildIntegrationCredentialsHtml(info, accessKeyPlain) {
+      const keyDisplay = accessKeyPlain || info.tokenMasked || "••••••••";
+      const keyCopyId = accessKeyPlain ? "welcomeCopyAccessKey" : "";
+      return `
+        ${info.platformApiKey ? integrationFieldHtml("REST API key (header: X-Api-Key)", info.platformApiKey, "welcomeCopyPlatformKey") : ""}
+        ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "welcomeCopyBaseUrl")}
+        ${integrationFieldHtml("Account ID", info.accountId, "welcomeCopyAccountId")}
+        <div class="integration-field">
+          <div class="lbl">Integration access key (header: Authorization Bearer)</div>
+          <div class="val" id="${keyCopyId || "welcomeAccessKeyMasked"}">${escapeHtml(keyDisplay)}</div>
+          <div class="integration-actions">
+            <button type="button" class="integration-copy-btn" data-copy-target="${keyCopyId || ""}" id="welcomeCopyAccessKeyBtn">Copy access key</button>
+          </div>
+        </div>
+        ${integrationFieldHtml("Webhook URL", info.webhookUrl, "welcomeCopyWebhook")}
+        <p class="small">${escapeHtml(info.accessNote || "")}</p>`;
+    }
+
+    function wireIntegrationCopyButtons(root) {
+      root.querySelectorAll(".integration-copy-btn").forEach((btn) => {
+        btn.onclick = async () => {
+          const target = btn.dataset.copyTarget;
+          if (target === "welcomeCopyAccessKeyBtn" || btn.id === "welcomeCopyAccessKeyBtn") {
+            await copyIntegrationAccessKey();
+            return;
+          }
+          if (target) {
+            const el = $(target);
+            if (el) await copyText(el.textContent);
+          }
+        };
+      });
+      const accessBtn = root.querySelector("#welcomeCopyAccessKeyBtn, #intCopyAccessKeyBtn");
+      if (accessBtn && !accessBtn.dataset.wired) {
+        accessBtn.dataset.wired = "1";
+        accessBtn.onclick = () => copyIntegrationAccessKey();
+      }
+    }
+
+    async function maybeShowIntegrationWelcome() {
+      if (!isViewer() || !integrationActive()) return;
+      const key = integrationWelcomeStorageKey();
+      if (!key || localStorage.getItem(key) === "1") return;
+
+      let accessKey = null;
+      try {
+        const res = await api("/v1/marafiq/integration/access-key");
+        accessKey = res.data.accessKey;
+      } catch {
+        /* show profile without plain key */
+      }
+
+      const info = state.viewerIntegration;
+      if (!info) return;
+
+      $("integrationWelcomeBody").innerHTML = buildIntegrationCredentialsHtml(info, accessKey);
+      wireIntegrationCopyButtons($("integrationWelcomeModal"));
+      $("integrationWelcomeModal").style.display = "flex";
+
+      $("integrationWelcomeClose").onclick = () => {
+        localStorage.setItem(key, "1");
+        $("integrationWelcomeModal").style.display = "none";
+      };
+    }
+
+    function renderIntegrationFooter() {
+      const footer = $("viewerIntegrationFooter");
+      if (!footer) return;
+      if (!isViewer() || !state.session || !integrationActive() || !state.viewerIntegration) {
+        document.body.classList.remove("viewer-integration-footer");
+        footer.innerHTML = "";
+        return;
+      }
+
+      const info = state.viewerIntegration;
+      document.body.classList.add("viewer-integration-footer");
+      const chips = [
+        ["Base URL", info.apiBaseUrl, "footBase"],
+        info.platformApiKey ? ["API key", info.platformApiKey, "footApiKey"] : null,
+        ["Webhook", info.webhookUrl, "footWebhook"],
+        ["Account", info.accountId, "footAccount"],
+      ].filter(Boolean);
+
+      footer.innerHTML = `
+        <span class="small" style="margin-right:4px">Integration:</span>
+        ${chips.map(([lbl, val, id]) => `
+          <div class="footer-chip">
+            <span class="lbl">${lbl}</span>
+            <span class="val" id="${id}">${escapeHtml(val)}</span>
+            <button type="button" data-foot-copy="${id}">Copy</button>
+          </div>`).join("")}
+        <button type="button" id="footCopyAccessKey">Copy access key</button>
+        <button type="button" id="footShowWelcome">Show all credentials</button>
+      `;
+
+      footer.querySelectorAll("[data-foot-copy]").forEach((btn) => {
+        btn.onclick = () => {
+          const el = $(btn.dataset.footCopy);
+          if (el) copyText(el.textContent);
+        };
+      });
+      $("footCopyAccessKey").onclick = () => copyIntegrationAccessKey();
+      $("footShowWelcome").onclick = () => {
+        const k = integrationWelcomeStorageKey();
+        if (k) localStorage.removeItem(k);
+        maybeShowIntegrationWelcome();
+      };
     }
 
     function buildAdminPermissionToggles() {
@@ -1425,6 +1581,7 @@
         main.style.pointerEvents = "none";
         document.body.classList.remove("viewer-layout");
         $("appMain").classList.remove("viewer-no-nav");
+        renderIntegrationFooter();
         return;
       }
       badge.textContent = s.displayName;
@@ -1473,6 +1630,7 @@
         $("fleet").classList.add("active");
         state.activeTab = "fleet";
       }
+      renderIntegrationFooter();
     }
 
     document.querySelectorAll(".get-api-btn[data-api-card]").forEach((btn) => {
@@ -1644,7 +1802,10 @@
         });
         updateRoleUi();
         startLiveUpdates();
-        if (isViewer()) await syncSessionFromServer();
+        if (isViewer()) {
+          await syncSessionFromServer();
+          await maybeShowIntegrationWelcome();
+        }
         await refreshDashboard();
       } catch (e) {
         $("loginError").textContent = e.message;

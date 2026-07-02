@@ -1,6 +1,8 @@
-# Handoff package — Marafiq CAFM integrators
+# Handoff package — external viewer integrators
 
-Shamal owns the drones and DJI FlightHub 2 account. Marafiq’s CAFM consumes **Shamal’s** operational records via this middleware (read-only). The `/v1/marafiq/*` routes are named for the integrator audience, not device ownership.
+Shamal owns the drones and DJI FlightHub 2 account. External viewer platforms consume **approved Shamal operational records** via this middleware (read-only). Example viewer: Marafiq CAFM.
+
+The `/v1/marafiq/*` routes are **legacy aliases** from an early integrator demo. They remain supported during migration; canonical `/v1/viewer/*` paths are planned in a later phase (see [PRD.md](../PRD.md)).
 
 ## Deliverables
 
@@ -9,12 +11,14 @@ Shamal owns the drones and DJI FlightHub 2 account. Marafiq’s CAFM consumes **
 | REST API (running) | `docker compose up` → port 8080 |
 | OpenAPI spec | `/openapi.yaml` or `openapi/shamal-marafiq-v1.yaml` |
 | Swagger UI | `http://localhost:8080/docs` |
-| Postman collection | `postman/Shamal-Marafiq-Middleware.postman_collection.json` |
+| Postman collection | `postman/Shamal-FH2-Viewer-Middleware.postman_collection.json` |
 | FH2 credential setup | `docs/FH2_SETUP.md` |
 | Security brief | `docs/CYBERSECURITY.md` |
 | Demo script | `docs/DEMO_SCRIPT.md` |
+| Viewer API matrix | `docs/VIEWER_API_MATRIX.md` |
+| Viewer handoff sheet | `docs/VIEWER_SUBMIT.md` |
 
-## Marafiq-facing endpoints
+## Viewer-facing endpoints (legacy paths)
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -46,7 +50,7 @@ See [PHASE2.md](PHASE2.md).
 
 Auth header: `X-Api-Key: <issued-by-shamal>`
 
-## FlightHub 2 APIs wrapped (internal)
+## FlightHub 2 APIs wrapped (internal — Shamal only)
 
 - Organization & Project
 - Device Management / State / HMS
@@ -57,10 +61,10 @@ Auth header: `X-Api-Key: <issued-by-shamal>`
 
 - [ ] FlightHub Sync enabled; `FH2_MODE=live`
 - [ ] Production TLS + domain
-- [ ] Marafiq API keys issued
-- [ ] IP allowlist (if required)
+- [ ] Viewer API keys issued (`VIEWER_API_KEYS`)
+- [ ] IP allowlist if required (`VIEWER_IP_ALLOWLIST`)
 - [ ] FH2 webhooks → `https://<shamal-host>/webhooks/fh2`
-- [ ] Marafiq technical contact for integration testing
+- [ ] External viewer technical contact for integration testing
 
 ## Support
 

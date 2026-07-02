@@ -1,58 +1,47 @@
-# PostgreSQL — why and how
+# MongoDB — why and how
 
-## Do you need it?
+## What uses the database
 
-| Data | Where it comes from |
-|------|---------------------|
-| Fleet, tasks, telemetry, media | **DJI FlightHub 2** (live API) — works without Postgres |
-| **Alerts / events** (`GET /v1/marafiq/events`, webhooks) | **PostgreSQL** (or temporary in-memory if DB is off) |
+| Feature | Storage |
+|---------|---------|
+| **Alerts / events** (`GET /v1/marafiq/events`, webhooks) | **MongoDB** (or temporary in-memory if DB is off) |
 
-Without Postgres, the app still runs. You will see:
+If MongoDB is unreachable at startup you will see:
 
 ```text
-[db] PostgreSQL unavailable — using in-memory event store for demo
+[db] MongoDB unavailable — using in-memory event store for demo
 ```
 
-That means alerts are kept **only until you restart the server**. For Marafiq to see a **history of alerts**, use Postgres.
+Events still work for demos but are lost on restart.
 
-## Local setup (Mac, Homebrew)
-
-Port **5432** is often already used by another Postgres app. This project uses **5433** for Homebrew.
+## Local setup (Docker — recommended)
 
 ```bash
-brew install postgresql@16
-brew services start postgresql@16
-chmod +x scripts/setup-db.sh
+docker compose up mongodb -d
 ./scripts/setup-db.sh
 ```
 
-In `.env`:
+Add to `.env`:
 
 ```env
-DATABASE_URL=postgres://shamal:shamal@localhost:5433/shamal_middleware
+MONGODB_URI=mongodb://localhost:27017/shamal_middleware
 ```
 
-Restart the API:
+Start the API (`npm run dev` or `docker compose up`). You should **not** see the MongoDB warning.
+
+## Full stack with Docker
 
 ```bash
-npm run dev
+docker compose up --build
 ```
 
-You should **not** see the PostgreSQL warning.
+The API container uses `mongodb://mongodb:27017/shamal_middleware` automatically.
 
-## Docker (if Docker Desktop is installed)
+## Production (Vercel / Atlas)
 
-```bash
-docker compose up postgres -d
-npm run db:migrate
-```
+1. Create a cluster in [MongoDB Atlas](https://www.mongodb.com/atlas).
+2. Add `MONGODB_URI` in Vercel → Settings → Environment Variables (Production).
+3. Allow Vercel egress IPs in Atlas Network Access (or `0.0.0.0/0` for testing).
+4. Run indexes once: `npm run db:migrate` (locally against the Atlas URI).
 
-Use `DATABASE_URL=postgres://shamal:shamal@localhost:5432/shamal_middleware` when only the Docker Postgres container is on 5432.
-
-## Verify
-
-```bash
-curl -s -H "X-Api-Key: demo-marafiq-key-change-me" http://localhost:8080/v1/marafiq/events | jq .
-```
-
-After `POST /webhooks/fh2`, events should still appear after an API restart if Postgres is enabled.
+Collection: `webhook_events` with indexes on `received_at` and `event_type`.

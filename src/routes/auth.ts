@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { getCcUsers, login } from "../services/commandCenterAuth.js";
 import { getViewerDashboardPermissions } from "../services/viewerDashboardPermissions.js";
+import { registerViewerGet, registerViewerPost } from "./viewerPaths.js";
 
 const loginSchema = z.object({
   username: z.string().min(2),
@@ -9,7 +10,8 @@ const loginSchema = z.object({
 });
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
-  app.post(
+  registerViewerPost(
+    app,
     "/v1/marafiq/auth/login",
     {
       schema: {
@@ -64,7 +66,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/auth/me",
     {
       schema: {

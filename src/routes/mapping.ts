@@ -1,10 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
 import { createFh2Client } from "../fh2/client.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const mappingRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/mapping/models",
     {
       schema: {
@@ -22,7 +24,8 @@ export const mappingRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: { id: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/mapping/models/:id",
     {
       schema: {
@@ -41,7 +44,8 @@ export const mappingRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const model = await fh2.getMappingModel(request.params.id);
+      const { id } = request.params as { id: string };
+      const model = await fh2.getMappingModel(id);
       if (!model) {
         return reply.status(404).send({ error: "not_found", message: "Mapping model not found" });
       }

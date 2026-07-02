@@ -2,11 +2,13 @@ import type { FastifyPluginAsync } from "fastify";
 import { config } from "../config.js";
 import { createFh2Client } from "../fh2/client.js";
 import { resolveTelemetry } from "../services/telemetryStore.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const telemetrySseRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get<{ Params: { sn: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/devices/:sn/telemetry/stream",
     {
       schema: {
@@ -17,7 +19,7 @@ export const telemetrySseRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const { sn } = request.params;
+      const { sn } = request.params as { sn: string };
 
       reply.raw.writeHead(200, {
         "Content-Type": "text/event-stream",

@@ -7,6 +7,7 @@ import {
   normalizeTask,
   normalizeTrajectory,
 } from "../services/normalize.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 const tasksQuerySchema = z.object({
   sn: z.string().optional(),
@@ -23,7 +24,8 @@ function defaultTimeRange(): { beginAt: number; endAt: number } {
 export const taskRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/tasks",
     {
       schema: {
@@ -85,7 +87,8 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: { id: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/tasks/:id",
     {
       schema: {
@@ -107,14 +110,15 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const task = (await fh2.getTask(request.params.id)) as Fh2Task;
+      const { id } = request.params as { id: string };
+      const task = (await fh2.getTask(id)) as Fh2Task;
       if (!task || !(task as Fh2Task).uuid && !(task as Fh2Task).status) {
         return reply.status(404).send({ error: "not_found", message: "Task not found" });
       }
       const t = task as Fh2Task;
       const normalized = normalizeTask({
         ...t,
-        uuid: t.uuid ?? request.params.id,
+        uuid: t.uuid ?? id,
         name: t.name ?? "Unknown",
         status: t.status ?? "unknown",
         sn: t.sn ?? "",
@@ -124,7 +128,8 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: { id: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/tasks/:id/trajectory",
     {
       schema: {
@@ -146,15 +151,17 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const trajectory = await fh2.getTaskTrajectory(request.params.id);
+      const { id } = request.params as { id: string };
+      const trajectory = await fh2.getTaskTrajectory(id);
       return reply.send({
-        data: normalizeTrajectory(request.params.id, trajectory),
+        data: normalizeTrajectory(id, trajectory),
         meta: { source: "flighthub2" },
       });
     },
   );
 
-  app.get<{ Params: { id: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/tasks/:id/media",
     {
       schema: {
@@ -176,9 +183,10 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const { id } = request.params as { id: string };
       let media;
       try {
-        media = await fh2.getTaskMedia(request.params.id);
+        media = await fh2.getTaskMedia(id);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (message.includes("219021")) {

@@ -12,5 +12,19 @@
     "missionMediaHistory": false,
     "refreshButton": false,
     "getApiButtons": true
+  },
+  "marafiq": {
+    "fleetOverview": true,
+    "droneTelemetry": true,
+    "dockTelemetry": true,
+    "batteryStatus": true,
+    "gpsLocation": true,
+    "onlineOffline": false,
+    "liveCamera": true,
+    "droneFpv": false,
+    "alertsEvents": false,
+    "missionMediaHistory": false,
+    "refreshButton": true,
+    "getApiButtons": false
   }
 }

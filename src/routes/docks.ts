@@ -6,11 +6,13 @@ import {
   normalizeHms,
   normalizeTelemetry,
 } from "../services/normalize.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const dockRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/docks",
     {
       schema: {
@@ -29,7 +31,8 @@ export const dockRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: { sn: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/docks/:sn",
     {
       schema: {
@@ -46,7 +49,7 @@ export const dockRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const { sn } = request.params;
+      const { sn } = request.params as { sn: string };
       const entries = await fh2.listProjectDevices();
       const entry = findDeviceEntry(entries, sn);
 

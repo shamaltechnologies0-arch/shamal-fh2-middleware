@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { createFh2Client } from "../fh2/client.js";
 import { trajectoryToGeoJson, trajectoryToKml } from "../services/gis.js";
 import { normalizeTrajectory } from "../services/normalize.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const gisRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
@@ -11,7 +12,8 @@ export const gisRoutes: FastifyPluginAsync = async (app) => {
     return normalizeTrajectory(taskId, trajectory);
   };
 
-  app.get<{ Params: { id: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/tasks/:id/trajectory.geojson",
     {
       schema: {
@@ -21,14 +23,16 @@ export const gisRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const trajectory = await loadTrajectory(request.params.id);
+      const { id } = request.params as { id: string };
+      const trajectory = await loadTrajectory(id);
       return reply
         .header("Content-Type", "application/geo+json")
         .send(trajectoryToGeoJson(trajectory));
     },
   );
 
-  app.get<{ Params: { id: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/tasks/:id/trajectory.kml",
     {
       schema: {
@@ -37,7 +41,8 @@ export const gisRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const trajectory = await loadTrajectory(request.params.id);
+      const { id } = request.params as { id: string };
+      const trajectory = await loadTrajectory(id);
       return reply
         .header("Content-Type", "application/vnd.google-earth.kml+xml")
         .send(trajectoryToKml(trajectory));

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { config, readCcCredentialEnv } from "../config.js";
+import { getPlatformSessionSecret } from "./platformSecret.js";
 import { getManagedViewerUsers } from "./viewerUsers.js";
 
 export type CcRole = "viewer" | "operator" | "admin";
@@ -20,30 +21,6 @@ const ROLE_RANK: Record<CcRole, number> = {
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
-function parseUsers(raw: string): CcUser[] {
-  return raw
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => {
-      const [username, password, role, apiKey, displayName] = part.split(":");
-      if (!username || !password || !role || !apiKey) {
-        throw new Error(`Invalid CC_USERS entry: ${part}`);
-      }
-      const normalizedRole = role.toLowerCase() as CcRole;
-      if (!["viewer", "operator", "admin"].includes(normalizedRole)) {
-        throw new Error(`Invalid role in CC_USERS: ${role}`);
-      }
-      return {
-        username,
-        password,
-        role: normalizedRole,
-        apiKey,
-        displayName: displayName?.trim() || username,
-      };
-    });
-}
-
 function parseApiKeyRoles(raw: string): Map<string, CcRole> {
   const map = new Map<string, CcRole>();
   for (const part of raw.split(",").map((p) => p.trim()).filter(Boolean)) {
@@ -57,34 +34,25 @@ function parseApiKeyRoles(raw: string): Map<string, CcRole> {
   return map;
 }
 
-interface CcCredentialEnv {
-  ccUsers?: string;
-  ccAdminId?: string;
-  ccAdminPassword?: string;
-  ccOperatorId?: string;
-  ccOperatorPassword?: string;
-  ccViewerId?: string;
-  ccViewerPassword?: string;
-  ccViewerDisplayName?: string;
-  ccOperatorDisplayName?: string;
-  ccAdminDisplayName?: string;
-  marafiqApiKeys: string[];
+function resolveAdminApiKey(apiKeys: string[]): string {
+  const rolesRaw =
+    config.VIEWER_API_KEY_ROLES?.trim() || config.MARAFIQ_API_KEY_ROLES?.trim();
+  if (rolesRaw) {
+    for (const [key, role] of parseApiKeyRoles(rolesRaw)) {
+      if (role === "admin") return key;
+    }
+  }
+  return apiKeys[0] ?? "demo-viewer-key";
 }
 
-function buildCcUsersFromEnv(creds: CcCredentialEnv = {
-  ccUsers: config.CC_USERS,
-  ccAdminId: config.ccAdminId,
-  ccAdminPassword: config.ccAdminPassword,
-  ccOperatorId: config.ccOperatorId,
-  ccOperatorPassword: config.ccOperatorPassword,
-  ccViewerId: config.ccViewerId,
-  ccViewerPassword: config.ccViewerPassword,
-  ccViewerDisplayName: config.ccViewerDisplayName,
-  ccOperatorDisplayName: config.ccOperatorDisplayName,
-  ccAdminDisplayName: config.ccAdminDisplayName,
-  marafiqApiKeys: config.marafiqApiKeys,
-}): CcUser[] {
-  const apiKey = creds.marafiqApiKeys[0] ?? "demo-marafiq-key";
+function buildPlatformUsersFromEnv(creds: ReturnType<typeof readCcCredentialEnv>): CcUser[] {
+  if (creds.ccUsers) {
+    console.warn(
+      "[auth] CC_USERS is ignored. Set admin_id + admin_password in .env only. Create viewer accounts in Admin Settings.",
+    );
+  }
+
+  const apiKeys = creds.viewerApiKeys;
   const users: CcUser[] = [];
 
   if (creds.ccAdminId && creds.ccAdminPassword) {
@@ -92,7 +60,7 @@ function buildCcUsersFromEnv(creds: CcCredentialEnv = {
       username: creds.ccAdminId,
       password: creds.ccAdminPassword,
       role: "admin",
-      apiKey,
+      apiKey: resolveAdminApiKey(apiKeys),
       displayName: creds.ccAdminDisplayName || creds.ccAdminId,
     });
   }
@@ -102,54 +70,18 @@ function buildCcUsersFromEnv(creds: CcCredentialEnv = {
       username: creds.ccOperatorId,
       password: creds.ccOperatorPassword,
       role: "operator",
-      apiKey,
+      apiKey: resolveAdminApiKey(apiKeys),
       displayName: creds.ccOperatorDisplayName || creds.ccOperatorId,
     });
   }
 
-  if (creds.ccViewerId && creds.ccViewerPassword) {
-    users.push({
-      username: creds.ccViewerId,
-      password: creds.ccViewerPassword,
-      role: "viewer",
-      apiKey,
-      displayName: creds.ccViewerDisplayName || creds.ccViewerId,
-    });
-  }
-
-  if (users.length > 0) return users;
-
-  return [
-    {
-      username: "admin",
-      password: "admin2026",
-      role: "admin",
-      apiKey,
-      displayName: "Admin",
-    },
-    {
-      username: "operator",
-      password: "ops2026",
-      role: "operator",
-      apiKey,
-      displayName: "Operator",
-    },
-    {
-      username: "viewer",
-      password: "view2026",
-      role: "viewer",
-      apiKey,
-      displayName: "Viewer",
-    },
-  ];
+  return users;
 }
 
-/** Loads platform users from .env (re-reads .env on each call for login). */
+/** Loads platform users: Shamal admin from .env; viewers from Admin Settings (data/viewer-users.json). */
 export function getCcUsers(): CcUser[] {
   const creds = readCcCredentialEnv();
-  const users = creds.ccUsers
-    ? parseUsers(creds.ccUsers)
-    : buildCcUsersFromEnv(creds);
+  const users = buildPlatformUsersFromEnv(creds);
 
   const existing = new Set(users.map((u) => u.username));
   for (const viewer of getManagedViewerUsers()) {
@@ -158,35 +90,28 @@ export function getCcUsers(): CcUser[] {
       existing.add(viewer.username);
     }
   }
+
   return users;
 }
 
-/** Viewer usernames defined in .env (not admin-managed JSON store). */
+/** Viewer usernames defined in .env — always empty; viewers are admin-managed only. */
 export function getEnvViewerUsernames(): Set<string> {
-  const creds = readCcCredentialEnv();
-  if (creds.ccUsers) {
-    return new Set(
-      parseUsers(creds.ccUsers)
-        .filter((u) => u.role === "viewer")
-        .map((u) => u.username),
-    );
-  }
-  const names = new Set<string>();
-  if (creds.ccViewerId) names.add(creds.ccViewerId);
-  return names;
+  return new Set();
 }
 
 export const ccUsers: CcUser[] = getCcUsers();
 
-/** Default role for headless Marafiq API clients (no X-CC-Session). */
-export const apiKeyRoleMap: Map<string, CcRole> = config.MARAFIQ_API_KEY_ROLES
-  ? parseApiKeyRoles(config.MARAFIQ_API_KEY_ROLES)
-  : new Map(config.marafiqApiKeys.map((key) => [key, "operator" as CcRole]));
+/** Default role for headless API clients (no X-CC-Session). */
+export const apiKeyRoleMap: Map<string, CcRole> = config.VIEWER_API_KEY_ROLES
+  ? parseApiKeyRoles(config.VIEWER_API_KEY_ROLES)
+  : config.MARAFIQ_API_KEY_ROLES
+    ? parseApiKeyRoles(config.MARAFIQ_API_KEY_ROLES)
+    : new Map(config.viewerApiKeys.map((key) => [key, "operator" as CcRole]));
 
 export function createSessionToken(user: CcUser): string {
   const exp = Date.now() + SESSION_TTL_MS;
   const payload = `${user.username}|${user.role}|${user.apiKey}|${exp}`;
-  const sig = createHmac("sha256", config.CC_SESSION_SECRET)
+  const sig = createHmac("sha256", getPlatformSessionSecret())
     .update(payload)
     .digest("hex");
   return Buffer.from(`${payload}|${sig}`).toString("base64url");
@@ -206,7 +131,7 @@ export function verifySessionToken(
     if (Date.now() > Number(expStr)) return null;
 
     const payload = `${username}|${role}|${tokenApiKey}|${expStr}`;
-    const expected = createHmac("sha256", config.CC_SESSION_SECRET)
+    const expected = createHmac("sha256", getPlatformSessionSecret())
       .update(payload)
       .digest("hex");
     if (!safeEqual(sig, expected)) return null;
@@ -218,6 +143,13 @@ export function verifySessionToken(
   } catch {
     return null;
   }
+}
+
+function isAllowedUserApiKey(user: CcUser, envApiKeys: string[]): boolean {
+  if (envApiKeys.includes(user.apiKey)) return true;
+  return getManagedViewerUsers().some(
+    (v) => v.username === user.username && v.apiKey === user.apiKey,
+  );
 }
 
 export function login(username: string, password: string): {
@@ -233,10 +165,10 @@ export function login(username: string, password: string): {
   );
   if (!user) return null;
 
-  const apiKeys = readCcCredentialEnv().marafiqApiKeys;
-  if (!apiKeys.includes(user.apiKey)) {
+  const envApiKeys = readCcCredentialEnv().viewerApiKeys;
+  if (!isAllowedUserApiKey(user, envApiKeys)) {
     throw new Error(
-      `User api key "${user.apiKey}" is not listed in MARAFIQ_API_KEYS`,
+      `User api key "${user.apiKey}" is not configured. Contact Shamal administrator.`,
     );
   }
 

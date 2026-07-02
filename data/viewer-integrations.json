@@ -7,5 +7,14 @@
     "status": "active",
     "generatedAt": "2026-06-29T09:45:03.631Z",
     "revokedAt": null
+  },
+  "marafiq": {
+    "enabled": true,
+    "tokenHash": "c2af18cfb5aa8a3cf64fa98e01b4e52ea5b501e6ee58eb11b140757f8443fb1c",
+    "tokenPrefix": "shm_live_e742bc8b",
+    "tokenCiphertext": "cRh_37eNUawiIzfIr7oYVjFyHZQuKdXSzBS9wlGe0a8uwqnfE9PPPn4wHVUzqU8pXFK0XYJMUa2V0wfOEy_7XDAjBBkg-dCReaP1CuOrEYld3kJLhA",
+    "status": "active",
+    "generatedAt": "2026-07-02T07:53:58.081Z",
+    "revokedAt": null
   }
 }

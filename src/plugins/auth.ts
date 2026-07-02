@@ -11,11 +11,13 @@ import {
   roleFromApiKey,
   type CcRole,
 } from "../services/commandCenterAuth.js";
+import { legacyMarafiqPath, isViewerOrLegacyApiPath } from "../routes/viewerPaths.js";
 import { assertRoleAccess } from "../services/apiAccess.js";
 import {
   isViewerIntegrationToken,
   verifyViewerIntegrationToken,
 } from "../services/viewerIntegration.js";
+import { getManagedViewerUsers } from "../services/viewerUsers.js";
 
 function clientIp(request: FastifyRequest): string {
   const forwarded = request.headers["x-forwarded-for"];
@@ -30,9 +32,15 @@ function requestPath(url: string): string {
 }
 
 function requiresOperatorRole(path: string, method: string): boolean {
-  if (method === "POST" && path.startsWith("/v1/marafiq/ops/")) return true;
-  if (method === "POST" && /^\/v1\/marafiq\/events\/[^/]+\/ack$/.test(path)) return true;
+  const legacyPath = legacyMarafiqPath(path);
+  if (method === "POST" && legacyPath.startsWith("/v1/marafiq/ops/")) return true;
+  if (method === "POST" && /^\/v1\/marafiq\/events\/[^/]+\/ack$/.test(legacyPath)) return true;
   return false;
+}
+
+function isValidApiKey(apiKey: string): boolean {
+  if (config.marafiqApiKeys.includes(apiKey)) return true;
+  return getManagedViewerUsers().some((u) => u.apiKey === apiKey);
 }
 
 /** Register on the root Fastify instance (not as an encapsulated plugin). */
@@ -53,12 +61,12 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    if (!request.url.startsWith("/v1/marafiq")) {
+    const path = requestPath(request.url);
+    if (!isViewerOrLegacyApiPath(path)) {
       return;
     }
 
-    const path = requestPath(request.url);
-    if (path === "/v1/marafiq/auth/login") {
+    if (path === "/v1/marafiq/auth/login" || path === "/v1/viewer/auth/login") {
       return;
     }
 
@@ -107,7 +115,7 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
           ? bearerToken
           : undefined;
 
-    if (!apiKey || !config.marafiqApiKeys.includes(apiKey)) {
+    if (!apiKey || !isValidApiKey(apiKey)) {
       return reply.status(401).send({
         error: "unauthorized",
         message: "Valid X-Api-Key or Bearer token required",
@@ -164,7 +172,7 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
       }
     }
 
-    if (path.startsWith("/v1/marafiq/admin/")) {
+    if (legacyMarafiqPath(path).startsWith("/v1/marafiq/admin/")) {
       if (!hasMinRole(role, "admin")) {
         return reply.status(403).send({
           error: "forbidden",

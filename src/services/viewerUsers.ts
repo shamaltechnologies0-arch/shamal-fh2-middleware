@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -84,7 +85,7 @@ export function createManagedViewer(input: z.infer<typeof createViewerSchema>): 
   };
 
   if (!record.apiKey) {
-    throw new Error("apiKey is required");
+    record.apiKey = `vwr_${randomBytes(12).toString("hex")}`;
   }
 
   store.push(record);

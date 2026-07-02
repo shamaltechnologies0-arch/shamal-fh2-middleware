@@ -6,6 +6,7 @@ import {
   loadRecentTaskMedia,
   recentMediaMeta,
 } from "../services/recentMedia.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 const mediaQuerySchema = z.object({
   sn: z.string().optional(),
@@ -24,7 +25,8 @@ function defaultTimeRange(): { beginAt: number; endAt: number } {
 export const mediaRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/media/recent",
     {
       schema: {

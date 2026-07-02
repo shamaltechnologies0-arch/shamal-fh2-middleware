@@ -1,9 +1,15 @@
-# Cybersecurity brief — Shamal Middleware for Marafiq
+# Cybersecurity brief — Shamal FH2 External Viewer Middleware
 
 ## Architecture
 
-- Marafiq CAFM → **Shamal Middleware** (HTTPS) → DJI FlightHub 2 OpenAPI
+```text
+External viewer platform  →  Shamal FH2 Viewer Middleware (HTTPS)  →  DJI FlightHub 2 OpenAPI
+```
+
+- Shamal owns and operates DJI FlightHub 2.
+- External viewer users (e.g. Marafiq) connect to **Shamal’s platform only**.
 - DJI organization key stays on Shamal infrastructure only.
+- External viewers must **never** receive FH2 login, credentials, organization access, or control operations.
 
 ## Transport
 
@@ -14,21 +20,33 @@
 
 | Actor | Credential | Scope |
 |-------|------------|-------|
-| Marafiq integrators | `X-Api-Key` (rotatable per client) | Shamal `/v1/marafiq/*` only |
+| External viewer integrators | `X-Api-Key` (rotatable per viewer) | Shamal `/v1/marafiq/*` viewer routes (legacy aliases; `/v1/viewer/*` planned) |
 | Shamal backend | `FH2_ORG_TOKEN` + `FH2_PROJECT_UUID` | FlightHub 2 OpenAPI |
 | FH2 webhooks | HMAC `X-Webhook-Signature` | `POST /webhooks/fh2` only |
+| Shamal platform users | Session + role (admin / operator / viewer) | Command Center UI |
 
-Optional: `MARAFIQ_IP_ALLOWLIST` for source IP restriction.
+Optional: `VIEWER_IP_ALLOWLIST` for source IP restriction (legacy: `MARAFIQ_IP_ALLOWLIST`).
 
 ## Data handling
 
-- Media URLs from DJI are **time-limited signed links**; middleware returns metadata and URLs, not permanent storage of imagery unless agreed separately.
-- Webhook payloads stored in PostgreSQL for audit and `GET /events` (retention policy: configure per contract, default 90 days recommended).
+- Media URLs from DJI are **time-limited signed links**; middleware returns metadata and URLs for **approved project media only**, not raw FH2 storage credentials or unrestricted file lists.
+- Webhook payloads stored in MongoDB for audit and `GET /events` (retention policy: configure per contract, default 90 days recommended).
 
 ## Access control
 
-- Read-only Marafiq API surface in phase 1 (no mission control, no device commands).
+- Read-only viewer API surface (no mission control, no device commands for viewer role).
+- Shamal operator/admin roles may access operation endpoints; viewers cannot.
 - Rate limiting: 100 requests/minute per instance (configurable).
+
+## Shamal-only secrets
+
+Never expose to external viewers:
+
+- `FH2_ORG_TOKEN`
+- `FH2_PROJECT_UUID`
+- `WEBHOOK_SECRET`
+- `CC_SESSION_SECRET`
+- Admin / operator credentials
 
 ## Audit
 
@@ -37,10 +55,10 @@ Optional: `MARAFIQ_IP_ALLOWLIST` for source IP restriction.
 
 ## Residency
 
-- Week-1 demo: Shamal-hosted VPS recommended (fastest).
-- Production: align host region with Marafiq KSA data requirements before go-live.
+- Demo: Shamal-hosted VPS recommended.
+- Production: align host region with viewer contract data requirements before go-live.
 
 ## Incident response
 
-- Rotate `MARAFIQ_API_KEYS` and `FH2_ORG_TOKEN` independently.
-- Disable Marafiq keys without affecting Shamal FH2 operations.
+- Rotate `VIEWER_API_KEYS` (or legacy `MARAFIQ_API_KEYS`) and `FH2_ORG_TOKEN` independently.
+- Disable a viewer’s API keys without affecting Shamal FH2 operations.

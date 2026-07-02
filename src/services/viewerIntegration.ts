@@ -11,6 +11,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
 import { getCcUsers } from "./commandCenterAuth.js";
+import { getPlatformSessionSecret } from "./platformSecret.js";
 import {
   getViewerDashboardPermissions,
   type ViewerDashboardPermissions,
@@ -66,7 +67,7 @@ function writeStore(store: IntegrationStore): void {
 
 function encryptionKey(): Buffer {
   return createHash("sha256")
-    .update(`viewer-integration:${config.CC_SESSION_SECRET}`)
+    .update(`viewer-integration:${getPlatformSessionSecret()}`)
     .digest();
 }
 
@@ -93,7 +94,7 @@ function decryptToken(ciphertext: string): string | null {
 }
 
 function hashToken(token: string): string {
-  return createHmac("sha256", config.CC_SESSION_SECRET)
+  return createHmac("sha256", getPlatformSessionSecret())
     .update(`viewer-token:${token}`)
     .digest("hex");
 }

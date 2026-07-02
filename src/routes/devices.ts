@@ -6,11 +6,13 @@ import {
   normalizeHms,
 } from "../services/normalize.js";
 import { cacheTelemetry, resolveTelemetry } from "../services/telemetryStore.js";
+import { registerViewerGet } from "./viewerPaths.js";
 
 export const deviceRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  app.get(
+  registerViewerGet(
+    app,
     "/v1/marafiq/devices",
     {
       schema: {
@@ -29,7 +31,8 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: { sn: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/devices/:sn",
     {
       schema: {
@@ -38,7 +41,7 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const { sn } = request.params;
+      const { sn } = request.params as { sn: string };
       const entries = await fh2.listProjectDevices();
       const entry = findDeviceEntry(entries, sn);
 
@@ -71,7 +74,8 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: { sn: string } }>(
+  registerViewerGet(
+    app,
     "/v1/marafiq/devices/:sn/telemetry/latest",
     {
       schema: {
@@ -80,7 +84,7 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const { sn } = request.params;
+      const { sn } = request.params as { sn: string };
       const result = await resolveTelemetry(sn, () => fh2.getDeviceState(sn));
       return reply.send({
         data: result.data,

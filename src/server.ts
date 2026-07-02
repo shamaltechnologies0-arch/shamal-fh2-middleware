@@ -85,12 +85,12 @@ export async function buildServer() {
     openapi: {
       openapi: "3.1.0",
       info: {
-        title: "Shamal Middleware API",
+        title: "Shamal FH2 External Viewer Middleware API",
         version: "2.0.0",
         description:
-          "REST layer between Shamal DJI FlightHub 2 operations and client platforms (CAFM, dashboards, integrations). " +
+          "Shamal-controlled REST layer over DJI FlightHub 2. External viewer integrators use canonical /v1/viewer/* paths with X-Api-Key — never DJI credentials. " +
           "Shamal Platform UI: GET /. Live spec JSON: GET /openapi.json. " +
-          "Client integrators use X-Api-Key only — never DJI credentials.",
+          "Legacy /v1/marafiq/* paths remain supported.",
       },
       // Use same-origin by default so Swagger "Try it out" works regardless of
       // opening docs via localhost or 127.0.0.1.

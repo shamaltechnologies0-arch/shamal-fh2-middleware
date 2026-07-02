@@ -59,6 +59,7 @@ const envSchema = z.object({
   CC_USERS: optionalString,
   MARAFIQ_API_KEY_ROLES: optionalString,
   CC_SESSION_SECRET: optionalString,
+  PLATFORM_SESSION_SECRET: optionalString,
   CC_ADMIN_ID: optionalString,
   CC_ADMIN_PASSWORD: optionalString,
   admin_id: optionalString,

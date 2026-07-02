@@ -8,7 +8,7 @@ async function main(): Promise<void> {
   process.env.MARAFIQ_API_KEYS = "";
   process.env.CC_USERS = "";
 
-  const { buildServer } = await import("../src/server.js");
+  const { buildServer } = await import("../src/app.js");
   const { roleFromApiKey } = await import("../src/services/commandCenterAuth.js");
 
   const API_KEY = "alias-test-operator";

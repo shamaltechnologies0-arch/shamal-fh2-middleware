@@ -1,0 +1,585 @@
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { z } from "zod";
+import { getPlatformSessionSecret } from "./platformSecret.js";
+import { isManagedViewer, listManagedViewerRecords } from "./viewerUsers.js";
+
+const KEY_PREFIX = "vwr_";
+const ID_PREFIX = "key_";
+const STORE_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../data/viewer-rest-api-keys.json",
+);
+const MAX_KEYS_PER_USER = 10;
+export const REST_API_KEYS_MAX_PER_USER = MAX_KEYS_PER_USER;
+const PREFIX_DISPLAY_LENGTH = 12;
+const LAST_USED_DEBOUNCE_MS = 5 * 60 * 1000;
+const REVEAL_MAX_PER_HOUR = 5;
+const REVEAL_WINDOW_MS = 60 * 60 * 1000;
+
+export type RestApiKeyStatus = "active" | "disabled" | "revoked";
+
+export interface RestApiKeyRecord {
+  id: string;
+  userId: string;
+  label: string;
+  keyPrefix: string;
+  keyHash: string;
+  keyCiphertext: string | null;
+  status: RestApiKeyStatus;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdBy: string;
+}
+
+export interface RestApiKeyPublic {
+  id: string;
+  userId: string;
+  label: string;
+  keyMasked: string;
+  status: RestApiKeyStatus;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdBy: string;
+}
+
+const recordSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  label: z.string().min(1).max(128),
+  keyPrefix: z.string().min(1),
+  keyHash: z.string().length(64),
+  keyCiphertext: z.string().nullable(),
+  status: z.enum(["active", "disabled", "revoked"]),
+  isPrimary: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  lastUsedAt: z.string().nullable(),
+  revokedAt: z.string().nullable(),
+  createdBy: z.string().min(1),
+});
+
+export const createRestApiKeySchema = z.object({
+  label: z.string().trim().min(1).max(128),
+});
+
+export const updateRestApiKeySchema = z.object({
+  label: z.string().trim().min(1).max(128).optional(),
+  status: z.enum(["active", "disabled"]).optional(),
+});
+
+let migrationDone = false;
+const lastUsedTouch = new Map<string, number>();
+const revealAttempts = new Map<string, number[]>();
+
+// TODO(2026-Q3): Remove legacy viewer-users.json apiKey migration after one release cycle.
+
+function ensureStoreDir(): void {
+  const dir = dirname(STORE_PATH);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+function readStore(): RestApiKeyRecord[] {
+  ensureStoreDir();
+  if (!existsSync(STORE_PATH)) return [];
+  try {
+    const raw = readFileSync(STORE_PATH, "utf8");
+    const parsed = JSON.parse(raw) as RestApiKeyRecord[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((row) => recordSchema.safeParse(row).success);
+  } catch {
+    return [];
+  }
+}
+
+function writeStore(records: RestApiKeyRecord[]): void {
+  ensureStoreDir();
+  writeFileSync(STORE_PATH, JSON.stringify(records, null, 2) + "\n", "utf8");
+}
+
+function encryptionKey(): Buffer {
+  return createHash("sha256")
+    .update(`rest-api-key:${getPlatformSessionSecret()}`)
+    .digest();
+}
+
+function encryptKey(plaintext: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  const enc = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString("base64url");
+}
+
+function decryptKey(ciphertext: string): string | null {
+  try {
+    const buf = Buffer.from(ciphertext, "base64url");
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const data = buf.subarray(28);
+    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+function hashKey(plaintext: string): string {
+  return createHmac("sha256", getPlatformSessionSecret())
+    .update(`rest-api-key:${plaintext}`)
+    .digest("hex");
+}
+
+function keyPrefixFromPlaintext(plaintext: string): string {
+  return plaintext.slice(0, PREFIX_DISPLAY_LENGTH);
+}
+
+function maskKey(prefix: string): string {
+  return `${prefix}${"•".repeat(12)}`;
+}
+
+function generateRawKey(): string {
+  return `${KEY_PREFIX}${randomBytes(12).toString("hex")}`;
+}
+
+function generateKeyId(): string {
+  return `${ID_PREFIX}${randomBytes(8).toString("hex")}`;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function assertViewerExists(userId: string): void {
+  if (!isManagedViewer(userId)) {
+    throw new Error(`Unknown viewer account: ${userId}`);
+  }
+}
+
+function toPublic(record: RestApiKeyRecord): RestApiKeyPublic {
+  return {
+    id: record.id,
+    userId: record.userId,
+    label: record.label,
+    keyMasked: maskKey(record.keyPrefix),
+    status: record.status,
+    isPrimary: record.isPrimary,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    lastUsedAt: record.lastUsedAt,
+    revokedAt: record.revokedAt,
+    createdBy: record.createdBy,
+  };
+}
+
+function keysForUser(records: RestApiKeyRecord[], userId: string): RestApiKeyRecord[] {
+  return records.filter((row) => row.userId === userId);
+}
+
+function clearPrimaryFlags(records: RestApiKeyRecord[], userId: string): void {
+  for (const row of records) {
+    if (row.userId === userId) row.isPrimary = false;
+  }
+}
+
+function promoteNextPrimary(records: RestApiKeyRecord[], userId: string): void {
+  const candidate = keysForUser(records, userId)
+    .filter((row) => row.status === "active")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+  if (candidate) candidate.isPrimary = true;
+}
+
+function assertLabelAvailable(
+  records: RestApiKeyRecord[],
+  userId: string,
+  label: string,
+  excludeId?: string,
+): void {
+  const normalized = label.trim().toLowerCase();
+  const taken = keysForUser(records, userId).some(
+    (row) => row.id !== excludeId && row.label.trim().toLowerCase() === normalized,
+  );
+  if (taken) {
+    throw new Error(`API key label "${label}" is already in use for this account`);
+  }
+}
+
+function persistRecord(
+  records: RestApiKeyRecord[],
+  record: RestApiKeyRecord,
+  options?: { makePrimary?: boolean },
+): RestApiKeyRecord {
+  if (options?.makePrimary) {
+    clearPrimaryFlags(records, record.userId);
+    record.isPrimary = true;
+  } else if (record.isPrimary) {
+    clearPrimaryFlags(records, record.userId);
+    record.isPrimary = true;
+  }
+
+  const index = records.findIndex((row) => row.id === record.id);
+  if (index >= 0) {
+    records[index] = record;
+  } else {
+    records.push(record);
+  }
+  writeStore(records);
+  return record;
+}
+
+function buildRecordFromPlaintext(input: {
+  userId: string;
+  label: string;
+  plaintext: string;
+  createdBy: string;
+  isPrimary?: boolean;
+  status?: RestApiKeyStatus;
+  createdAt?: string;
+  lastUsedAt?: string | null;
+}): RestApiKeyRecord {
+  const timestamp = input.createdAt ?? nowIso();
+  return {
+    id: generateKeyId(),
+    userId: input.userId,
+    label: input.label.trim(),
+    keyPrefix: keyPrefixFromPlaintext(input.plaintext),
+    keyHash: hashKey(input.plaintext),
+    keyCiphertext: encryptKey(input.plaintext),
+    status: input.status ?? "active",
+    isPrimary: input.isPrimary ?? false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastUsedAt: input.lastUsedAt ?? null,
+    revokedAt: null,
+    createdBy: input.createdBy,
+  };
+}
+
+function legacyKeyHashExists(
+  records: RestApiKeyRecord[],
+  userId: string,
+  plaintext: string,
+): boolean {
+  const digest = hashKey(plaintext);
+  const digestBuf = Buffer.from(digest);
+  return keysForUser(records, userId).some((row) => {
+    const rowBuf = Buffer.from(row.keyHash);
+    return rowBuf.length === digestBuf.length && timingSafeEqual(rowBuf, digestBuf);
+  });
+}
+
+export function userHasRestApiKeys(userId: string): boolean {
+  ensureRestApiKeysMigrated();
+  return keysForUser(readStore(), userId).length > 0;
+}
+
+export function getPrimaryRestApiKeyMasked(userId: string): string | null {
+  return getPrimaryApiKeyRecord(userId)?.keyMasked ?? null;
+}
+
+export function importLegacyViewerApiKey(userId: string, plaintext: string): boolean {
+  ensureRestApiKeysMigrated();
+  if (!isManagedViewer(userId) || !plaintext.startsWith(KEY_PREFIX)) return false;
+
+  const records = readStore();
+  if (legacyKeyHashExists(records, userId, plaintext)) return true;
+  if (keysForUser(records, userId).length > 0) return false;
+
+  const record = buildRecordFromPlaintext({
+    userId,
+    label: "Default",
+    plaintext,
+    createdBy: "migration",
+    isPrimary: true,
+  });
+  persistRecord(records, record, { makePrimary: true });
+  return true;
+}
+
+/** @internal Test-only reset for migration idempotency checks. */
+export function __resetRestApiKeysMigrationForTests(): void {
+  migrationDone = false;
+}
+
+export function ensureRestApiKeysMigrated(): void {
+  if (migrationDone) return;
+  migrationDone = true;
+
+  const records = readStore();
+  let changed = false;
+
+  for (const viewer of listManagedViewerRecords()) {
+    const legacy = viewer.apiKey?.trim();
+    if (!legacy) continue;
+    if (legacyKeyHashExists(records, viewer.username, legacy)) continue;
+    if (keysForUser(records, viewer.username).length > 0) continue;
+
+    const record = buildRecordFromPlaintext({
+      userId: viewer.username,
+      label: "Default",
+      plaintext: legacy,
+      createdBy: "migration",
+      isPrimary: true,
+    });
+    records.push(record);
+    changed = true;
+  }
+
+  if (changed) writeStore(records);
+}
+
+export function listRestApiKeys(userId: string): RestApiKeyPublic[] {
+  ensureRestApiKeysMigrated();
+  return keysForUser(readStore(), userId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map(toPublic);
+}
+
+export function getRestApiKey(userId: string, keyId: string): RestApiKeyPublic | null {
+  ensureRestApiKeysMigrated();
+  const record = keysForUser(readStore(), userId).find((row) => row.id === keyId);
+  return record ? toPublic(record) : null;
+}
+
+export function createRestApiKey(
+  userId: string,
+  label: string,
+  createdBy: string,
+  options?: { plaintext?: string; isPrimary?: boolean },
+): { record: RestApiKeyPublic; plaintext: string } {
+  ensureRestApiKeysMigrated();
+  assertViewerExists(userId);
+
+  const parsed = createRestApiKeySchema.safeParse({ label });
+  if (!parsed.success) {
+    throw new Error("Invalid API key label");
+  }
+
+  const records = readStore();
+  const userKeys = keysForUser(records, userId);
+  if (userKeys.length >= MAX_KEYS_PER_USER) {
+    throw new Error(`Maximum of ${MAX_KEYS_PER_USER} API keys per account reached`);
+  }
+
+  assertLabelAvailable(records, userId, parsed.data.label);
+
+  const plaintext = options?.plaintext?.trim() || generateRawKey();
+  if (!plaintext.startsWith(KEY_PREFIX)) {
+    throw new Error(`API keys must start with "${KEY_PREFIX}"`);
+  }
+
+  const duplicateHash = hashKey(plaintext);
+  if (records.some((row) => row.keyHash === duplicateHash)) {
+    throw new Error("API key already exists");
+  }
+
+  const makePrimary = options?.isPrimary ?? userKeys.length === 0;
+  const record = buildRecordFromPlaintext({
+    userId,
+    label: parsed.data.label,
+    plaintext,
+    createdBy,
+    isPrimary: makePrimary,
+  });
+
+  persistRecord(records, record, { makePrimary });
+  return { record: toPublic(record), plaintext };
+}
+
+export function registerRestApiKeyFromPlaintext(
+  userId: string,
+  plaintext: string,
+  label: string,
+  createdBy: string,
+  options?: { isPrimary?: boolean },
+): RestApiKeyPublic {
+  return createRestApiKey(userId, label, createdBy, {
+    plaintext,
+    isPrimary: options?.isPrimary,
+  }).record;
+}
+
+export function updateRestApiKey(
+  userId: string,
+  keyId: string,
+  patch: z.infer<typeof updateRestApiKeySchema>,
+): RestApiKeyPublic {
+  ensureRestApiKeysMigrated();
+  const parsed = updateRestApiKeySchema.safeParse(patch);
+  if (!parsed.success) {
+    throw new Error("Invalid API key update payload");
+  }
+
+  const records = readStore();
+  const record = keysForUser(records, userId).find((row) => row.id === keyId);
+  if (!record) {
+    throw new Error("API key not found");
+  }
+  if (record.status === "revoked") {
+    throw new Error("Revoked API keys cannot be updated");
+  }
+
+  if (parsed.data.label) {
+    assertLabelAvailable(records, userId, parsed.data.label, keyId);
+    record.label = parsed.data.label.trim();
+  }
+
+  if (parsed.data.status) {
+    if (parsed.data.status === "disabled" && record.isPrimary) {
+      const activeOthers = keysForUser(records, userId).filter(
+        (row) => row.id !== keyId && row.status === "active",
+      );
+      if (activeOthers.length === 0) {
+        throw new Error("Cannot disable the only active API key for this account");
+      }
+      record.isPrimary = false;
+      promoteNextPrimary(records, userId);
+    }
+    record.status = parsed.data.status;
+  }
+
+  record.updatedAt = nowIso();
+  persistRecord(records, record);
+  return toPublic(record);
+}
+
+export function deleteRestApiKey(userId: string, keyId: string): void {
+  ensureRestApiKeysMigrated();
+  const records = readStore();
+  const userKeys = keysForUser(records, userId);
+  const record = userKeys.find((row) => row.id === keyId);
+  if (!record) {
+    throw new Error("API key not found");
+  }
+  if (userKeys.length <= 1) {
+    throw new Error("Cannot delete the only API key for this account");
+  }
+
+  const next = records.filter((row) => row.id !== keyId);
+  if (record.isPrimary) {
+    promoteNextPrimary(next, userId);
+  }
+  writeStore(next);
+}
+
+export function setPrimaryRestApiKey(userId: string, keyId: string): RestApiKeyPublic {
+  ensureRestApiKeysMigrated();
+  const records = readStore();
+  const record = keysForUser(records, userId).find((row) => row.id === keyId);
+  if (!record) {
+    throw new Error("API key not found");
+  }
+  if (record.status !== "active") {
+    throw new Error("Only active API keys can be set as primary");
+  }
+
+  record.isPrimary = true;
+  record.updatedAt = nowIso();
+  persistRecord(records, record, { makePrimary: true });
+  return toPublic(record);
+}
+
+export function revealRestApiKey(userId: string, keyId: string): string | null {
+  ensureRestApiKeysMigrated();
+  const record = keysForUser(readStore(), userId).find((row) => row.id === keyId);
+  if (!record || record.status !== "active" || !record.keyCiphertext) {
+    return null;
+  }
+  return decryptKey(record.keyCiphertext);
+}
+
+export function checkRevealRateLimit(
+  userId: string,
+): { allowed: true } | { allowed: false; retryAfterSec: number } {
+  const now = Date.now();
+  const attempts = (revealAttempts.get(userId) ?? []).filter(
+    (timestamp) => now - timestamp < REVEAL_WINDOW_MS,
+  );
+  if (attempts.length >= REVEAL_MAX_PER_HOUR) {
+    const oldest = attempts[0]!;
+    return {
+      allowed: false,
+      retryAfterSec: Math.ceil((REVEAL_WINDOW_MS - (now - oldest)) / 1000),
+    };
+  }
+  attempts.push(now);
+  revealAttempts.set(userId, attempts);
+  return { allowed: true };
+}
+
+export function getPrimaryApiKeyForUser(userId: string): string | null {
+  ensureRestApiKeysMigrated();
+  const userKeys = keysForUser(readStore(), userId);
+  const primary = userKeys.find((row) => row.isPrimary && row.status === "active");
+  const candidate = primary ?? userKeys.find((row) => row.status === "active");
+  if (!candidate?.keyCiphertext) return null;
+  return decryptKey(candidate.keyCiphertext);
+}
+
+export function getPrimaryApiKeyRecord(userId: string): RestApiKeyPublic | null {
+  ensureRestApiKeysMigrated();
+  const userKeys = keysForUser(readStore(), userId);
+  const primary = userKeys.find((row) => row.isPrimary && row.status === "active");
+  const candidate = primary ?? userKeys.find((row) => row.status === "active");
+  return candidate ? toPublic(candidate) : null;
+}
+
+export function verifyRestApiKey(
+  plaintext: string,
+): { userId: string; keyId: string } | null {
+  ensureRestApiKeysMigrated();
+  if (!plaintext.startsWith(KEY_PREFIX)) return null;
+
+  const digest = hashKey(plaintext);
+  const digestBuf = Buffer.from(digest);
+
+  for (const row of readStore()) {
+    if (row.status !== "active") continue;
+    const rowBuf = Buffer.from(row.keyHash);
+    if (rowBuf.length !== digestBuf.length || !timingSafeEqual(rowBuf, digestBuf)) {
+      continue;
+    }
+    return { userId: row.userId, keyId: row.id };
+  }
+
+  return null;
+}
+
+export function touchRestApiKeyLastUsed(keyId: string): void {
+  const now = Date.now();
+  const last = lastUsedTouch.get(keyId) ?? 0;
+  if (now - last < LAST_USED_DEBOUNCE_MS) return;
+  lastUsedTouch.set(keyId, now);
+
+  const records = readStore();
+  const record = records.find((row) => row.id === keyId);
+  if (!record || record.status !== "active") return;
+
+  record.lastUsedAt = new Date(now).toISOString();
+  record.updatedAt = record.lastUsedAt;
+  writeStore(records);
+}
+
+export function deleteRestApiKeysForUser(userId: string): void {
+  writeStore(readStore().filter((row) => row.userId !== userId));
+}
+
+export function getRestApiKeysStorePath(): string {
+  return STORE_PATH;
+}

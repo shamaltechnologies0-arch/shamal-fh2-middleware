@@ -16,5 +16,32 @@
     "status": "active",
     "generatedAt": "2026-07-02T07:53:58.081Z",
     "revokedAt": null
+  },
+  "viewerA": {
+    "enabled": true,
+    "tokenHash": "2b2ddb00f37d20d69041c27ff64a6284ff4732977772fb2fdab15ef102b1d021",
+    "tokenPrefix": "shm_live_db80dc52",
+    "tokenCiphertext": "w3BIowpNrSNWEdsStIcZvFMZMGYMbyUFJXRry9TM8SCK18ZDxYMpTJKG2bUVipjGWF7hx8yfXKNGO9y-USDnWRWD3H2zo1yz1G5n0QD_W29sF9rHQA",
+    "status": "active",
+    "generatedAt": "2026-07-05T07:53:53.726Z",
+    "revokedAt": null
+  },
+  "viewerB": {
+    "enabled": true,
+    "tokenHash": "601d67cf47d6b1deb0e3f2bce61e8c1b7dbfe2417aec82fb5ead0be2605be404",
+    "tokenPrefix": "shm_live_0411f3f3",
+    "tokenCiphertext": "_a9U8wYxQK1ahXFNt7yaxmIHRg6vsMhvv0p-6KWhYeEC8AYUBqq6uTDpQ1qkkgTW4B_nhFmKNOR2_3_yf1objPBpY2i80NrEajC4l42-iyAZyDIo2Q",
+    "status": "active",
+    "generatedAt": "2026-07-05T07:53:23.932Z",
+    "revokedAt": null
+  },
+  "newviewer": {
+    "enabled": true,
+    "tokenHash": "4c1f13c612693f1bb3b63f6dfa2df5738634184d0edb05b5d536270228e93f9c",
+    "tokenPrefix": "shm_live_955888c9",
+    "tokenCiphertext": "OW5yqnWDSA6OGzrdqR-nERYYhz9gQbSrF-_lE7XIvGj0EgrS0Vl_SFXVssR90EcDDfjau9MZMAJh5Zu2ANh8dMEYzzR0HO3H9VTXmItpNmRy5FOAvA",
+    "status": "active",
+    "generatedAt": "2026-07-05T07:53:32.427Z",
+    "revokedAt": null
   }
 }

@@ -23,7 +23,14 @@ import {
   isViewerIntegrationToken,
   verifyViewerIntegrationToken,
 } from "../services/viewerIntegration.js";
-import { getManagedViewerUsers } from "../services/viewerUsers.js";
+import {
+  ensureRestApiKeysMigrated,
+  importLegacyViewerApiKey,
+  touchRestApiKeyLastUsed,
+  userHasRestApiKeys,
+  verifyRestApiKey,
+} from "../services/restApiKeys.js";
+import { getLegacyViewerApiKey, listManagedViewerRecords } from "../services/viewerUsers.js";
 
 function clientIp(request: FastifyRequest): string {
   const forwarded = request.headers["x-forwarded-for"];
@@ -44,9 +51,26 @@ function requiresOperatorRole(path: string, method: string): boolean {
   return false;
 }
 
+function resolveLegacyViewerApiKey(apiKey: string): boolean {
+  for (const viewer of listManagedViewerRecords()) {
+    const legacy = getLegacyViewerApiKey(viewer.username);
+    if (!legacy || legacy !== apiKey) continue;
+    if (userHasRestApiKeys(viewer.username)) return false;
+
+    console.warn(
+      `[auth] Migrating legacy REST API key for viewer "${viewer.username}" into restApiKeys store`,
+    );
+    if (!importLegacyViewerApiKey(viewer.username, apiKey)) return false;
+    return verifyRestApiKey(apiKey) !== null;
+  }
+  return false;
+}
+
 function isValidApiKey(apiKey: string): boolean {
   if (config.marafiqApiKeys.includes(apiKey)) return true;
-  return getManagedViewerUsers().some((u) => u.apiKey === apiKey);
+  ensureRestApiKeysMigrated();
+  if (verifyRestApiKey(apiKey)) return true;
+  return resolveLegacyViewerApiKey(apiKey);
 }
 
 function requestProjectCode(request: FastifyRequest): string | undefined {
@@ -161,6 +185,12 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
       });
     }
 
+    const restApiKeyCtx = verifyRestApiKey(apiKey);
+    if (restApiKeyCtx) {
+      request.restApiKey = restApiKeyCtx;
+      touchRestApiKeyLastUsed(restApiKeyCtx.keyId);
+    }
+
     const sessionHeader = request.headers["x-cc-session"];
     const sessionToken =
       typeof sessionHeader === "string" ? sessionHeader : undefined;
@@ -180,6 +210,9 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
       username = verified.username;
     } else {
       role = roleFromApiKey(apiKey);
+      if (restApiKeyCtx) {
+        username = restApiKeyCtx.userId;
+      }
     }
 
     if (!role) {

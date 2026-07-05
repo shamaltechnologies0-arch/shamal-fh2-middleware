@@ -1,5 +1,4 @@
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { readCcCredentialEnv } from "../config.js";
 import {
@@ -38,6 +37,7 @@ import {
   setFh2ProjectLocalStatus,
   syncFh2ProjectsFromSource,
 } from "../services/fh2Projects.js";
+import { registerAdminRestApiKeyRoutes } from "./restApiKeys.js";
 
 const integrationPatchSchema = z.object({
   enabled: z.boolean(),
@@ -169,9 +169,6 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
         });
       }
 
-      const apiKey =
-        parsed.data.apiKey?.trim() || `vwr_${randomBytes(12).toString("hex")}`;
-
       const taken = getCcUsers().some((u) => u.username === parsed.data.username);
       if (taken) {
         return reply.status(409).send({
@@ -181,22 +178,23 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       try {
-        const record = createManagedViewer({
-          ...parsed.data,
-          apiKey,
-        });
-        const { token } = generateViewerIntegrationToken(record.username);
+        const created = createManagedViewer(parsed.data);
+        const { token } = generateViewerIntegrationToken(created.record.username);
         return reply.status(201).send({
           data: {
-            accountId: record.username,
-            displayName: record.displayName,
-            apiKey: record.apiKey,
+            accountId: created.record.username,
+            displayName: created.record.displayName,
+            apiKey: created.initialApiKey,
+            primaryRestApiKeyMasked: created.primaryRestApiKeyMasked,
             integrationAccessKey: token,
             source: "admin" as const,
             deletable: true,
             permissions: mergeViewerPermissions(null),
           },
-          meta: { source: "shamal-platform" },
+          meta: {
+            source: "shamal-platform",
+            note: "Store apiKey securely. It is shown in full only once.",
+          },
         });
       } catch (err) {
         return reply.status(400).send({
@@ -504,6 +502,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
 
 export const adminRoutes: FastifyPluginAsync = async (app) => {
   registerIntegrationAccountRoutes(app);
+  registerAdminRestApiKeyRoutes(app);
 
   app.get(
     "/v1/marafiq/admin/fh2-projects",
@@ -645,8 +644,6 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           details: parsed.error.flatten(),
         });
       }
-      const apiKey =
-        parsed.data.apiKey?.trim() || `vwr_${randomBytes(12).toString("hex")}`;
       const taken = getCcUsers().some((u) => u.username === parsed.data.username);
       if (taken) {
         return reply.status(409).send({
@@ -655,19 +652,23 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         });
       }
       try {
-        const record = createManagedViewer({ ...parsed.data, apiKey });
-        const { token } = generateViewerIntegrationToken(record.username);
+        const created = createManagedViewer(parsed.data);
+        const { token } = generateViewerIntegrationToken(created.record.username);
         return reply.status(201).send({
           data: {
-            viewerId: record.username,
-            displayName: record.displayName,
-            apiKey: record.apiKey,
+            viewerId: created.record.username,
+            displayName: created.record.displayName,
+            apiKey: created.initialApiKey,
+            primaryRestApiKeyMasked: created.primaryRestApiKeyMasked,
             integrationAccessKey: token,
             source: "admin" as const,
             deletable: true,
             permissions: mergeViewerPermissions(null),
           },
-          meta: { source: "shamal-platform" },
+          meta: {
+            source: "shamal-platform",
+            note: "Store apiKey securely. It is shown in full only once.",
+          },
         });
       } catch (err) {
         return reply.status(400).send({

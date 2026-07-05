@@ -1,0 +1,32 @@
+[
+  {
+    "id": "key_d00a65700388a78d",
+    "userId": "viewerA",
+    "label": "Default",
+    "keyPrefix": "vwr_da2bb400",
+    "keyHash": "fcfbd5b297e9f92ecbdc42da3ca1ecfdb7efe6bc3a05548cf384b2fa4fd09d86",
+    "keyCiphertext": "ZIYkv3wvpiT6OSA5NwZ3l5sHQJ2sJ_foUmnPmSb2T2TCKLK0llMShcou-3Z31F-Ie0VhHPYVMlY",
+    "status": "active",
+    "isPrimary": true,
+    "createdAt": "2026-07-05T07:22:37.313Z",
+    "updatedAt": "2026-07-05T07:22:37.316Z",
+    "lastUsedAt": "2026-07-05T07:22:37.316Z",
+    "revokedAt": null,
+    "createdBy": "system"
+  },
+  {
+    "id": "key_b5f1f494e5d724ae",
+    "userId": "viewerA",
+    "label": "Staging",
+    "keyPrefix": "vwr_3acfe3c5",
+    "keyHash": "63675c62791c95c0c568df66ad8ef468ac4f29fc439b417097d5f8b87ded5a64",
+    "keyCiphertext": "EBnzUgPM57VHvQrrXIV8vDm9PltxSyIAL5_ZXoNGc-8fECOIA3tTI2BFAs-yQRLaXsxQpu2qBIU",
+    "status": "disabled",
+    "isPrimary": false,
+    "createdAt": "2026-07-05T07:22:37.318Z",
+    "updatedAt": "2026-07-05T07:22:37.321Z",
+    "lastUsedAt": null,
+    "revokedAt": null,
+    "createdBy": "viewerA"
+  }
+]

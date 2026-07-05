@@ -1,6 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { config, readCcCredentialEnv } from "../config.js";
 import { getPlatformSessionSecret } from "./platformSecret.js";
+import {
+  ensureRestApiKeysMigrated,
+  getPrimaryApiKeyForUser,
+  verifyRestApiKey,
+} from "./restApiKeys.js";
 import { getManagedViewerUsers } from "./viewerUsers.js";
 
 export type CcRole = "viewer" | "operator" | "admin";
@@ -80,13 +85,18 @@ function buildPlatformUsersFromEnv(creds: ReturnType<typeof readCcCredentialEnv>
 
 /** Loads platform users: Shamal admin from .env; viewers from Admin Settings (data/viewer-users.json). */
 export function getCcUsers(): CcUser[] {
+  ensureRestApiKeysMigrated();
   const creds = readCcCredentialEnv();
   const users = buildPlatformUsersFromEnv(creds);
 
   const existing = new Set(users.map((u) => u.username));
   for (const viewer of getManagedViewerUsers()) {
     if (!existing.has(viewer.username)) {
-      users.push(viewer);
+      const primaryApiKey = getPrimaryApiKeyForUser(viewer.username);
+      users.push({
+        ...viewer,
+        apiKey: primaryApiKey ?? "",
+      });
       existing.add(viewer.username);
     }
   }
@@ -147,9 +157,12 @@ export function verifySessionToken(
 
 function isAllowedUserApiKey(user: CcUser, envApiKeys: string[]): boolean {
   if (envApiKeys.includes(user.apiKey)) return true;
-  return getManagedViewerUsers().some(
-    (v) => v.username === user.username && v.apiKey === user.apiKey,
-  );
+  const verified = verifyRestApiKey(user.apiKey);
+  return verified?.userId === user.username;
+}
+
+function resolveViewerSessionApiKey(username: string): string | null {
+  return getPrimaryApiKeyForUser(username);
 }
 
 export function login(username: string, password: string): {
@@ -166,17 +179,28 @@ export function login(username: string, password: string): {
   if (!user) return null;
 
   const envApiKeys = readCcCredentialEnv().viewerApiKeys;
-  if (!isAllowedUserApiKey(user, envApiKeys)) {
+  const sessionApiKey =
+    user.role === "viewer"
+      ? resolveViewerSessionApiKey(user.username)
+      : user.apiKey;
+  if (!sessionApiKey) {
     throw new Error(
-      `User api key "${user.apiKey}" is not configured. Contact Shamal administrator.`,
+      `No active REST API key configured for "${user.username}". Contact Shamal administrator.`,
+    );
+  }
+  const loginUser = { ...user, apiKey: sessionApiKey };
+
+  if (!isAllowedUserApiKey(loginUser, envApiKeys)) {
+    throw new Error(
+      `User api key "${sessionApiKey}" is not configured. Contact Shamal administrator.`,
     );
   }
 
   return {
-    apiKey: user.apiKey,
+    apiKey: sessionApiKey,
     role: user.role,
     displayName: user.displayName,
-    sessionToken: createSessionToken(user),
+    sessionToken: createSessionToken(loginUser),
   };
 }
 

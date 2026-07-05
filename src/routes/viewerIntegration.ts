@@ -1,5 +1,8 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
-import { getCcUsers } from "../services/commandCenterAuth.js";
+import {
+  getPrimaryRestApiKeyMasked,
+  listRestApiKeys,
+} from "../services/restApiKeys.js";
 import {
   getViewerIntegrationPublic,
   resolveApiBaseUrl,
@@ -87,13 +90,17 @@ async function integrationProfileHandler(
     });
   }
 
-  const user = getCcUsers().find((u) => u.username === request.ccUsername);
   const apiBaseUrl = apiBaseFromRequest(request);
   const info = getViewerIntegrationPublic(request.ccUsername, apiBaseUrl);
+  const primaryRestApiKeyMasked = getPrimaryRestApiKeyMasked(request.ccUsername);
+  const restApiKeys = listRestApiKeys(request.ccUsername);
   return reply.send({
     data: {
       ...info,
-      platformApiKey: user?.apiKey ?? null,
+      primaryRestApiKeyMasked,
+      restApiKeyCount: restApiKeys.length,
+      /** @deprecated Use primaryRestApiKeyMasked — masked value only, never plaintext. */
+      platformApiKey: primaryRestApiKeyMasked,
       authHeaders: {
         restApi: "X-Api-Key",
         integrationApi: "Authorization: Bearer <integration access key>",

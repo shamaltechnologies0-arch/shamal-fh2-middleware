@@ -25,6 +25,7 @@ import { streamRoutes } from "./routes/streams.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { mediaRoutes } from "./routes/media.js";
 import { telemetrySseRoutes } from "./routes/telemetry-sse.js";
+import { restApiKeysRoutes } from "./routes/restApiKeys.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 
 const openapiPath = join(
@@ -122,6 +123,7 @@ export async function buildServer() {
   await app.register(authRoutes);
   await app.register(adminRoutes);
   await app.register(viewerIntegrationRoutes);
+  await app.register(restApiKeysRoutes);
   await app.register(healthRoutes);
   await app.register(capabilitiesRoutes);
   await app.register(deviceRoutes);

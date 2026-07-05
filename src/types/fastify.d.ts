@@ -11,5 +11,9 @@ declare module "fastify" {
       viewerId: string;
       scopes: ViewerApiScope[];
     };
+    restApiKey?: {
+      userId: string;
+      keyId: string;
+    };
   }
 }

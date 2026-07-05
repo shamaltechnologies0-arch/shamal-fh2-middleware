@@ -15,6 +15,8 @@
     "test:readonly": "tsx scripts/auto-test-readonly.ts",
     "test:viewer-routes": "tsx scripts/test-viewer-route-aliases.ts",
     "test:fh2-projects": "tsx scripts/test-fh2-project-management.ts",
+    "test:rest-api-keys": "tsx scripts/test-rest-api-keys.ts",
+    "test:rest-api-keys-phase4": "tsx scripts/test-rest-api-keys-phase4.ts",
     "test:readonly:monitor": "bash scripts/auto-test-monitor.sh 2 10",
     "test:readonly:report": "tsx scripts/generate-test-report.ts"
   },

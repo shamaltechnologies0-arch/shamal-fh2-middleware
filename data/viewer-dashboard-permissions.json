@@ -16,15 +16,15 @@
   "marafiq": {
     "fleetOverview": true,
     "droneTelemetry": true,
-    "dockTelemetry": true,
+    "dockTelemetry": false,
     "batteryStatus": true,
-    "gpsLocation": true,
+    "gpsLocation": false,
     "onlineOffline": false,
     "liveCamera": true,
-    "droneFpv": false,
+    "droneFpv": true,
     "alertsEvents": false,
-    "missionMediaHistory": false,
+    "missionMediaHistory": true,
     "refreshButton": true,
-    "getApiButtons": false
+    "getApiButtons": true
   }
 }

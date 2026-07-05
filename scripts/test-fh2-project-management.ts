@@ -13,10 +13,12 @@ async function main(): Promise<void> {
   process.env.FH2_PROJECT_UUID = "550e8400-e29b-41d4-a716-446655440000";
 
   const usersPath = join(process.cwd(), "data/viewer-users.json");
+  const keysPath = join(process.cwd(), "data/viewer-rest-api-keys.json");
   const projectsPath = join(process.cwd(), "data/fh2-projects.json");
   const envPath = join(process.cwd(), ".env");
 
   const usersBackup = existsSync(usersPath) ? readFileSync(usersPath, "utf8") : null;
+  const keysBackup = existsSync(keysPath) ? readFileSync(keysPath, "utf8") : null;
   const projectsBackup = existsSync(projectsPath) ? readFileSync(projectsPath, "utf8") : null;
   const envBackup = existsSync(envPath) ? readFileSync(envPath, "utf8") : null;
 
@@ -35,6 +37,7 @@ async function main(): Promise<void> {
   );
 
   if (existsSync(usersPath)) rmSync(usersPath);
+  if (existsSync(keysPath)) rmSync(keysPath);
   if (existsSync(projectsPath)) rmSync(projectsPath);
 
   const { buildServer } = await import("../src/app.js");
@@ -65,7 +68,7 @@ async function main(): Promise<void> {
     });
     if (createViewer.statusCode !== 201) {
       failed += 1;
-      console.error("FAIL create viewer");
+      console.error("FAIL create viewer", createViewer.statusCode, createViewer.body);
     }
 
     const sync1 = await app.inject({
@@ -219,6 +222,11 @@ async function main(): Promise<void> {
       if (existsSync(usersPath)) rmSync(usersPath);
     } else {
       writeFileSync(usersPath, usersBackup, "utf8");
+    }
+    if (keysBackup === null) {
+      if (existsSync(keysPath)) rmSync(keysPath);
+    } else {
+      writeFileSync(keysPath, keysBackup, "utf8");
     }
     if (projectsBackup === null) {
       if (existsSync(projectsPath)) rmSync(projectsPath);

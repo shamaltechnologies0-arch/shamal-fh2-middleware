@@ -236,7 +236,22 @@
     .footer-chip button { font-size:10px; padding:3px 8px; }
     #integrationWelcomeModal .modal { max-width:520px; width:94%; }
     #integrationWelcomeModal .integration-field { margin-bottom:10px; }
-    body.viewer-layout .dash-card#dashIntegrationCard { grid-column:1 / -1; }
+    body.viewer-layout .dash-card#dashIntegrationCard,
+    body.viewer-layout .dash-card#dashApiKeysCard { grid-column:1 / -1; }
+    .api-keys-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .api-keys-table { width:100%; font-size:12px; }
+    .api-keys-table th,.api-keys-table td { padding:8px 6px; vertical-align:middle; }
+    .api-keys-table .key-mono { font-family:ui-monospace,Menlo,monospace; font-size:11px; color:#cfe4ff; }
+    .api-keys-table .actions { display:flex; flex-wrap:wrap; gap:4px; }
+    .api-keys-table .actions button { font-size:10px; padding:4px 8px; }
+    .api-keys-empty { text-align:center; padding:20px 12px; color:var(--muted); }
+    .api-keys-empty button { margin-top:10px; }
+    .primary-star { color:#ffca75; font-weight:700; margin-right:4px; }
+    .api-key-plain { font-family:ui-monospace,Menlo,monospace; font-size:12px; word-break:break-all; background:#0a1322; border:1px solid #22354f; border-radius:8px; padding:10px 12px; margin:10px 0; }
+    .api-key-warning { background:rgba(245,159,0,.12); border:1px solid rgba(245,159,0,.35); color:#ffca75; border-radius:8px; padding:10px 12px; font-size:12px; margin-bottom:10px; }
+    .api-keys-error { color:#ff9a9a; font-size:12px; min-height:18px; margin-top:8px; }
+    #apiKeyModal .modal { max-width:520px; }
+    #apiKeyModal input { width:100%; box-sizing:border-box; }
     @media(min-width:1100px){
       .dash-grid { grid-template-columns:repeat(4,1fr); }
       .dash-card[data-card="fleet"] { grid-column:span 2; }
@@ -457,6 +472,17 @@
             </div>
             <div class="dash-card-body" id="dashIntegrationBody">
               <p class="small">Loading integration details…</p>
+            </div>
+          </div>
+          <div class="dash-card" id="dashApiKeysCard" data-card="api-keys" style="display:none">
+            <div class="dash-card-head">
+              <span class="dash-card-title">API Keys</span>
+              <button type="button" class="get-api-btn" id="restApiKeysNewBtn">+ New Key</button>
+            </div>
+            <div class="dash-card-body" id="dashApiKeysBody">
+              <p class="small" style="margin:0 0 10px">Manage REST API keys for <code>X-Api-Key</code> authentication.</p>
+              <div id="restApiKeysTableWrap"></div>
+              <p id="restApiKeysStatus" class="api-keys-error"></p>
             </div>
           </div>
         </div>
@@ -720,6 +746,17 @@
             </div>
             <p id="adminIntegrationStatusMsg" class="admin-status"></p>
           </div>
+
+          <div class="admin-section-title">REST API Keys</div>
+          <p class="statusline">Manage <code>X-Api-Key</code> credentials for the selected integration account.</p>
+          <div class="admin-settings-card" id="adminRestApiKeysPanel">
+            <div class="api-keys-toolbar">
+              <span class="small" id="adminRestApiKeysMeta"></span>
+              <button type="button" id="adminRestApiKeysNewBtn">+ New Key</button>
+            </div>
+            <div id="adminRestApiKeysTableWrap"></div>
+            <p id="adminRestApiKeysStatus" class="api-keys-error"></p>
+          </div>
         </div>
       </section>
     </div>
@@ -744,6 +781,32 @@
       <div id="integrationWelcomeBody"></div>
       <div class="row" style="margin-top:14px">
         <button type="button" id="integrationWelcomeClose">Got it — open dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="apiKeyModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
+      <h3 id="apiKeyModalTitle">API Key</h3>
+      <p id="apiKeyModalDesc" class="small"></p>
+      <div id="apiKeyModalWarning" class="api-key-warning" style="display:none">
+        Store this key securely. It is shown in full only once.
+      </div>
+      <div id="apiKeyModalLabelWrap">
+        <label for="apiKeyModalLabel">Name</label>
+        <input id="apiKeyModalLabel" type="text" maxlength="128" placeholder="e.g. CAFM Production" autocomplete="off" />
+      </div>
+      <div id="apiKeyModalPlainWrap" style="display:none">
+        <label>API key</label>
+        <div class="api-key-plain" id="apiKeyModalPlain"></div>
+        <div class="integration-actions">
+          <button type="button" id="apiKeyModalCopyBtn">Copy</button>
+        </div>
+      </div>
+      <p id="apiKeyModalError" class="api-keys-error"></p>
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button type="button" id="apiKeyModalCancel">Cancel</button>
+        <button type="button" id="apiKeyModalConfirm">Create Key</button>
       </div>
     </div>
   </div>
@@ -802,8 +865,11 @@
       adminViewers: [],
       adminProjects: [],
       viewerIntegration: null,
+      restApiKeys: [],
       adminIntegration: null,
       adminIntegrationPlainKey: null,
+      adminRestApiKeys: [],
+      apiKeyModal: { mode: null, keyId: null, plaintext: null },
     };
 
     const INTEGRATION_API_ROUTES = {
@@ -1069,7 +1135,8 @@
 
       body.innerHTML = `
         <p class="small" style="margin:0 0 12px">Use these credentials to connect your system to Shamal Platform APIs.</p>
-        ${info.platformApiKey ? integrationFieldHtml("REST API key (X-Api-Key)", info.platformApiKey, "intCopyPlatformKey") : ""}
+        ${primaryRestApiKeyMasked() ? integrationFieldHtml("REST API key (X-Api-Key)", primaryRestApiKeyMasked(), "") : ""}
+        <p class="small" style="margin:0 0 8px">Manage multiple REST API keys in the <strong>API Keys</strong> section below.</p>
         ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "intCopyBaseUrl")}
         ${integrationFieldHtml("Account ID", info.accountId, "intCopyAccountId")}
         <div class="integration-field">
@@ -1134,6 +1201,7 @@
       } catch {
         state.viewerIntegration = null;
       }
+      await loadRestApiKeys();
       renderViewerIntegrationCard();
       renderIntegrationFooter();
       applyViewerDashboardPermissions();
@@ -1147,8 +1215,9 @@
     function buildIntegrationCredentialsHtml(info, accessKeyPlain) {
       const keyDisplay = accessKeyPlain || info.tokenMasked || "••••••••";
       const keyCopyId = accessKeyPlain ? "welcomeCopyAccessKey" : "";
+      const restMasked = primaryRestApiKeyMasked();
       return `
-        ${info.platformApiKey ? integrationFieldHtml("REST API key (header: X-Api-Key)", info.platformApiKey, "welcomeCopyPlatformKey") : ""}
+        ${restMasked ? integrationFieldHtml("REST API key (header: X-Api-Key)", restMasked, "") : ""}
         ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "welcomeCopyBaseUrl")}
         ${integrationFieldHtml("Account ID", info.accountId, "welcomeCopyAccountId")}
         <div class="integration-field">
@@ -1220,9 +1289,10 @@
 
       const info = state.viewerIntegration;
       document.body.classList.add("viewer-integration-footer");
+      const restMasked = primaryRestApiKeyMasked();
       const chips = [
         ["Base URL", info.apiBaseUrl, "footBase"],
-        info.platformApiKey ? ["API key", info.platformApiKey, "footApiKey"] : null,
+        restMasked ? ["REST key", restMasked, "footApiKey"] : null,
         ["Webhook", info.webhookUrl, "footWebhook"],
         ["Account", info.accountId, "footAccount"],
       ].filter(Boolean);
@@ -1251,6 +1321,436 @@
         if (k) localStorage.removeItem(k);
         maybeShowIntegrationWelcome();
       };
+    }
+
+    function primaryRestApiKeyMasked() {
+      const keys = state.restApiKeys || [];
+      const primary = keys.find((k) => k.isPrimary) || keys.find((k) => k.status === "active");
+      return primary?.keyMasked || null;
+    }
+
+    function formatRestApiKeyDate(value) {
+      if (!value) return "—";
+      try {
+        return new Date(value).toLocaleString();
+      } catch {
+        return "—";
+      }
+    }
+
+    function restApiKeyStatusPill(status) {
+      if (status === "active") return '<span class="pill ok">ACTIVE</span>';
+      if (status === "disabled") return '<span class="pill warn">DISABLED</span>';
+      return `<span class="pill bad">${escapeHtml((status || "unknown").toUpperCase())}</span>`;
+    }
+
+    function parseApiErrorMessage(err) {
+      const raw = err?.message || String(err);
+      const match = raw.match(/^\d+\s+([\s\S]+)$/);
+      if (!match) return raw;
+      try {
+        const body = JSON.parse(match[1]);
+        if (body.error === "rate_limited") {
+          const retry = body.retryAfterSec ? ` Retry in ${body.retryAfterSec}s.` : "";
+          return (body.message || "Reveal limit reached.") + retry;
+        }
+        if (body.message) return body.message;
+        if (body.details?.fieldErrors?.label?.[0]) return body.details.fieldErrors.label[0];
+        if (body.error === "validation_error") return "Invalid request. Check the label and try again.";
+        if (body.error === "unauthorized") return "Session expired — sign in again.";
+        return body.error || raw;
+      } catch {
+        return raw;
+      }
+    }
+
+    function setRestApiKeysStatus(message, isError = true) {
+      const el = $("restApiKeysStatus");
+      if (!el) return;
+      el.textContent = message || "";
+      el.style.color = isError && message ? "#ff9a9a" : "";
+    }
+
+    function setAdminRestApiKeysStatus(message, isError = true) {
+      const el = $("adminRestApiKeysStatus");
+      if (!el) return;
+      el.textContent = message || "";
+      el.style.color = isError && message ? "#ff9a9a" : "";
+    }
+
+    function renderRestApiKeysTableRows(keys, options = {}) {
+      const { viewerActions = false, adminActions = false } = options;
+      if (!keys.length) {
+        return `<div class="api-keys-empty">
+          <p>Create your first API key</p>
+          ${viewerActions ? '<button type="button" id="restApiKeysEmptyCreate">+ New Key</button>' : ""}
+        </div>`;
+      }
+      const rows = keys
+        .map((key) => {
+          const primaryMark = key.isPrimary ? '<span class="primary-star" title="Primary key">★</span>' : "";
+          const actionButtons = [];
+          if (viewerActions || adminActions) {
+            actionButtons.push(
+              `<button type="button" data-api-key-rename="${escapeHtml(key.id)}">Rename</button>`,
+            );
+            if (key.status === "active") {
+              actionButtons.push(
+                `<button type="button" data-api-key-disable="${escapeHtml(key.id)}">Disable</button>`,
+              );
+            } else if (key.status === "disabled") {
+              actionButtons.push(
+                `<button type="button" data-api-key-enable="${escapeHtml(key.id)}">Enable</button>`,
+              );
+            }
+            if (viewerActions && key.status === "active" && !key.isPrimary) {
+              actionButtons.push(
+                `<button type="button" data-api-key-primary="${escapeHtml(key.id)}">Set primary</button>`,
+              );
+            }
+            if (viewerActions && key.status === "active") {
+              actionButtons.push(
+                `<button type="button" data-api-key-reveal="${escapeHtml(key.id)}">Reveal</button>`,
+              );
+            }
+            actionButtons.push(
+              `<button type="button" class="admin-delete-btn" data-api-key-delete="${escapeHtml(key.id)}">Delete</button>`,
+            );
+          }
+          return `<tr>
+            <td>${primaryMark}${escapeHtml(key.label)}</td>
+            <td class="key-mono">${escapeHtml(key.keyMasked)}</td>
+            <td>${restApiKeyStatusPill(key.status)}</td>
+            <td>${key.isPrimary ? "Yes" : "—"}</td>
+            <td>${escapeHtml(formatRestApiKeyDate(key.createdAt))}</td>
+            <td>${escapeHtml(formatRestApiKeyDate(key.lastUsedAt))}</td>
+            <td class="actions">${actionButtons.join("")}</td>
+          </tr>`;
+        })
+        .join("");
+      return `<table class="api-keys-table admin-viewer-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Key</th><th>Status</th><th>Primary</th><th>Created</th><th>Last used</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    async function loadRestApiKeys() {
+      if (!isViewer()) return;
+      try {
+        const res = await api("/v1/marafiq/rest-api-keys");
+        state.restApiKeys = res.data || [];
+        setRestApiKeysStatus("");
+      } catch (e) {
+        state.restApiKeys = [];
+        setRestApiKeysStatus(parseApiErrorMessage(e));
+      }
+      renderRestApiKeysTable();
+      renderIntegrationFooter();
+      if (state.viewerIntegration) renderViewerIntegrationCard();
+    }
+
+    async function loadAdminRestApiKeys(accountId) {
+      if (!accountId || !isAdmin()) return;
+      try {
+        const res = await api(
+          `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
+        );
+        state.adminRestApiKeys = res.data || [];
+        setAdminRestApiKeysStatus("");
+      } catch (e) {
+        state.adminRestApiKeys = [];
+        setAdminRestApiKeysStatus(parseApiErrorMessage(e));
+      }
+      renderAdminRestApiKeysTable();
+    }
+
+    function closeApiKeyModal() {
+      const modal = $("apiKeyModal");
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      state.apiKeyModal = { mode: null, keyId: null, plaintext: null };
+      $("apiKeyModalPlain").textContent = "";
+      $("apiKeyModalError").textContent = "";
+    }
+
+    function openApiKeyModal(config) {
+      const modal = $("apiKeyModal");
+      state.apiKeyModal = {
+        mode: config.mode,
+        keyId: config.keyId || null,
+        plaintext: config.plaintext || null,
+      };
+      $("apiKeyModalTitle").textContent = config.title || "API Key";
+      $("apiKeyModalDesc").textContent = config.description || "";
+      $("apiKeyModalWarning").style.display = config.showWarning ? "" : "none";
+      $("apiKeyModalLabelWrap").style.display = config.showLabel ? "" : "none";
+      $("apiKeyModalPlainWrap").style.display = config.showPlain ? "" : "none";
+      $("apiKeyModalConfirm").textContent = config.confirmLabel || "Save";
+      $("apiKeyModalConfirm").style.display = config.hideConfirm ? "none" : "";
+      $("apiKeyModalLabel").value = config.labelValue || "";
+      if (config.showPlain && config.plaintext) {
+        $("apiKeyModalPlain").textContent = config.plaintext;
+      }
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      if (config.showLabel) $("apiKeyModalLabel").focus();
+    }
+
+    function openRestApiKeyCreateModal() {
+      openApiKeyModal({
+        mode: "create",
+        title: "Create API Key",
+        description: "Choose a descriptive name to identify where this key is used.",
+        showLabel: true,
+        showPlain: false,
+        showWarning: false,
+        confirmLabel: "Create Key",
+      });
+    }
+
+    function openAdminRestApiKeyCreateModal() {
+      openApiKeyModal({
+        mode: "admin-create",
+        title: "Create API Key",
+        description: "Create a REST API key for the selected integration account.",
+        showLabel: true,
+        showPlain: false,
+        showWarning: false,
+        confirmLabel: "Create Key",
+      });
+    }
+
+    function openRestApiKeyRenameModal(keyId, currentLabel) {
+      openApiKeyModal({
+        mode: "rename",
+        keyId,
+        title: "Rename API Key",
+        description: "Update the label for this key.",
+        showLabel: true,
+        showPlain: false,
+        showWarning: false,
+        labelValue: currentLabel || "",
+        confirmLabel: "Save",
+      });
+    }
+
+    function openRestApiKeyRevealModal(plaintext) {
+      openApiKeyModal({
+        mode: "reveal",
+        title: "API Key",
+        description: "Copy this key now. It will not be shown again in the list.",
+        showLabel: false,
+        showPlain: true,
+        showWarning: true,
+        plaintext,
+        confirmLabel: "Done",
+      });
+    }
+
+    function openRestApiKeyCreatedModal(plaintext) {
+      openApiKeyModal({
+        mode: "created",
+        title: "API Key Created",
+        description: "",
+        showLabel: false,
+        showPlain: true,
+        showWarning: true,
+        plaintext,
+        confirmLabel: "Done",
+      });
+    }
+
+    async function submitApiKeyModal() {
+      const mode = state.apiKeyModal.mode;
+      const label = $("apiKeyModalLabel").value.trim();
+      $("apiKeyModalError").textContent = "";
+      if ((mode === "create" || mode === "admin-create" || mode === "rename") && !label) {
+        $("apiKeyModalError").textContent = "Name is required.";
+        return;
+      }
+      if (label.length > 128) {
+        $("apiKeyModalError").textContent = "Name must be 128 characters or fewer.";
+        return;
+      }
+      try {
+        if (mode === "create") {
+          const res = await api("/v1/marafiq/rest-api-keys", {
+            method: "POST",
+            body: JSON.stringify({ label }),
+          });
+          closeApiKeyModal();
+          await loadRestApiKeys();
+          openRestApiKeyCreatedModal(res.data.apiKey);
+          return;
+        }
+        if (mode === "admin-create") {
+          const accountId = $("adminViewerSelect").value;
+          const res = await api(
+            `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
+            { method: "POST", body: JSON.stringify({ label }) },
+          );
+          closeApiKeyModal();
+          await loadAdminRestApiKeys(accountId);
+          openRestApiKeyCreatedModal(res.data.apiKey);
+          return;
+        }
+        if (mode === "rename") {
+          const keyId = state.apiKeyModal.keyId;
+          const accountId = $("adminViewerSelect")?.value;
+          const isAdminRename = document.getElementById("apiKeyModal").dataset.adminRename === "1";
+          if (isAdminRename && accountId) {
+            await api(
+              `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`,
+              { method: "PATCH", body: JSON.stringify({ label }) },
+            );
+            closeApiKeyModal();
+            await loadAdminRestApiKeys(accountId);
+          } else {
+            await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`, {
+              method: "PATCH",
+              body: JSON.stringify({ label }),
+            });
+            closeApiKeyModal();
+            await loadRestApiKeys();
+          }
+          showApiToast("Key updated");
+          return;
+        }
+        if (mode === "created" || mode === "reveal") {
+          closeApiKeyModal();
+          return;
+        }
+      } catch (e) {
+        $("apiKeyModalError").textContent = parseApiErrorMessage(e);
+      }
+    }
+
+    async function patchRestApiKeyStatus(keyId, status, admin = false) {
+      const accountId = $("adminViewerSelect")?.value;
+      const path = admin
+        ? `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
+        : `/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`;
+      await api(path, { method: "PATCH", body: JSON.stringify({ status }) });
+      if (admin) await loadAdminRestApiKeys(accountId);
+      else await loadRestApiKeys();
+      showApiToast(status === "active" ? "Key enabled" : "Key disabled");
+    }
+
+    async function deleteRestApiKeyById(keyId, admin = false) {
+      if (!confirm("Integrations using this key will stop working.")) return;
+      const accountId = $("adminViewerSelect")?.value;
+      const path = admin
+        ? `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
+        : `/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`;
+      await api(path, { method: "DELETE" });
+      if (admin) await loadAdminRestApiKeys(accountId);
+      else await loadRestApiKeys();
+      showApiToast("Key deleted");
+    }
+
+    async function setRestApiKeyPrimary(keyId) {
+      await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}/set-primary`, {
+        method: "POST",
+        body: "{}",
+      });
+      await loadRestApiKeys();
+      showApiToast("Primary key updated");
+    }
+
+    async function revealRestApiKeyById(keyId) {
+      try {
+        const res = await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}/reveal`, {
+          method: "POST",
+          body: "{}",
+        });
+        openRestApiKeyRevealModal(res.data.apiKey);
+      } catch (e) {
+        setRestApiKeysStatus(parseApiErrorMessage(e));
+        showApiToast(parseApiErrorMessage(e));
+      }
+    }
+
+    function wireRestApiKeysTableActions(root, admin = false) {
+      if (!root) return;
+      root.querySelectorAll("[data-api-key-rename]").forEach((btn) => {
+        btn.onclick = () => {
+          const keyId = btn.dataset.apiKeyRename;
+          const keys = admin ? state.adminRestApiKeys : state.restApiKeys;
+          const row = keys.find((k) => k.id === keyId);
+          $("apiKeyModal").dataset.adminRename = admin ? "1" : "0";
+          openRestApiKeyRenameModal(keyId, row?.label || "");
+        };
+      });
+      root.querySelectorAll("[data-api-key-disable]").forEach((btn) => {
+        btn.onclick = () => {
+          patchRestApiKeyStatus(btn.dataset.apiKeyDisable, "disabled", admin).catch((e) => {
+            const msg = parseApiErrorMessage(e);
+            if (admin) setAdminRestApiKeysStatus(msg);
+            else setRestApiKeysStatus(msg);
+          });
+        };
+      });
+      root.querySelectorAll("[data-api-key-enable]").forEach((btn) => {
+        btn.onclick = () => {
+          patchRestApiKeyStatus(btn.dataset.apiKeyEnable, "active", admin).catch((e) => {
+            const msg = parseApiErrorMessage(e);
+            if (admin) setAdminRestApiKeysStatus(msg);
+            else setRestApiKeysStatus(msg);
+          });
+        };
+      });
+      root.querySelectorAll("[data-api-key-primary]").forEach((btn) => {
+        btn.onclick = () => {
+          setRestApiKeyPrimary(btn.dataset.apiKeyPrimary).catch((e) =>
+            setRestApiKeysStatus(parseApiErrorMessage(e)),
+          );
+        };
+      });
+      root.querySelectorAll("[data-api-key-reveal]").forEach((btn) => {
+        btn.onclick = () => revealRestApiKeyById(btn.dataset.apiKeyReveal);
+      });
+      root.querySelectorAll("[data-api-key-delete]").forEach((btn) => {
+        btn.onclick = () => {
+          deleteRestApiKeyById(btn.dataset.apiKeyDelete, admin).catch((e) => {
+            const msg = parseApiErrorMessage(e);
+            if (admin) setAdminRestApiKeysStatus(msg);
+            else setRestApiKeysStatus(msg);
+          });
+        };
+      });
+    }
+
+    function renderRestApiKeysTable() {
+      const card = $("dashApiKeysCard");
+      const wrap = $("restApiKeysTableWrap");
+      if (!card || !wrap) return;
+      if (!isViewer()) {
+        card.style.display = "none";
+        return;
+      }
+      card.style.display = "";
+      wrap.innerHTML = renderRestApiKeysTableRows(state.restApiKeys || [], { viewerActions: true });
+      wireRestApiKeysTableActions(wrap, false);
+      const emptyBtn = $("restApiKeysEmptyCreate");
+      if (emptyBtn) emptyBtn.onclick = () => openRestApiKeyCreateModal();
+    }
+
+    function renderAdminRestApiKeysTable() {
+      const wrap = $("adminRestApiKeysTableWrap");
+      const meta = $("adminRestApiKeysMeta");
+      if (!wrap) return;
+      const keys = state.adminRestApiKeys || [];
+      wrap.innerHTML = renderRestApiKeysTableRows(keys, { adminActions: true });
+      wireRestApiKeysTableActions(wrap, true);
+      if (meta) {
+        meta.textContent = keys.length
+          ? `${keys.length} key${keys.length === 1 ? "" : "s"} configured`
+          : "No REST API keys yet";
+      }
     }
 
     function buildAdminPermissionToggles() {
@@ -1357,6 +1857,7 @@
       fillAdminPermissionForm(res.data.permissions);
       setAdminSettingsStatus("");
       await loadAdminIntegrationSettings(accountId);
+      await loadAdminRestApiKeys(accountId);
     }
 
     function setAdminIntegrationStatusMsg(message, type = "") {
@@ -1628,10 +2129,14 @@
       return state.devices.find((d) => d.role === "gateway" || d.role === "dock");
     }
 
-    function showApiToast() {
+    function showApiToast(message) {
       const toast = $("apiToast");
+      toast.textContent = message || "API value copied";
       toast.classList.add("show");
-      setTimeout(() => toast.classList.remove("show"), 2200);
+      setTimeout(() => {
+        toast.classList.remove("show");
+        toast.textContent = "API value copied";
+      }, 2200);
     }
 
     function formatApiCopy(endpoint, sample, extraEndpoints) {
@@ -1796,6 +2301,9 @@
         main.style.pointerEvents = "none";
         document.body.classList.remove("viewer-layout");
         $("appMain").classList.remove("viewer-no-nav");
+        state.restApiKeys = [];
+        state.adminRestApiKeys = [];
+        renderRestApiKeysTable();
         renderIntegrationFooter();
         return;
       }
@@ -1980,7 +2488,8 @@
         projectCode &&
         path.startsWith("/v1/marafiq/") &&
         !path.startsWith("/v1/marafiq/auth/") &&
-        !path.startsWith("/v1/marafiq/admin/")
+        !path.startsWith("/v1/marafiq/admin/") &&
+        !path.startsWith("/v1/marafiq/rest-api-keys")
       ) {
         const sep = path.includes("?") ? "&" : "?";
         requestPath = `${path}${sep}projectCode=${encodeURIComponent(projectCode)}`;
@@ -3280,6 +3789,20 @@
     $("adminIntegrationCopyKey").onclick = () => {
       if (state.adminIntegrationPlainKey) copyText(state.adminIntegrationPlainKey);
     };
+    $("restApiKeysNewBtn").onclick = () => openRestApiKeyCreateModal();
+    $("adminRestApiKeysNewBtn").onclick = () => openAdminRestApiKeyCreateModal();
+    $("apiKeyModalCancel").onclick = () => closeApiKeyModal();
+    $("apiKeyModalConfirm").onclick = () => submitApiKeyModal();
+    $("apiKeyModalCopyBtn").onclick = () => {
+      const text = $("apiKeyModalPlain").textContent;
+      if (text) copyText(text);
+    };
+    $("apiKeyModal").onclick = (e) => {
+      if (e.target === $("apiKeyModal")) closeApiKeyModal();
+    };
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && $("apiKeyModal").classList.contains("open")) closeApiKeyModal();
+    });
 
     loadSession();
     const savedShare = localStorage.getItem("shamalFh2ShareUrl");

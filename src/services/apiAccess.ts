@@ -7,6 +7,7 @@ const VIEWER_GET_PREFIXES = [
   "/v1/marafiq/auth/me",
   "/v1/marafiq/integration/profile",
   "/v1/marafiq/integration/access-key",
+  "/v1/marafiq/rest-api-keys",
   // @deprecated backward-compat aliases
   "/v1/marafiq/viewer/integration",
   "/v1/marafiq/viewer/integration/token",
@@ -18,6 +19,14 @@ const VIEWER_GET_PREFIXES = [
   "/v1/marafiq/events",
   "/v1/marafiq/mapping/",
 ];
+
+function isViewerRestApiKeyPath(path: string): boolean {
+  const legacyPath = legacyMarafiqPath(path);
+  return (
+    legacyPath === "/v1/marafiq/rest-api-keys" ||
+    legacyPath.startsWith("/v1/marafiq/rest-api-keys/")
+  );
+}
 
 export function isViewerReadOnlyAllowed(method: string, path: string): boolean {
   if (method !== "GET") return false;
@@ -48,6 +57,9 @@ export function assertRoleAccess(
   }
 
   if (role === "viewer") {
+    if (isViewerRestApiKeyPath(path)) {
+      return { allowed: true };
+    }
     if (method === "PATCH" || method === "PUT" || method === "DELETE") {
       return {
         allowed: false,

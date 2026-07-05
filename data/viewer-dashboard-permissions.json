@@ -26,5 +26,19 @@
     "missionMediaHistory": true,
     "refreshButton": true,
     "getApiButtons": true
+  },
+  "clientuser": {
+    "fleetOverview": true,
+    "droneTelemetry": true,
+    "dockTelemetry": true,
+    "batteryStatus": true,
+    "gpsLocation": true,
+    "onlineOffline": true,
+    "liveCamera": true,
+    "droneFpv": false,
+    "alertsEvents": true,
+    "missionMediaHistory": true,
+    "refreshButton": true,
+    "getApiButtons": false
   }
 }

@@ -8,6 +8,7 @@ const VIEWER_GET_PREFIXES = [
   "/v1/marafiq/integration/profile",
   "/v1/marafiq/integration/access-key",
   "/v1/marafiq/rest-api-keys",
+  "/v1/marafiq/service-accounts",
   // @deprecated backward-compat aliases
   "/v1/marafiq/viewer/integration",
   "/v1/marafiq/viewer/integration/token",
@@ -25,6 +26,14 @@ function isViewerRestApiKeyPath(path: string): boolean {
   return (
     legacyPath === "/v1/marafiq/rest-api-keys" ||
     legacyPath.startsWith("/v1/marafiq/rest-api-keys/")
+  );
+}
+
+function isViewerServiceAccountPath(path: string): boolean {
+  const legacyPath = legacyMarafiqPath(path);
+  return (
+    legacyPath === "/v1/marafiq/service-accounts" ||
+    legacyPath.startsWith("/v1/marafiq/service-accounts/")
   );
 }
 
@@ -57,7 +66,7 @@ export function assertRoleAccess(
   }
 
   if (role === "viewer") {
-    if (isViewerRestApiKeyPath(path)) {
+    if (isViewerRestApiKeyPath(path) || isViewerServiceAccountPath(path)) {
       return { allowed: true };
     }
     if (method === "PATCH" || method === "PUT" || method === "DELETE") {

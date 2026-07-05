@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { getCcUsers, login } from "../services/commandCenterAuth.js";
+import { issueClientCredentialsToken } from "../services/serviceAccounts.js";
 import { getViewerDashboardPermissions } from "../services/viewerDashboardPermissions.js";
 import {
   listViewerProjectOptions,
@@ -13,13 +14,83 @@ const loginSchema = z.object({
   password: z.string().min(4),
 });
 
+function parseTokenBody(body: unknown): Record<string, string> {
+  if (typeof body === "string") {
+    return Object.fromEntries(new URLSearchParams(body));
+  }
+  if (body && typeof body === "object") {
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+      if (typeof value === "string") out[key] = value;
+    }
+    return out;
+  }
+  return {};
+}
+
 export const authRoutes: FastifyPluginAsync = async (app) => {
+  app.addContentTypeParser(
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
+    (_request, body, done) => {
+      try {
+        done(null, Object.fromEntries(new URLSearchParams(body as string)));
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    },
+  );
+
+  registerViewerPost(
+    app,
+    "/v1/marafiq/auth/token",
+    {
+      schema: {
+        summary: "OAuth 2.0 Client Credentials — service account M2M authentication",
+        tags: ["Auth"],
+        security: [],
+      },
+    },
+    async (request, reply) => {
+      const form = parseTokenBody(request.body);
+      if (form.grant_type?.trim() !== "client_credentials") {
+        return reply.status(400).send({
+          error: "unsupported_grant_type",
+          error_description: "Only grant_type=client_credentials is supported",
+        });
+      }
+
+      const clientId = form.client_id?.trim();
+      const clientSecret = form.client_secret?.trim();
+      if (!clientId || !clientSecret) {
+        return reply.status(400).send({
+          error: "invalid_request",
+          error_description: "client_id and client_secret are required",
+        });
+      }
+
+      const tokens = issueClientCredentialsToken(clientId, clientSecret);
+      if (!tokens) {
+        return reply.status(401).send({
+          error: "invalid_client",
+          error_description: "Invalid, expired, or revoked service account credentials",
+        });
+      }
+
+      return reply.send({
+        access_token: tokens.accessToken,
+        token_type: tokens.tokenType,
+        expires_in: tokens.expiresIn,
+      });
+    },
+  );
+
   registerViewerPost(
     app,
     "/v1/marafiq/auth/login",
     {
       schema: {
-        summary: "Shamal Platform login",
+        summary: "Shamal Platform login (human users)",
         tags: ["Auth"],
         security: [],
       },

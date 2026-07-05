@@ -24,6 +24,10 @@ import {
   verifyViewerIntegrationToken,
 } from "../services/viewerIntegration.js";
 import {
+  isServiceAccountAccessToken,
+  verifyAccessToken,
+} from "../services/serviceAccounts.js";
+import {
   ensureRestApiKeysMigrated,
   importLegacyViewerApiKey,
   touchRestApiKeyLastUsed,
@@ -105,6 +109,93 @@ function isProjectDataPath(path: string): boolean {
   );
 }
 
+function applyViewerProjectScope(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  path: string,
+  role: CcRole,
+  username: string,
+): void {
+  let selectedProjectCode = requestProjectCode(request);
+  let allowedProjectCodes: string[] = [];
+  if (role === "viewer") {
+    allowedProjectCodes = listViewerAssignedProjectCodes(username);
+    const fallback = resolveFallbackProjectCode();
+    if (allowedProjectCodes.length === 0 && !hasConfiguredFh2Projects() && fallback) {
+      allowedProjectCodes = [fallback];
+    }
+    if (selectedProjectCode && !allowedProjectCodes.includes(selectedProjectCode)) {
+      reply.status(403).send({
+        error: "forbidden",
+        message: "Selected FH2 project is not assigned to this viewer account.",
+      });
+      return;
+    }
+    selectedProjectCode = selectedProjectCode || allowedProjectCodes[0];
+    request.allowedProjectCodes = allowedProjectCodes;
+    request.selectedProjectCode = selectedProjectCode;
+    if (isProjectDataPath(path) && allowedProjectCodes.length === 0) {
+      reply.status(403).send({
+        error: "forbidden",
+        message: "No project assigned. Please contact your admin.",
+      });
+      return;
+    }
+  } else {
+    selectedProjectCode = selectedProjectCode || resolveFallbackProjectCode();
+    request.selectedProjectCode = selectedProjectCode;
+  }
+
+  setFh2RequestContext({
+    role,
+    username,
+    allowedProjectCodes,
+    projectCode: selectedProjectCode,
+  });
+
+  const access = assertRoleAccess(role, request.method, path);
+  if (!access.allowed) {
+    reply.status(403).send({
+      error: "forbidden",
+      message: access.message,
+      requiredRole: access.requiredRole,
+    });
+    return;
+  }
+
+  if (requiresOperatorRole(path, request.method)) {
+    if (!hasMinRole(role, "operator")) {
+      reply.status(403).send({
+        error: "forbidden",
+        message: `Role "${role}" cannot perform this action. Operator or admin required.`,
+        requiredRole: "operator",
+      });
+      return;
+    }
+  }
+
+  if (legacyMarafiqPath(path).startsWith("/v1/marafiq/admin/")) {
+    if (!hasMinRole(role, "admin")) {
+      reply.status(403).send({
+        error: "forbidden",
+        message: "Admin role required for this endpoint.",
+        requiredRole: "admin",
+      });
+      return;
+    }
+  }
+
+  if (config.marafiqIpAllowlist.length > 0) {
+    const ip = clientIp(request);
+    if (!config.marafiqIpAllowlist.includes(ip)) {
+      reply.status(403).send({
+        error: "forbidden",
+        message: "IP address not allowlisted",
+      });
+    }
+  }
+}
+
 /** Register on the root Fastify instance (not as an encapsulated plugin). */
 export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
   app.addHook("onRequest", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -129,7 +220,12 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    if (path === "/v1/marafiq/auth/login" || path === "/v1/viewer/auth/login") {
+    if (
+      path === "/v1/marafiq/auth/login" ||
+      path === "/v1/viewer/auth/login" ||
+      path === "/v1/marafiq/auth/token" ||
+      path === "/v1/viewer/auth/token"
+    ) {
       return;
     }
 
@@ -138,6 +234,25 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
       typeof authHeader === "string" && authHeader.startsWith("Bearer ")
         ? authHeader.slice(7)
         : undefined;
+
+    if (bearerToken && isServiceAccountAccessToken(bearerToken)) {
+      const verified = verifyAccessToken(bearerToken);
+      if (!verified) {
+        return reply.status(401).send({
+          error: "unauthorized",
+          message: "Invalid or expired service account access token",
+        });
+      }
+      request.serviceAccount = {
+        accountId: verified.accountId,
+        ownerUserId: verified.ownerUserId,
+        clientId: verified.clientId,
+        scopes: verified.scopes,
+      };
+      request.ccRole = "viewer";
+      request.ccUsername = verified.ownerUserId;
+      return applyViewerProjectScope(request, reply, path, "viewer", verified.ownerUserId);
+    }
 
     const isIntegrationSessionRoute =
       path === "/v1/marafiq/integration/profile" ||
@@ -224,80 +339,7 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
 
     request.ccRole = role;
     request.ccUsername = username;
-
-    let selectedProjectCode = requestProjectCode(request);
-    let allowedProjectCodes: string[] = [];
-    if (role === "viewer" && username) {
-      allowedProjectCodes = listViewerAssignedProjectCodes(username);
-      const fallback = resolveFallbackProjectCode();
-      if (allowedProjectCodes.length === 0 && !hasConfiguredFh2Projects() && fallback) {
-        allowedProjectCodes = [fallback];
-      }
-      if (selectedProjectCode && !allowedProjectCodes.includes(selectedProjectCode)) {
-        return reply.status(403).send({
-          error: "forbidden",
-          message: "Selected FH2 project is not assigned to this viewer account.",
-        });
-      }
-      selectedProjectCode = selectedProjectCode || allowedProjectCodes[0];
-      request.allowedProjectCodes = allowedProjectCodes;
-      request.selectedProjectCode = selectedProjectCode;
-      if (isProjectDataPath(path) && allowedProjectCodes.length === 0) {
-        return reply.status(403).send({
-          error: "forbidden",
-          message: "No project assigned. Please contact your admin.",
-        });
-      }
-    } else {
-      selectedProjectCode = selectedProjectCode || resolveFallbackProjectCode();
-      request.selectedProjectCode = selectedProjectCode;
-    }
-
-    setFh2RequestContext({
-      role,
-      username,
-      allowedProjectCodes,
-      projectCode: selectedProjectCode,
-    });
-
-    const access = assertRoleAccess(role, request.method, path);
-    if (!access.allowed) {
-      return reply.status(403).send({
-        error: "forbidden",
-        message: access.message,
-        requiredRole: access.requiredRole,
-      });
-    }
-
-    if (requiresOperatorRole(path, request.method)) {
-      if (!hasMinRole(role, "operator")) {
-        return reply.status(403).send({
-          error: "forbidden",
-          message: `Role "${role}" cannot perform this action. Operator or admin required.`,
-          requiredRole: "operator",
-        });
-      }
-    }
-
-    if (legacyMarafiqPath(path).startsWith("/v1/marafiq/admin/")) {
-      if (!hasMinRole(role, "admin")) {
-        return reply.status(403).send({
-          error: "forbidden",
-          message: "Admin role required for this endpoint.",
-          requiredRole: "admin",
-        });
-      }
-    }
-
-    if (config.marafiqIpAllowlist.length > 0) {
-      const ip = clientIp(request);
-      if (!config.marafiqIpAllowlist.includes(ip)) {
-        return reply.status(403).send({
-          error: "forbidden",
-          message: "IP address not allowlisted",
-        });
-      }
-    }
+    applyViewerProjectScope(request, reply, path, role, username ?? "");
   });
 }
 

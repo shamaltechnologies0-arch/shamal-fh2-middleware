@@ -178,7 +178,7 @@ async function main(): Promise<void> {
       method: "POST",
       url: "/v1/marafiq/rest-api-keys",
       headers: legacyViewerHeaders,
-      payload: { label: "Secondary" },
+      payload: { label: "Secondary", expiration: "1mo" },
     });
     const secondKey = createSecond.json().data.apiKey as string;
     const disableSecond = await app2.inject({

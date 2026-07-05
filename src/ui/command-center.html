@@ -474,6 +474,17 @@
               <p class="small">Loading integration details…</p>
             </div>
           </div>
+          <div class="dash-card" id="dashServiceAccountsCard" data-card="service-accounts" style="display:none">
+            <div class="dash-card-head">
+              <span class="dash-card-title">Service Accounts</span>
+              <button type="button" class="get-api-btn" id="serviceAccountsNewBtn">+ New Service Account</button>
+            </div>
+            <div class="dash-card-body" id="dashServiceAccountsBody">
+              <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). Exchange <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/marafiq/auth/token</code> for a short-lived JWT.</p>
+              <div id="serviceAccountsTableWrap"></div>
+              <p id="serviceAccountsStatus" class="api-keys-error"></p>
+            </div>
+          </div>
           <div class="dash-card" id="dashApiKeysCard" data-card="api-keys" style="display:none">
             <div class="dash-card-head">
               <span class="dash-card-title">API Keys</span>
@@ -734,6 +745,22 @@
               <div class="lbl">Last generated</div>
               <div class="val" id="adminIntegrationGenerated">—</div>
             </div>
+            <div class="integration-field">
+              <div class="lbl">Expires</div>
+              <div class="val" id="adminIntegrationExpires">—</div>
+            </div>
+            <div class="integration-field">
+              <label for="adminIntegrationExpiration">Key expiration (required when generating)</label>
+              <select id="adminIntegrationExpiration" required>
+                <option value="">Select expiration…</option>
+                <option value="1h">1 hour</option>
+                <option value="1d">1 day</option>
+                <option value="1mo">1 month</option>
+                <option value="3mo">3 months</option>
+                <option value="6mo">6 months</option>
+                <option value="1y">1 year</option>
+              </select>
+            </div>
             <div class="integration-field" id="adminIntegrationKeyWrap" style="display:none">
               <div class="lbl">Access key (shown once — copy now)</div>
               <div class="val" id="adminIntegrationKeyReveal"></div>
@@ -796,6 +823,18 @@
         <label for="apiKeyModalLabel">Name</label>
         <input id="apiKeyModalLabel" type="text" maxlength="128" placeholder="e.g. CAFM Production" autocomplete="off" />
       </div>
+      <div id="apiKeyModalExpirationWrap">
+        <label for="apiKeyModalExpiration">Expiration</label>
+        <select id="apiKeyModalExpiration" required>
+          <option value="">Select expiration…</option>
+          <option value="1h">1 hour</option>
+          <option value="1d">1 day</option>
+          <option value="1mo">1 month</option>
+          <option value="3mo">3 months</option>
+          <option value="6mo">6 months</option>
+          <option value="1y">1 year</option>
+        </select>
+      </div>
       <div id="apiKeyModalPlainWrap" style="display:none">
         <label>API key</label>
         <div class="api-key-plain" id="apiKeyModalPlain"></div>
@@ -807,6 +846,48 @@
       <div class="row" style="margin-top:14px;justify-content:flex-end">
         <button type="button" id="apiKeyModalCancel">Cancel</button>
         <button type="button" id="apiKeyModalConfirm">Create Key</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="serviceAccountModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="serviceAccountModalTitle">
+      <h3 id="serviceAccountModalTitle">Service Account</h3>
+      <p id="serviceAccountModalDesc" class="small"></p>
+      <div id="serviceAccountModalWarning" class="api-key-warning" style="display:none">
+        Store the client secret securely. It is shown in full only once.
+      </div>
+      <div id="serviceAccountModalFormWrap">
+        <label for="serviceAccountModalName">Name</label>
+        <input id="serviceAccountModalName" type="text" maxlength="128" placeholder="e.g. Production ERP" autocomplete="off" />
+        <label for="serviceAccountModalDescription">Description (optional)</label>
+        <input id="serviceAccountModalDescription" type="text" maxlength="512" placeholder="What application uses this account?" autocomplete="off" />
+        <label>Scopes (least privilege)</label>
+        <div id="serviceAccountModalScopes" class="integration-scopes"></div>
+        <label for="serviceAccountModalExpiration">Expiration</label>
+        <select id="serviceAccountModalExpiration" required>
+          <option value="">Select expiration…</option>
+          <option value="1h">1 hour</option>
+          <option value="1d">1 day</option>
+          <option value="1mo">1 month</option>
+          <option value="3mo">3 months</option>
+          <option value="6mo">6 months</option>
+          <option value="1y">1 year</option>
+        </select>
+      </div>
+      <div id="serviceAccountModalPlainWrap" style="display:none">
+        <label>Client ID</label>
+        <div class="api-key-plain" id="serviceAccountModalClientId"></div>
+        <label>Client secret</label>
+        <div class="api-key-plain" id="serviceAccountModalClientSecret"></div>
+        <div class="integration-actions">
+          <button type="button" id="serviceAccountModalCopyBtn">Copy secret</button>
+        </div>
+      </div>
+      <p id="serviceAccountModalError" class="api-keys-error"></p>
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button type="button" id="serviceAccountModalCancel">Cancel</button>
+        <button type="button" id="serviceAccountModalConfirm">Create</button>
       </div>
     </div>
   </div>
@@ -866,6 +947,8 @@
       adminProjects: [],
       viewerIntegration: null,
       restApiKeys: [],
+      serviceAccounts: [],
+      serviceAccountAvailableScopes: [],
       adminIntegration: null,
       adminIntegrationPlainKey: null,
       adminRestApiKeys: [],
@@ -1202,6 +1285,7 @@
         state.viewerIntegration = null;
       }
       await loadRestApiKeys();
+      await loadServiceAccounts();
       renderViewerIntegrationCard();
       renderIntegrationFooter();
       applyViewerDashboardPermissions();
@@ -1341,6 +1425,7 @@
     function restApiKeyStatusPill(status) {
       if (status === "active") return '<span class="pill ok">ACTIVE</span>';
       if (status === "disabled") return '<span class="pill warn">DISABLED</span>';
+      if (status === "expired") return '<span class="pill bad">EXPIRED</span>';
       return `<span class="pill bad">${escapeHtml((status || "unknown").toUpperCase())}</span>`;
     }
 
@@ -1423,6 +1508,7 @@
             <td>${restApiKeyStatusPill(key.status)}</td>
             <td>${key.isPrimary ? "Yes" : "—"}</td>
             <td>${escapeHtml(formatRestApiKeyDate(key.createdAt))}</td>
+            <td>${escapeHtml(formatRestApiKeyDate(key.expiresAt))}</td>
             <td>${escapeHtml(formatRestApiKeyDate(key.lastUsedAt))}</td>
             <td class="actions">${actionButtons.join("")}</td>
           </tr>`;
@@ -1431,7 +1517,7 @@
       return `<table class="api-keys-table admin-viewer-table">
         <thead>
           <tr>
-            <th>Name</th><th>Key</th><th>Status</th><th>Primary</th><th>Created</th><th>Last used</th><th>Actions</th>
+            <th>Name</th><th>Key</th><th>Status</th><th>Primary</th><th>Created</th><th>Expires</th><th>Last used</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1488,10 +1574,12 @@
       $("apiKeyModalDesc").textContent = config.description || "";
       $("apiKeyModalWarning").style.display = config.showWarning ? "" : "none";
       $("apiKeyModalLabelWrap").style.display = config.showLabel ? "" : "none";
+      $("apiKeyModalExpirationWrap").style.display = config.showExpiration ? "" : "none";
       $("apiKeyModalPlainWrap").style.display = config.showPlain ? "" : "none";
       $("apiKeyModalConfirm").textContent = config.confirmLabel || "Save";
       $("apiKeyModalConfirm").style.display = config.hideConfirm ? "none" : "";
       $("apiKeyModalLabel").value = config.labelValue || "";
+      $("apiKeyModalExpiration").value = config.expirationValue || "";
       if (config.showPlain && config.plaintext) {
         $("apiKeyModalPlain").textContent = config.plaintext;
       }
@@ -1504,8 +1592,9 @@
       openApiKeyModal({
         mode: "create",
         title: "Create API Key",
-        description: "Choose a descriptive name to identify where this key is used.",
+        description: "Choose a descriptive name and expiration for this key.",
         showLabel: true,
+        showExpiration: true,
         showPlain: false,
         showWarning: false,
         confirmLabel: "Create Key",
@@ -1518,6 +1607,7 @@
         title: "Create API Key",
         description: "Create a REST API key for the selected integration account.",
         showLabel: true,
+        showExpiration: true,
         showPlain: false,
         showWarning: false,
         confirmLabel: "Create Key",
@@ -1567,9 +1657,14 @@
     async function submitApiKeyModal() {
       const mode = state.apiKeyModal.mode;
       const label = $("apiKeyModalLabel").value.trim();
+      const expiration = $("apiKeyModalExpiration").value;
       $("apiKeyModalError").textContent = "";
       if ((mode === "create" || mode === "admin-create" || mode === "rename") && !label) {
         $("apiKeyModalError").textContent = "Name is required.";
+        return;
+      }
+      if ((mode === "create" || mode === "admin-create") && !expiration) {
+        $("apiKeyModalError").textContent = "Expiration is required.";
         return;
       }
       if (label.length > 128) {
@@ -1580,7 +1675,7 @@
         if (mode === "create") {
           const res = await api("/v1/marafiq/rest-api-keys", {
             method: "POST",
-            body: JSON.stringify({ label }),
+            body: JSON.stringify({ label, expiration }),
           });
           closeApiKeyModal();
           await loadRestApiKeys();
@@ -1591,7 +1686,7 @@
           const accountId = $("adminViewerSelect").value;
           const res = await api(
             `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
-            { method: "POST", body: JSON.stringify({ label }) },
+            { method: "POST", body: JSON.stringify({ label, expiration }) },
           );
           closeApiKeyModal();
           await loadAdminRestApiKeys(accountId);
@@ -1722,6 +1817,186 @@
           });
         };
       });
+    }
+
+    function renderServiceAccountsTable() {
+      const card = $("dashServiceAccountsCard");
+      const wrap = $("serviceAccountsTableWrap");
+      if (!card || !wrap) return;
+      if (!isViewer()) {
+        card.style.display = "none";
+        return;
+      }
+      card.style.display = "";
+      const accounts = state.serviceAccounts || [];
+      if (!accounts.length) {
+        wrap.innerHTML = `<div class="api-keys-empty"><p>No service accounts yet</p><button type="button" id="serviceAccountsEmptyCreate">+ New Service Account</button></div>`;
+        const emptyBtn = $("serviceAccountsEmptyCreate");
+        if (emptyBtn) emptyBtn.onclick = () => openServiceAccountCreateModal();
+        return;
+      }
+      const rows = accounts.map((acct) => {
+        const actions = [
+          `<button type="button" data-sa-rotate="${escapeHtml(acct.id)}">Rotate secret</button>`,
+          acct.status === "active"
+            ? `<button type="button" data-sa-disable="${escapeHtml(acct.id)}">Disable</button>`
+            : acct.status === "disabled"
+              ? `<button type="button" data-sa-enable="${escapeHtml(acct.id)}">Enable</button>`
+              : "",
+          `<button type="button" class="admin-delete-btn" data-sa-delete="${escapeHtml(acct.id)}">Delete</button>`,
+        ].filter(Boolean).join("");
+        return `<tr>
+          <td>${escapeHtml(acct.name)}</td>
+          <td class="key-mono">${escapeHtml(acct.client_id || acct.clientId || "—")}</td>
+            <td class="key-mono">${escapeHtml((acct.scopes || []).join(", "))}</td>
+            <td>${restApiKeyStatusPill(acct.status)}</td>
+          <td>${escapeHtml(formatRestApiKeyDate(acct.expiresAt))}</td>
+          <td class="actions">${actions}</td>
+        </tr>`;
+      }).join("");
+      wrap.innerHTML = `<table class="api-keys-table"><thead><tr><th>Name</th><th>Client ID</th><th>Scopes</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+      wrap.querySelectorAll("[data-sa-disable]").forEach((btn) => {
+        btn.onclick = () => patchServiceAccountStatus(btn.dataset.saDisable, "revoke");
+      });
+      wrap.querySelectorAll("[data-sa-enable]").forEach((btn) => {
+        btn.onclick = () => patchServiceAccountStatus(btn.dataset.saEnable, "reactivate");
+      });
+      wrap.querySelectorAll("[data-sa-delete]").forEach((btn) => {
+        btn.onclick = () => deleteServiceAccountById(btn.dataset.saDelete);
+      });
+      wrap.querySelectorAll("[data-sa-rotate]").forEach((btn) => {
+        btn.onclick = () => rotateServiceAccountById(btn.dataset.saRotate);
+      });
+    }
+
+    async function loadServiceAccounts() {
+      if (!isViewer()) return;
+      try {
+        const res = await api("/v1/marafiq/service-accounts");
+        state.serviceAccounts = res.data || [];
+        state.serviceAccountAvailableScopes = res.meta?.availableScopes || [];
+        $("serviceAccountsStatus").textContent = "";
+      } catch (e) {
+        state.serviceAccounts = [];
+        $("serviceAccountsStatus").textContent = parseApiErrorMessage(e);
+      }
+      renderServiceAccountsTable();
+    }
+
+    function closeServiceAccountModal() {
+      $("serviceAccountModal").classList.remove("open");
+      $("serviceAccountModal").setAttribute("aria-hidden", "true");
+      $("serviceAccountModalError").textContent = "";
+    }
+
+    function renderServiceAccountScopeOptions() {
+      const wrap = $("serviceAccountModalScopes");
+      if (!wrap) return;
+      const scopes = state.serviceAccountAvailableScopes || [];
+      if (!scopes.length) {
+        wrap.innerHTML = '<span class="small">No API scopes available for your account.</span>';
+        return;
+      }
+      wrap.innerHTML = scopes
+        .map(
+          (scope) =>
+            `<label class="perm-toggle-row"><span>${escapeHtml(scope)}</span><span class="perm-switch"><input type="checkbox" data-sa-scope="${escapeHtml(scope)}" /><span class="slider"></span></span></label>`,
+        )
+        .join("");
+    }
+
+    function readSelectedServiceAccountScopes() {
+      return [...document.querySelectorAll("#serviceAccountModalScopes [data-sa-scope]")]
+        .filter((el) => el.checked)
+        .map((el) => el.dataset.saScope);
+    }
+
+    function openServiceAccountCreateModal() {
+      $("serviceAccountModalTitle").textContent = "Create Service Account";
+      $("serviceAccountModalDesc").textContent =
+        "Service accounts authenticate machines, not humans. Your application exchanges client credentials at POST /v1/marafiq/auth/token.";
+      $("serviceAccountModalWarning").style.display = "none";
+      $("serviceAccountModalFormWrap").style.display = "";
+      $("serviceAccountModalPlainWrap").style.display = "none";
+      $("serviceAccountModalConfirm").style.display = "";
+      $("serviceAccountModalConfirm").textContent = "Create";
+      $("serviceAccountModalName").value = "";
+      $("serviceAccountModalDescription").value = "";
+      $("serviceAccountModalExpiration").value = "";
+      renderServiceAccountScopeOptions();
+      $("serviceAccountModal").classList.add("open");
+      $("serviceAccountModal").setAttribute("aria-hidden", "false");
+    }
+
+    function openServiceAccountCreatedModal(data) {
+      $("serviceAccountModalTitle").textContent = "Service Account Created";
+      $("serviceAccountModalDesc").textContent = "";
+      $("serviceAccountModalWarning").style.display = "";
+      $("serviceAccountModalFormWrap").style.display = "none";
+      $("serviceAccountModalPlainWrap").style.display = "";
+      $("serviceAccountModalClientId").textContent = data.client_id || data.clientId;
+      $("serviceAccountModalClientSecret").textContent = data.client_secret || data.clientSecret;
+      $("serviceAccountModalConfirm").textContent = "Done";
+      $("serviceAccountModal").classList.add("open");
+      $("serviceAccountModal").setAttribute("aria-hidden", "false");
+    }
+
+    async function submitServiceAccountModal() {
+      $("serviceAccountModalError").textContent = "";
+      if ($("serviceAccountModalPlainWrap").style.display !== "none") {
+        closeServiceAccountModal();
+        return;
+      }
+      const name = $("serviceAccountModalName").value.trim();
+      const description = $("serviceAccountModalDescription").value.trim();
+      const expiration = $("serviceAccountModalExpiration").value;
+      const scopes = readSelectedServiceAccountScopes();
+      if (!name) {
+        $("serviceAccountModalError").textContent = "Name is required.";
+        return;
+      }
+      if (!scopes.length) {
+        $("serviceAccountModalError").textContent = "Select at least one scope.";
+        return;
+      }
+      if (!expiration) {
+        $("serviceAccountModalError").textContent = "Expiration is required.";
+        return;
+      }
+      try {
+        const res = await api("/v1/marafiq/service-accounts", {
+          method: "POST",
+          body: JSON.stringify({
+            name,
+            description: description || undefined,
+            scopes,
+            expiration,
+          }),
+        });
+        closeServiceAccountModal();
+        await loadServiceAccounts();
+        openServiceAccountCreatedModal(res.data);
+      } catch (e) {
+        $("serviceAccountModalError").textContent = parseApiErrorMessage(e);
+      }
+    }
+
+    async function patchServiceAccountStatus(id, action) {
+      await api(`/v1/marafiq/service-accounts/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" });
+      await loadServiceAccounts();
+    }
+
+    async function deleteServiceAccountById(id) {
+      if (!confirm("Delete this service account? Applications using it will stop working.")) return;
+      await api(`/v1/marafiq/service-accounts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await loadServiceAccounts();
+    }
+
+    async function rotateServiceAccountById(id) {
+      if (!confirm("Rotate client secret? The previous secret and refresh tokens will stop working.")) return;
+      const res = await api(`/v1/marafiq/service-accounts/${encodeURIComponent(id)}/rotate-secret`, { method: "POST", body: "{}" });
+      openServiceAccountCreatedModal(res.data);
+      await loadServiceAccounts();
     }
 
     function renderRestApiKeysTable() {
@@ -1873,6 +2148,9 @@
       $("adminIntegrationGenerated").textContent = data.generatedAt
         ? new Date(data.generatedAt).toLocaleString()
         : "—";
+      $("adminIntegrationExpires").textContent = data.expiresAt
+        ? new Date(data.expiresAt).toLocaleString()
+        : "—";
       const scopesEl = $("adminIntegrationScopes");
       const accessItems = data.enabledDataAccess || [];
       scopesEl.innerHTML = accessItems.length
@@ -1920,6 +2198,11 @@
     async function adminIntegrationAction(action) {
       const accountId = $("adminViewerSelect").value;
       if (!accountId) return;
+      const expiration = $("adminIntegrationExpiration").value;
+      if ((action === "generate" || action === "regenerate") && !expiration) {
+        setAdminIntegrationStatusMsg("Select an expiration before generating a key.", "err");
+        return;
+      }
       if (action === "regenerate" && !confirm("Regenerate access key? The previous key will stop working immediately.")) return;
       if (action === "revoke" && !confirm("Revoke access key? Integration will stop working until a new key is generated.")) return;
 
@@ -1933,7 +2216,10 @@
               : "revoke";
         const res = await api(
           `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/key/${path}`,
-          { method: "POST", body: "{}" },
+          {
+            method: "POST",
+            body: action === "revoke" ? "{}" : JSON.stringify({ expiration }),
+          },
         );
         state.adminIntegrationPlainKey = res.data.accessKey || res.data.apiKey || null;
         renderAdminIntegrationPanel(res.data);
@@ -3790,6 +4076,15 @@
       if (state.adminIntegrationPlainKey) copyText(state.adminIntegrationPlainKey);
     };
     $("restApiKeysNewBtn").onclick = () => openRestApiKeyCreateModal();
+    $("serviceAccountsNewBtn").onclick = () => openServiceAccountCreateModal();
+    $("serviceAccountModalCancel").onclick = () => closeServiceAccountModal();
+    $("serviceAccountModalConfirm").onclick = () => submitServiceAccountModal();
+    $("serviceAccountModalCopyBtn").onclick = () => {
+      copyText($("serviceAccountModalClientSecret").textContent);
+    };
+    $("serviceAccountModal").onclick = (e) => {
+      if (e.target === $("serviceAccountModal")) closeServiceAccountModal();
+    };
     $("adminRestApiKeysNewBtn").onclick = () => openAdminRestApiKeyCreateModal();
     $("apiKeyModalCancel").onclick = () => closeApiKeyModal();
     $("apiKeyModalConfirm").onclick = () => submitApiKeyModal();

@@ -7,6 +7,7 @@ import type {
 } from "fastify";
 import { getCcUsers, hasMinRole } from "../services/commandCenterAuth.js";
 import {
+  CREDENTIAL_EXPIRATION_OPTIONS,
   REST_API_KEYS_MAX_PER_USER,
   checkRevealRateLimit,
   createRestApiKey,
@@ -60,6 +61,8 @@ function toListItem(record: RestApiKeyPublic) {
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     lastUsedAt: record.lastUsedAt,
+    expirationPreset: record.expirationPreset ?? null,
+    expiresAt: record.expiresAt,
   };
 }
 
@@ -76,6 +79,8 @@ function toCreateItem(record: RestApiKeyPublic, plaintext: string) {
     status: record.status,
     isPrimary: record.isPrimary,
     createdAt: record.createdAt,
+    expirationPreset: record.expirationPreset ?? null,
+    expiresAt: record.expiresAt,
   };
 }
 
@@ -83,6 +88,7 @@ function listMeta() {
   return {
     source: "shamal-platform" as const,
     maxKeys: REST_API_KEYS_MAX_PER_USER,
+    expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS,
   };
 }
 
@@ -97,6 +103,8 @@ function handleServiceError(err: unknown, reply: FastifyReply) {
     message.startsWith("Maximum") ||
     message.startsWith("API key label") ||
     message.startsWith("API keys must") ||
+    message.startsWith("expiration is required") ||
+    message.startsWith("Invalid API key payload") ||
     message.startsWith("Revoked") ||
     message.startsWith("Only active") ||
     message.startsWith("Unknown viewer")
@@ -162,11 +170,13 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
           request.ccUsername,
           parsed.data.label,
           request.ccUsername,
+          parsed.data.expiration,
         );
         return reply.status(201).send({
           data: toCreateItem(record, plaintext),
           meta: {
             note: "Store this key securely. It is shown in full only once.",
+            expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS,
           },
         });
       } catch (err) {
@@ -394,11 +404,13 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
           accountId,
           parsed.data.label,
           request.ccUsername ?? "admin",
+          parsed.data.expiration,
         );
         return reply.status(201).send({
           data: toCreateItem(record, plaintext),
           meta: {
             note: "Store this key securely. It is shown in full only once.",
+            expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS,
           },
         });
       } catch (err) {

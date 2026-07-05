@@ -10,6 +10,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
+import {
+  type CredentialExpirationPreset,
+  computeExpiresAt,
+  isCredentialExpired,
+  parseCredentialExpiration,
+} from "./credentialExpiration.js";
 import { getCcUsers } from "./commandCenterAuth.js";
 import { getPlatformSessionSecret } from "./platformSecret.js";
 import {
@@ -39,6 +45,8 @@ export interface ViewerIntegrationRecord {
   status: IntegrationStatus;
   generatedAt: string | null;
   revokedAt: string | null;
+  expirationPreset?: CredentialExpirationPreset;
+  expiresAt: string | null;
 }
 
 type IntegrationStore = Record<string, Omit<ViewerIntegrationRecord, "viewerId">>;
@@ -117,6 +125,8 @@ function defaultRecord(): Omit<ViewerIntegrationRecord, "viewerId"> {
     status: "none",
     generatedAt: null,
     revokedAt: null,
+    expirationPreset: undefined,
+    expiresAt: null,
   };
 }
 
@@ -132,7 +142,24 @@ function assertViewerExists(viewerId: string): void {
 export function getViewerIntegration(viewerId: string): ViewerIntegrationRecord {
   const store = readStore();
   const row = store[viewerId] ?? defaultRecord();
-  return { viewerId, ...row };
+  const record = { viewerId, ...row, expiresAt: row.expiresAt ?? null };
+  if (
+    record.status === "active" &&
+    record.tokenHash &&
+    isCredentialExpired(record.expiresAt)
+  ) {
+    markViewerIntegrationExpired(viewerId);
+    return { ...record, status: "expired" };
+  }
+  return record;
+}
+
+function markViewerIntegrationExpired(viewerId: string): void {
+  const store = readStore();
+  const current = store[viewerId];
+  if (!current || current.status !== "active") return;
+  store[viewerId] = { ...current, status: "expired" };
+  writeStore(store);
 }
 
 export function getEffectiveScopes(viewerId: string): ViewerApiScope[] {
@@ -169,8 +196,14 @@ export function getViewerIntegrationPublic(
   generatedAt: string | null;
   status: IntegrationStatus;
   hasToken: boolean;
+  expirationPreset?: CredentialExpirationPreset;
+  expiresAt: string | null;
 } {
   const record = getViewerIntegration(viewerId);
+  const effectiveStatus =
+    record.status === "active" && isCredentialExpired(record.expiresAt)
+      ? "expired"
+      : record.status;
   return {
     enabled: record.enabled,
     apiBaseUrl,
@@ -180,14 +213,21 @@ export function getViewerIntegrationPublic(
     accessNote:
       "Your integration access follows the data access configured for your account.",
     generatedAt: record.generatedAt,
-    status: record.status,
-    hasToken: Boolean(record.tokenHash && record.status === "active"),
+    status: effectiveStatus,
+    hasToken: Boolean(record.tokenHash && effectiveStatus === "active"),
+    expirationPreset: record.expirationPreset,
+    expiresAt: record.expiresAt ?? null,
   };
 }
 
 export function revealViewerToken(viewerId: string): string | null {
   const record = getViewerIntegration(viewerId);
-  if (!record.enabled || record.status !== "active" || !record.tokenCiphertext) {
+  if (
+    !record.enabled ||
+    record.status !== "active" ||
+    !record.tokenCiphertext ||
+    isCredentialExpired(record.expiresAt)
+  ) {
     return null;
   }
   return decryptToken(record.tokenCiphertext);
@@ -196,6 +236,7 @@ export function revealViewerToken(viewerId: string): string | null {
 function persistToken(
   viewerId: string,
   token: string,
+  expiration: CredentialExpirationPreset,
   enabled = true,
 ): ViewerIntegrationRecord {
   const store = readStore();
@@ -209,6 +250,8 @@ function persistToken(
     status: "active",
     generatedAt: now,
     revokedAt: null,
+    expirationPreset: expiration,
+    expiresAt: computeExpiresAt(expiration, new Date(now)),
   };
   writeStore(store);
   return getViewerIntegration(viewerId);
@@ -236,21 +279,28 @@ export function setViewerIntegrationEnabled(
   return getViewerIntegration(viewerId);
 }
 
-export function generateViewerIntegrationToken(viewerId: string): {
+export function generateViewerIntegrationToken(
+  viewerId: string,
+  expiration: CredentialExpirationPreset,
+): {
   record: ViewerIntegrationRecord;
   token: string;
 } {
   assertViewerExists(viewerId);
+  parseCredentialExpiration(expiration);
   const token = generateRawToken();
-  const record = persistToken(viewerId, token, true);
+  const record = persistToken(viewerId, token, expiration, true);
   return { record, token };
 }
 
-export function regenerateViewerIntegrationToken(viewerId: string): {
+export function regenerateViewerIntegrationToken(
+  viewerId: string,
+  expiration: CredentialExpirationPreset,
+): {
   record: ViewerIntegrationRecord;
   token: string;
 } {
-  return generateViewerIntegrationToken(viewerId);
+  return generateViewerIntegrationToken(viewerId, expiration);
 }
 
 export function revokeViewerIntegrationToken(viewerId: string): ViewerIntegrationRecord {
@@ -265,6 +315,8 @@ export function revokeViewerIntegrationToken(viewerId: string): ViewerIntegratio
     tokenCiphertext: null,
     status: "revoked",
     revokedAt: new Date().toISOString(),
+    expirationPreset: undefined,
+    expiresAt: null,
   };
   writeStore(store);
   return getViewerIntegration(viewerId);
@@ -291,6 +343,10 @@ export function verifyViewerIntegrationToken(token: string): {
 
   for (const [viewerId, row] of Object.entries(store)) {
     if (!row.enabled || row.status !== "active" || !row.tokenHash) continue;
+    if (isCredentialExpired(row.expiresAt ?? null)) {
+      markViewerIntegrationExpired(viewerId);
+      continue;
+    }
     const a = Buffer.from(digest);
     const b = Buffer.from(row.tokenHash);
     if (a.length !== b.length || !timingSafeEqual(a, b)) continue;

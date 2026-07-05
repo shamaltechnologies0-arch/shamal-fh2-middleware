@@ -128,11 +128,19 @@ async function main(): Promise<void> {
     });
     if (missingLabel.statusCode !== 400) fail("missing label returns 400");
 
+    const missingExpiration = await app.inject({
+      method: "POST",
+      url: "/v1/marafiq/rest-api-keys",
+      headers: viewerAHeaders,
+      payload: { label: "No Expiry" },
+    });
+    if (missingExpiration.statusCode !== 400) fail("missing expiration returns 400");
+
     const createKey = await app.inject({
       method: "POST",
       url: "/v1/marafiq/rest-api-keys",
       headers: viewerAHeaders,
-      payload: { label: "Staging" },
+      payload: { label: "Staging", expiration: "1y" },
     });
     if (createKey.statusCode !== 201) fail("viewer create key");
     const created = createKey.json().data as {
@@ -218,7 +226,7 @@ async function main(): Promise<void> {
       method: "POST",
       url: "/v1/marafiq/admin/integration-accounts/viewerB/rest-api-keys",
       headers: adminHeaders,
-      payload: { label: "Admin Created" },
+      payload: { label: "Admin Created", expiration: "6mo" },
     });
     if (adminCreate.statusCode !== 201) fail("admin create key");
     const adminCreated = adminCreate.json().data as { id: string; apiKey: string };

@@ -10,6 +10,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import {
+  type CredentialExpirationPreset,
+  computeExpiresAt,
+  credentialExpirationPresetSchema,
+  isCredentialExpired,
+  parseCredentialExpiration,
+} from "./credentialExpiration.js";
 import { getPlatformSessionSecret } from "./platformSecret.js";
 import { isManagedViewer, listManagedViewerRecords } from "./viewerUsers.js";
 
@@ -26,7 +33,7 @@ const LAST_USED_DEBOUNCE_MS = 5 * 60 * 1000;
 const REVEAL_MAX_PER_HOUR = 5;
 const REVEAL_WINDOW_MS = 60 * 60 * 1000;
 
-export type RestApiKeyStatus = "active" | "disabled" | "revoked";
+export type RestApiKeyStatus = "active" | "disabled" | "revoked" | "expired";
 
 export interface RestApiKeyRecord {
   id: string;
@@ -42,6 +49,10 @@ export interface RestApiKeyRecord {
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdBy: string;
+  /** Omitted on legacy keys migrated before expiration support. */
+  expirationPreset?: CredentialExpirationPreset;
+  /** ISO-8601 expiry; null on legacy keys without a preset. */
+  expiresAt: string | null;
 }
 
 export interface RestApiKeyPublic {
@@ -56,6 +67,8 @@ export interface RestApiKeyPublic {
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdBy: string;
+  expirationPreset?: CredentialExpirationPreset;
+  expiresAt: string | null;
 }
 
 const recordSchema = z.object({
@@ -65,17 +78,20 @@ const recordSchema = z.object({
   keyPrefix: z.string().min(1),
   keyHash: z.string().length(64),
   keyCiphertext: z.string().nullable(),
-  status: z.enum(["active", "disabled", "revoked"]),
+  status: z.enum(["active", "disabled", "revoked", "expired"]),
   isPrimary: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
   lastUsedAt: z.string().nullable(),
   revokedAt: z.string().nullable(),
   createdBy: z.string().min(1),
+  expirationPreset: credentialExpirationPresetSchema.optional(),
+  expiresAt: z.string().nullable().optional(),
 });
 
 export const createRestApiKeySchema = z.object({
   label: z.string().trim().min(1).max(128),
+  expiration: credentialExpirationPresetSchema,
 });
 
 export const updateRestApiKeySchema = z.object({
@@ -173,18 +189,24 @@ function assertViewerExists(userId: string): void {
 }
 
 function toPublic(record: RestApiKeyRecord): RestApiKeyPublic {
+  const effectiveStatus =
+    record.status === "active" && isCredentialExpired(record.expiresAt)
+      ? "expired"
+      : record.status;
   return {
     id: record.id,
     userId: record.userId,
     label: record.label,
     keyMasked: maskKey(record.keyPrefix),
-    status: record.status,
+    status: effectiveStatus,
     isPrimary: record.isPrimary,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     lastUsedAt: record.lastUsedAt,
     revokedAt: record.revokedAt,
     createdBy: record.createdBy,
+    expirationPreset: record.expirationPreset,
+    expiresAt: record.expiresAt ?? null,
   };
 }
 
@@ -248,12 +270,14 @@ function buildRecordFromPlaintext(input: {
   label: string;
   plaintext: string;
   createdBy: string;
+  expiration: CredentialExpirationPreset;
   isPrimary?: boolean;
   status?: RestApiKeyStatus;
   createdAt?: string;
   lastUsedAt?: string | null;
 }): RestApiKeyRecord {
   const timestamp = input.createdAt ?? nowIso();
+  const expiresAt = computeExpiresAt(input.expiration, new Date(timestamp));
   return {
     id: generateKeyId(),
     userId: input.userId,
@@ -268,6 +292,8 @@ function buildRecordFromPlaintext(input: {
     lastUsedAt: input.lastUsedAt ?? null,
     revokedAt: null,
     createdBy: input.createdBy,
+    expirationPreset: input.expiration,
+    expiresAt,
   };
 }
 
@@ -307,6 +333,7 @@ export function importLegacyViewerApiKey(userId: string, plaintext: string): boo
     plaintext,
     createdBy: "migration",
     isPrimary: true,
+    expiration: "1y",
   });
   persistRecord(records, record, { makePrimary: true });
   return true;
@@ -336,6 +363,7 @@ export function ensureRestApiKeysMigrated(): void {
       plaintext: legacy,
       createdBy: "migration",
       isPrimary: true,
+      expiration: "1y",
     });
     records.push(record);
     changed = true;
@@ -361,14 +389,19 @@ export function createRestApiKey(
   userId: string,
   label: string,
   createdBy: string,
+  expiration: CredentialExpirationPreset,
   options?: { plaintext?: string; isPrimary?: boolean },
 ): { record: RestApiKeyPublic; plaintext: string } {
   ensureRestApiKeysMigrated();
   assertViewerExists(userId);
 
-  const parsed = createRestApiKeySchema.safeParse({ label });
+  const parsed = createRestApiKeySchema.safeParse({ label, expiration });
   if (!parsed.success) {
-    throw new Error("Invalid API key label");
+    throw new Error(
+      parsed.error.flatten().fieldErrors.expiration?.[0] ??
+        parsed.error.flatten().fieldErrors.label?.[0] ??
+        "Invalid API key payload",
+    );
   }
 
   const records = readStore();
@@ -395,6 +428,7 @@ export function createRestApiKey(
     label: parsed.data.label,
     plaintext,
     createdBy,
+    expiration: parsed.data.expiration,
     isPrimary: makePrimary,
   });
 
@@ -407,9 +441,10 @@ export function registerRestApiKeyFromPlaintext(
   plaintext: string,
   label: string,
   createdBy: string,
+  expiration: CredentialExpirationPreset,
   options?: { isPrimary?: boolean },
 ): RestApiKeyPublic {
-  return createRestApiKey(userId, label, createdBy, {
+  return createRestApiKey(userId, label, createdBy, expiration, {
     plaintext,
     isPrimary: options?.isPrimary,
   }).record;
@@ -526,8 +561,14 @@ export function checkRevealRateLimit(
 export function getPrimaryApiKeyForUser(userId: string): string | null {
   ensureRestApiKeysMigrated();
   const userKeys = keysForUser(readStore(), userId);
-  const primary = userKeys.find((row) => row.isPrimary && row.status === "active");
-  const candidate = primary ?? userKeys.find((row) => row.status === "active");
+  const primary = userKeys.find(
+    (row) => row.isPrimary && row.status === "active" && !isCredentialExpired(row.expiresAt),
+  );
+  const candidate =
+    primary ??
+    userKeys.find(
+      (row) => row.status === "active" && !isCredentialExpired(row.expiresAt),
+    );
   if (!candidate?.keyCiphertext) return null;
   return decryptKey(candidate.keyCiphertext);
 }
@@ -538,6 +579,19 @@ export function getPrimaryApiKeyRecord(userId: string): RestApiKeyPublic | null 
   const primary = userKeys.find((row) => row.isPrimary && row.status === "active");
   const candidate = primary ?? userKeys.find((row) => row.status === "active");
   return candidate ? toPublic(candidate) : null;
+}
+
+export { CREDENTIAL_EXPIRATION_OPTIONS } from "./credentialExpiration.js";
+export type { CredentialExpirationPreset } from "./credentialExpiration.js";
+export { parseCredentialExpiration } from "./credentialExpiration.js";
+
+function markRestApiKeyExpired(keyId: string): void {
+  const records = readStore();
+  const record = records.find((row) => row.id === keyId);
+  if (!record || record.status !== "active") return;
+  record.status = "expired";
+  record.updatedAt = nowIso();
+  writeStore(records);
 }
 
 export function verifyRestApiKey(
@@ -554,6 +608,10 @@ export function verifyRestApiKey(
     const rowBuf = Buffer.from(row.keyHash);
     if (rowBuf.length !== digestBuf.length || !timingSafeEqual(rowBuf, digestBuf)) {
       continue;
+    }
+    if (isCredentialExpired(row.expiresAt)) {
+      markRestApiKeyExpired(row.id);
+      return null;
     }
     return { userId: row.userId, keyId: row.id };
   }

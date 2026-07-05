@@ -114,6 +114,7 @@ export function createManagedViewer(
     record.username,
     "Default",
     "system",
+    "1y",
     { isPrimary: true },
   );
 

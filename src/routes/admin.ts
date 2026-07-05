@@ -2,6 +2,10 @@ import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { readCcCredentialEnv } from "../config.js";
 import {
+  CREDENTIAL_EXPIRATION_OPTIONS,
+  credentialExpirationPresetSchema,
+} from "../services/credentialExpiration.js";
+import {
   getCcUsers,
   getEnvViewerUsernames,
   hasMinRole,
@@ -38,9 +42,14 @@ import {
   syncFh2ProjectsFromSource,
 } from "../services/fh2Projects.js";
 import { registerAdminRestApiKeyRoutes } from "./restApiKeys.js";
+import { registerAdminServiceAccountRoutes } from "./serviceAccounts.js";
 
 const integrationPatchSchema = z.object({
   enabled: z.boolean(),
+});
+
+const integrationTokenSchema = z.object({
+  expiration: credentialExpirationPresetSchema,
 });
 
 const patchSchema = z.object({
@@ -179,7 +188,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
 
       try {
         const created = createManagedViewer(parsed.data);
-        const { token } = generateViewerIntegrationToken(created.record.username);
+        const { token } = generateViewerIntegrationToken(created.record.username, "1y");
         return reply.status(201).send({
           data: {
             accountId: created.record.username,
@@ -194,6 +203,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
           meta: {
             source: "shamal-platform",
             note: "Store apiKey securely. It is shown in full only once.",
+            expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS,
           },
         });
       } catch (err) {
@@ -409,8 +419,15 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       const { accountId } = request.params as { accountId: string };
+      const parsed = integrationTokenSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: "validation_error",
+          details: parsed.error.flatten(),
+        });
+      }
       try {
-        const { token } = generateViewerIntegrationToken(accountId);
+        const { token } = generateViewerIntegrationToken(accountId, parsed.data.expiration);
         return reply.send({
           data: {
             ...getAdminIntegrationView(accountId, apiBaseFromRequest(request)),
@@ -419,6 +436,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
           meta: {
             source: "shamal-platform",
             note: "Store this access key securely. It is shown in full only once.",
+            expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS,
           },
         });
       } catch (err) {
@@ -446,8 +464,15 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       const { accountId } = request.params as { accountId: string };
+      const parsed = integrationTokenSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: "validation_error",
+          details: parsed.error.flatten(),
+        });
+      }
       try {
-        const { token } = regenerateViewerIntegrationToken(accountId);
+        const { token } = regenerateViewerIntegrationToken(accountId, parsed.data.expiration);
         return reply.send({
           data: {
             ...getAdminIntegrationView(accountId, apiBaseFromRequest(request)),
@@ -456,6 +481,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
           meta: {
             source: "shamal-platform",
             note: "Previous access key is now invalid. Store this key securely.",
+            expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS,
           },
         });
       } catch (err) {
@@ -503,6 +529,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
 export const adminRoutes: FastifyPluginAsync = async (app) => {
   registerIntegrationAccountRoutes(app);
   registerAdminRestApiKeyRoutes(app);
+  registerAdminServiceAccountRoutes(app);
 
   app.get(
     "/v1/marafiq/admin/fh2-projects",
@@ -653,7 +680,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       }
       try {
         const created = createManagedViewer(parsed.data);
-        const { token } = generateViewerIntegrationToken(created.record.username);
+        const { token } = generateViewerIntegrationToken(created.record.username, "1y");
         return reply.status(201).send({
           data: {
             viewerId: created.record.username,
@@ -842,15 +869,22 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(403).send({ error: "forbidden", message: gate.message });
       }
       const { viewerId } = request.params as { viewerId: string };
+      const parsed = integrationTokenSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: "validation_error",
+          details: parsed.error.flatten(),
+        });
+      }
       try {
-        const { token } = generateViewerIntegrationToken(viewerId);
+        const { token } = generateViewerIntegrationToken(viewerId, parsed.data.expiration);
         return reply.send({
           data: {
             ...getAdminIntegrationView(viewerId, apiBaseFromRequest(request)),
             apiKey: token,
             accessKey: token,
           },
-          meta: { source: "shamal-platform" },
+          meta: { source: "shamal-platform", expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS },
         });
       } catch (err) {
         const message = (err as Error).message;
@@ -871,15 +905,22 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(403).send({ error: "forbidden", message: gate.message });
       }
       const { viewerId } = request.params as { viewerId: string };
+      const parsed = integrationTokenSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: "validation_error",
+          details: parsed.error.flatten(),
+        });
+      }
       try {
-        const { token } = regenerateViewerIntegrationToken(viewerId);
+        const { token } = regenerateViewerIntegrationToken(viewerId, parsed.data.expiration);
         return reply.send({
           data: {
             ...getAdminIntegrationView(viewerId, apiBaseFromRequest(request)),
             apiKey: token,
             accessKey: token,
           },
-          meta: { source: "shamal-platform" },
+          meta: { source: "shamal-platform", expirationOptions: CREDENTIAL_EXPIRATION_OPTIONS },
         });
       } catch (err) {
         const message = (err as Error).message;

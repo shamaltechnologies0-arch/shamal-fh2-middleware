@@ -15,5 +15,11 @@ declare module "fastify" {
       userId: string;
       keyId: string;
     };
+    serviceAccount?: {
+      accountId: string;
+      ownerUserId: string;
+      clientId: string;
+      scopes: ViewerApiScope[];
+    };
   }
 }

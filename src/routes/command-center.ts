@@ -38,4 +38,8 @@ export const commandCenterRoutes: FastifyPluginAsync = async (app) => {
   app.get("/command-center", { schema: { hide: true } }, async (_request, reply) => {
     return reply.redirect("/");
   });
+
+  app.get("/settings", { schema: { hide: true } }, async (_request, reply) => {
+    return reply.redirect("/?tab=settings");
+  });
 };

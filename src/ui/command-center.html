@@ -21,7 +21,10 @@
     button:disabled { opacity:.45; cursor:not-allowed; }
     main { padding:12px; display:grid; grid-template-columns:220px 1fr; gap:12px; flex:1; min-height:0; overflow:hidden; }
     nav { background:var(--card); border:1px solid #23344f; border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:6px; overflow:auto; }
-    nav button { text-align:left; }
+    nav button { text-align:left; display:flex; align-items:center; gap:8px; }
+    nav button.nav-active { background:#214271; border-color:#4ea2ff; }
+    nav .nav-icon { display:inline-flex; width:16px; height:16px; flex-shrink:0; opacity:.9; }
+    nav .nav-icon svg { width:16px; height:16px; fill:currentColor; }
     main > div { min-height:0; display:flex; flex-direction:column; overflow:hidden; }
     section { display:none; background:var(--card); border:1px solid #23344f; border-radius:12px; padding:12px; min-height:0; overflow:auto; }
     section.active { display:flex; flex-direction:column; flex:1; }
@@ -163,8 +166,11 @@
     .api-toast.show { opacity:1; }
     .viewer-note { font-size:11px; color:var(--muted); margin:0 0 8px; }
     .viewer-client-name { font-size:13px; color:#cfe4ff; font-weight:600; margin-top:4px; }
-    main.viewer-no-nav { grid-template-columns:1fr; }
-    main.viewer-no-nav nav { display:none; }
+    .settings-subtitle { margin:0 0 16px; max-width:640px; line-height:1.45; }
+    .settings-tabs { margin-bottom:14px; }
+    .settings-panel { display:none; }
+    .settings-panel.active { display:block; }
+    #settings .admin-settings-card { max-width:none; }
     body.viewer-layout #dashboard { padding:16px 18px; }
     body.viewer-layout #dashboard h3 { margin:0 0 4px; font-size:18px; }
     body.viewer-layout .viewer-note { margin-bottom:14px; }
@@ -208,36 +214,6 @@
     .integration-scopes .pill { font-size:10px; }
     .integration-example { margin-top:10px; }
     .integration-example pre { font-size:11px; max-height:140px; overflow:auto; }
-    #viewerIntegrationFooter {
-      display:none;
-      position:fixed;
-      left:0; right:0; bottom:0;
-      z-index:40;
-      background:#0a1322;
-      border-top:1px solid #22354f;
-      padding:8px 12px;
-      font-size:11px;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    body.viewer-integration-footer #viewerIntegrationFooter { display:flex; }
-    body.viewer-integration-footer main { padding-bottom:72px; }
-    .footer-chip {
-      display:flex; align-items:center; gap:6px;
-      background:#111c2e; border:1px solid #22354f; border-radius:8px;
-      padding:4px 8px; max-width:280px;
-    }
-    .footer-chip .lbl { color:var(--muted); white-space:nowrap; }
-    .footer-chip .val {
-      font-family:ui-monospace,Menlo,monospace;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;
-    }
-    .footer-chip button { font-size:10px; padding:3px 8px; }
-    #integrationWelcomeModal .modal { max-width:520px; width:94%; }
-    #integrationWelcomeModal .integration-field { margin-bottom:10px; }
-    body.viewer-layout .dash-card#dashIntegrationCard,
-    body.viewer-layout .dash-card#dashApiKeysCard { grid-column:1 / -1; }
     .api-keys-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
     .api-keys-table { width:100%; font-size:12px; }
     .api-keys-table th,.api-keys-table td { padding:8px 6px; vertical-align:middle; }
@@ -350,6 +326,10 @@
   <main id="appMain" style="opacity:.35;pointer-events:none">
     <nav id="sideNav">
       <button data-tab="dashboard" data-nav-viewer style="display:none">Monitoring Dashboard</button>
+      <button data-tab="settings" data-nav-viewer style="display:none">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8m8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06M12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14"/></svg></span>
+        Settings
+      </button>
       <button data-tab="fleet" data-nav-staff>1) Live Map + Fleet</button>
       <button data-tab="camera" data-nav-staff>2) Live Camera Panel</button>
       <button data-tab="ops" data-nav-staff>3) Operations Panel</button>
@@ -466,37 +446,41 @@
             </div>
             <div class="dash-card-body" id="dashMissions">Loading…</div>
           </div>
-          <div class="dash-card" id="dashIntegrationCard" data-card="integration" style="display:none">
-            <div class="dash-card-head">
-              <span class="dash-card-title">Integration Access</span>
-            </div>
-            <div class="dash-card-body" id="dashIntegrationBody">
-              <p class="small">Loading integration details…</p>
-            </div>
+        </div>
+      </section>
+
+      <section id="settings">
+        <h3>Settings</h3>
+        <p class="viewer-note settings-subtitle">Manage workspace access, API credentials, and integration configuration.</p>
+        <div id="settingsContent">
+          <div class="settings-tabs ops-tabs" role="tablist" aria-label="Settings sections">
+            <button type="button" role="tab" data-settings-tab="service-accounts" class="active" aria-selected="true">Service Accounts</button>
+            <button type="button" role="tab" data-settings-tab="api-keys" aria-selected="false">API Keys</button>
           </div>
-          <div class="dash-card" id="dashServiceAccountsCard" data-card="service-accounts" style="display:none">
-            <div class="dash-card-head">
-              <span class="dash-card-title">Service Accounts</span>
-              <button type="button" class="get-api-btn" id="serviceAccountsNewBtn">+ New Service Account</button>
-            </div>
-            <div class="dash-card-body" id="dashServiceAccountsBody">
+          <div id="settingsServiceAccountsPanel" class="settings-panel active" role="tabpanel">
+            <div class="admin-settings-card" id="dashServiceAccountsCard">
+              <div class="api-keys-toolbar">
+                <h4 style="margin:0">Service Accounts</h4>
+                <button type="button" id="serviceAccountsNewBtn">+ New Service Account</button>
+              </div>
               <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). Exchange <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/marafiq/auth/token</code> for a short-lived JWT.</p>
               <div id="serviceAccountsTableWrap"></div>
               <p id="serviceAccountsStatus" class="api-keys-error"></p>
             </div>
           </div>
-          <div class="dash-card" id="dashApiKeysCard" data-card="api-keys" style="display:none">
-            <div class="dash-card-head">
-              <span class="dash-card-title">API Keys</span>
-              <button type="button" class="get-api-btn" id="restApiKeysNewBtn">+ New Key</button>
-            </div>
-            <div class="dash-card-body" id="dashApiKeysBody">
+          <div id="settingsApiKeysPanel" class="settings-panel" role="tabpanel">
+            <div class="admin-settings-card" id="dashApiKeysCard">
+              <div class="api-keys-toolbar">
+                <h4 style="margin:0">API Keys</h4>
+                <button type="button" id="restApiKeysNewBtn">+ New Key</button>
+              </div>
               <p class="small" style="margin:0 0 10px">Manage REST API keys for <code>X-Api-Key</code> authentication.</p>
               <div id="restApiKeysTableWrap"></div>
               <p id="restApiKeysStatus" class="api-keys-error"></p>
             </div>
           </div>
         </div>
+        <p id="settingsAccessDenied" class="small" style="display:none">API credential management is not available for your account.</p>
       </section>
 
       <section id="fleet" class="active">
@@ -801,17 +785,6 @@
       <div id="cardZoomBody" class="card-zoom-body"></div>
     </div>
   </div>
-  <div id="integrationWelcomeModal" class="modal-backdrop" style="display:none">
-    <div class="modal">
-      <h3>Your integration credentials</h3>
-      <p class="small">Copy these values to connect your platform to Shamal. You can open this again from the footer bar anytime.</p>
-      <div id="integrationWelcomeBody"></div>
-      <div class="row" style="margin-top:14px">
-        <button type="button" id="integrationWelcomeClose">Got it — open dashboard</button>
-      </div>
-    </div>
-  </div>
-
   <div id="apiKeyModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
       <h3 id="apiKeyModalTitle">API Key</h3>
@@ -893,8 +866,6 @@
   </div>
 
   <div id="apiToast" class="api-toast">API value copied</div>
-  <footer id="viewerIntegrationFooter" aria-label="Integration credentials"></footer>
-
   <template id="zoomCameraTemplate">
     <p class="statusline">Live camera view — dock camera and drone FPV.</p>
     <div class="camera-split">
@@ -930,6 +901,7 @@
       opsCategory: "flight",
       liveTimer: null,
       activeTab: "fleet",
+      activeSettingsTab: "service-accounts",
       isRefreshing: false,
       streamLoaded: false,
       fleetMap: null,
@@ -1186,78 +1158,6 @@
       if (isViewer()) await loadViewerIntegration();
     }
 
-    function integrationFieldHtml(label, value, copyId) {
-      return `<div class="integration-field">
-        <div class="lbl">${label}</div>
-        <div class="val" id="${copyId || ""}">${escapeHtml(value)}</div>
-        ${copyId ? `<div class="integration-actions"><button type="button" class="integration-copy-btn" data-copy-target="${copyId}">Copy</button></div>` : ""}
-      </div>`;
-    }
-
-    function renderViewerIntegrationCard() {
-      const card = $("dashIntegrationCard");
-      const body = $("dashIntegrationBody");
-      if (!isViewer() || !card || !body) {
-        if (card) card.style.display = "none";
-        return;
-      }
-
-      card.style.display = "";
-      const info = state.viewerIntegration;
-
-      if (!info || !info.enabled) {
-        body.innerHTML = `<p class="small">API integration is not enabled for your account. Please contact Shamal Platform administrator.</p>`;
-        return;
-      }
-
-      const statusClass = info.status === "active" ? "ok" : info.status === "revoked" ? "bad" : "warn";
-
-      const examplePath = INTEGRATION_API_ROUTES["drone-telemetry"];
-      const curlExample = buildIntegrationCurlExample(examplePath);
-      const fetchExample = buildIntegrationFetchExample(examplePath);
-
-      body.innerHTML = `
-        <p class="small" style="margin:0 0 12px">Use these credentials to connect your system to Shamal Platform APIs.</p>
-        ${primaryRestApiKeyMasked() ? integrationFieldHtml("REST API key (X-Api-Key)", primaryRestApiKeyMasked(), "") : ""}
-        <p class="small" style="margin:0 0 8px">Manage multiple REST API keys in the <strong>API Keys</strong> section below.</p>
-        ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "intCopyBaseUrl")}
-        ${integrationFieldHtml("Account ID", info.accountId, "intCopyAccountId")}
-        <div class="integration-field">
-          <div class="lbl">Access Key</div>
-          <div class="val" id="intCopyAccessKey">${escapeHtml(info.tokenMasked || "••••••••••••••••")}</div>
-          <div class="integration-actions">
-            <button type="button" id="intCopyAccessKeyBtn">Copy Access Key</button>
-          </div>
-        </div>
-        ${integrationFieldHtml("Webhook URL", info.webhookUrl, "intCopyWebhook")}
-        <p class="small" style="margin:8px 0 0">${escapeHtml(info.accessNote || "Access is limited to the data enabled by Shamal Platform administrator.")}</p>
-        <div class="integration-field">
-          <div class="lbl">Key status</div>
-          <div><span class="pill ${statusClass}">${escapeHtml((info.status || "none").toUpperCase())}</span></div>
-        </div>
-        <div class="integration-field">
-          <div class="lbl">Last generated</div>
-          <div class="val">${info.generatedAt ? escapeHtml(new Date(info.generatedAt).toLocaleString()) : "—"}</div>
-        </div>
-        <details class="integration-example">
-          <summary class="small" style="cursor:pointer;color:#9fd0ff">Example API request</summary>
-          <pre id="intCurlExample">${escapeHtml(curlExample)}</pre>
-          <div class="integration-actions">
-            <button type="button" id="intCopyCurlBtn">Copy Example</button>
-          </div>
-          <pre class="small" style="margin-top:8px">${escapeHtml(fetchExample)}</pre>
-        </details>`;
-
-      body.querySelectorAll(".integration-copy-btn").forEach((btn) => {
-        btn.onclick = () => {
-          const el = $(btn.dataset.copyTarget);
-          if (el) copyText(el.textContent);
-        };
-      });
-      $("intCopyAccessKeyBtn").onclick = () => copyIntegrationAccessKey();
-      $("intCopyCurlBtn").onclick = () => copyText(curlExample);
-    }
-
     async function copyText(text) {
       try {
         await navigator.clipboard.writeText(text);
@@ -1267,13 +1167,8 @@
       }
     }
 
-    async function copyIntegrationAccessKey() {
-      try {
-        const res = await api("/v1/marafiq/integration/access-key");
-        await copyText(res.data.accessKey);
-      } catch (e) {
-        alert(e.message);
-      }
+    function canManageWorkspaceApi() {
+      return isViewer();
     }
 
     async function loadViewerIntegration() {
@@ -1284,133 +1179,68 @@
       } catch {
         state.viewerIntegration = null;
       }
-      await loadRestApiKeys();
-      await loadServiceAccounts();
-      renderViewerIntegrationCard();
-      renderIntegrationFooter();
       applyViewerDashboardPermissions();
     }
 
-    function integrationWelcomeStorageKey() {
-      const u = state.session?.username;
-      return u ? `shamal.integrationIntro.${u}` : null;
+    async function loadSettingsPage() {
+      if (!canManageWorkspaceApi()) return;
+      await Promise.all([loadRestApiKeys(), loadServiceAccounts()]);
     }
 
-    function buildIntegrationCredentialsHtml(info, accessKeyPlain) {
-      const keyDisplay = accessKeyPlain || info.tokenMasked || "••••••••";
-      const keyCopyId = accessKeyPlain ? "welcomeCopyAccessKey" : "";
-      const restMasked = primaryRestApiKeyMasked();
-      return `
-        ${restMasked ? integrationFieldHtml("REST API key (header: X-Api-Key)", restMasked, "") : ""}
-        ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "welcomeCopyBaseUrl")}
-        ${integrationFieldHtml("Account ID", info.accountId, "welcomeCopyAccountId")}
-        <div class="integration-field">
-          <div class="lbl">Integration access key (header: Authorization Bearer)</div>
-          <div class="val" id="${keyCopyId || "welcomeAccessKeyMasked"}">${escapeHtml(keyDisplay)}</div>
-          <div class="integration-actions">
-            <button type="button" class="integration-copy-btn" data-copy-target="${keyCopyId || ""}" id="welcomeCopyAccessKeyBtn">Copy access key</button>
-          </div>
-        </div>
-        ${integrationFieldHtml("Webhook URL", info.webhookUrl, "welcomeCopyWebhook")}
-        <p class="small">${escapeHtml(info.accessNote || "")}</p>`;
+    function updateSettingsAccessUi() {
+      const allowed = canManageWorkspaceApi();
+      const content = $("settingsContent");
+      const denied = $("settingsAccessDenied");
+      if (content) content.style.display = allowed ? "" : "none";
+      if (denied) denied.style.display = allowed ? "none" : "";
     }
 
-    function wireIntegrationCopyButtons(root) {
-      root.querySelectorAll(".integration-copy-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const target = btn.dataset.copyTarget;
-          if (target === "welcomeCopyAccessKeyBtn" || btn.id === "welcomeCopyAccessKeyBtn") {
-            await copyIntegrationAccessKey();
-            return;
-          }
-          if (target) {
-            const el = $(target);
-            if (el) await copyText(el.textContent);
-          }
-        };
+    function activateSettingsTab(tabId) {
+      state.activeSettingsTab = tabId;
+      document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
+        const active = btn.dataset.settingsTab === tabId;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
       });
-      const accessBtn = root.querySelector("#welcomeCopyAccessKeyBtn, #intCopyAccessKeyBtn");
-      if (accessBtn && !accessBtn.dataset.wired) {
-        accessBtn.dataset.wired = "1";
-        accessBtn.onclick = () => copyIntegrationAccessKey();
-      }
+      $("settingsServiceAccountsPanel")?.classList.toggle("active", tabId === "service-accounts");
+      $("settingsApiKeysPanel")?.classList.toggle("active", tabId === "api-keys");
     }
 
-    async function maybeShowIntegrationWelcome() {
-      if (!isViewer() || !integrationActive()) return;
-      const key = integrationWelcomeStorageKey();
-      if (!key || localStorage.getItem(key) === "1") return;
-
-      let accessKey = null;
-      try {
-        const res = await api("/v1/marafiq/integration/access-key");
-        accessKey = res.data.accessKey;
-      } catch {
-        /* show profile without plain key */
-      }
-
-      const info = state.viewerIntegration;
-      if (!info) return;
-
-      $("integrationWelcomeBody").innerHTML = buildIntegrationCredentialsHtml(info, accessKey);
-      wireIntegrationCopyButtons($("integrationWelcomeModal"));
-      $("integrationWelcomeModal").style.display = "flex";
-
-      $("integrationWelcomeClose").onclick = () => {
-        localStorage.setItem(key, "1");
-        $("integrationWelcomeModal").style.display = "none";
-      };
-    }
-
-    function renderIntegrationFooter() {
-      const footer = $("viewerIntegrationFooter");
-      if (!footer) return;
-      if (!isViewer() || !state.session || !integrationActive() || !state.viewerIntegration) {
-        document.body.classList.remove("viewer-integration-footer");
-        footer.innerHTML = "";
-        return;
-      }
-
-      const info = state.viewerIntegration;
-      document.body.classList.add("viewer-integration-footer");
-      const restMasked = primaryRestApiKeyMasked();
-      const chips = [
-        ["Base URL", info.apiBaseUrl, "footBase"],
-        restMasked ? ["REST key", restMasked, "footApiKey"] : null,
-        ["Webhook", info.webhookUrl, "footWebhook"],
-        ["Account", info.accountId, "footAccount"],
-      ].filter(Boolean);
-
-      footer.innerHTML = `
-        <span class="small" style="margin-right:4px">Integration:</span>
-        ${chips.map(([lbl, val, id]) => `
-          <div class="footer-chip">
-            <span class="lbl">${lbl}</span>
-            <span class="val" id="${id}">${escapeHtml(val)}</span>
-            <button type="button" data-foot-copy="${id}">Copy</button>
-          </div>`).join("")}
-        <button type="button" id="footCopyAccessKey">Copy access key</button>
-        <button type="button" id="footShowWelcome">Show all credentials</button>
-      `;
-
-      footer.querySelectorAll("[data-foot-copy]").forEach((btn) => {
-        btn.onclick = () => {
-          const el = $(btn.dataset.footCopy);
-          if (el) copyText(el.textContent);
-        };
+    function updateNavActiveState() {
+      document.querySelectorAll("#sideNav button").forEach((btn) => {
+        const visible = btn.style.display !== "none";
+        btn.classList.toggle("nav-active", visible && btn.dataset.tab === state.activeTab);
       });
-      $("footCopyAccessKey").onclick = () => copyIntegrationAccessKey();
-      $("footShowWelcome").onclick = () => {
-        const k = integrationWelcomeStorageKey();
-        if (k) localStorage.removeItem(k);
-        maybeShowIntegrationWelcome();
-      };
     }
 
-    function primaryRestApiKeyMasked() {
-      const keys = state.restApiKeys || [];
-      const primary = keys.find((k) => k.isPrimary) || keys.find((k) => k.status === "active");
-      return primary?.keyMasked || null;
+    function activateTab(tabId) {
+      const section = $(tabId);
+      if (!section) return;
+      document.querySelectorAll("section").forEach((s) => s.classList.remove("active"));
+      section.classList.add("active");
+      state.activeTab = tabId;
+      updateNavActiveState();
+      if (tabId === "settings") {
+        history.replaceState(null, "", "/?tab=settings");
+      } else if (tabId === "dashboard") {
+        history.replaceState(null, "", "/");
+      } else if (window.location.pathname === "/" || window.location.pathname === "/settings") {
+        history.replaceState(null, "", `/?tab=${encodeURIComponent(tabId)}`);
+      }
+    }
+
+    function resolveInitialTab() {
+      if (!state.session) return;
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get("tab");
+      if (window.location.pathname === "/settings") return "settings";
+      if (requested && $(requested)) {
+        if (isViewer() && !["dashboard", "settings"].includes(requested)) return "dashboard";
+        if (!isViewer() && requested === "settings") return "fleet";
+        if (requested === "admin" && !isAdmin()) return isViewer() ? "dashboard" : "fleet";
+        return requested;
+      }
+      return isViewer() ? "dashboard" : state.activeTab;
     }
 
     function formatRestApiKeyDate(value) {
@@ -1535,8 +1365,6 @@
         setRestApiKeysStatus(parseApiErrorMessage(e));
       }
       renderRestApiKeysTable();
-      renderIntegrationFooter();
-      if (state.viewerIntegration) renderViewerIntegrationCard();
     }
 
     async function loadAdminRestApiKeys(accountId) {
@@ -1822,12 +1650,15 @@
     function renderServiceAccountsTable() {
       const card = $("dashServiceAccountsCard");
       const wrap = $("serviceAccountsTableWrap");
+      const newBtn = $("serviceAccountsNewBtn");
       if (!card || !wrap) return;
-      if (!isViewer()) {
+      if (!canManageWorkspaceApi()) {
         card.style.display = "none";
+        if (newBtn) newBtn.style.display = "none";
         return;
       }
       card.style.display = "";
+      if (newBtn) newBtn.style.display = "";
       const accounts = state.serviceAccounts || [];
       if (!accounts.length) {
         wrap.innerHTML = `<div class="api-keys-empty"><p>No service accounts yet</p><button type="button" id="serviceAccountsEmptyCreate">+ New Service Account</button></div>`;
@@ -2002,12 +1833,15 @@
     function renderRestApiKeysTable() {
       const card = $("dashApiKeysCard");
       const wrap = $("restApiKeysTableWrap");
+      const newBtn = $("restApiKeysNewBtn");
       if (!card || !wrap) return;
-      if (!isViewer()) {
+      if (!canManageWorkspaceApi()) {
         card.style.display = "none";
+        if (newBtn) newBtn.style.display = "none";
         return;
       }
       card.style.display = "";
+      if (newBtn) newBtn.style.display = "";
       wrap.innerHTML = renderRestApiKeysTableRows(state.restApiKeys || [], { viewerActions: true });
       wireRestApiKeysTableActions(wrap, false);
       const emptyBtn = $("restApiKeysEmptyCreate");
@@ -2590,7 +2424,8 @@
         state.restApiKeys = [];
         state.adminRestApiKeys = [];
         renderRestApiKeysTable();
-        renderIntegrationFooter();
+        renderServiceAccountsTable();
+        updateSettingsAccessUi();
         return;
       }
       badge.textContent = s.displayName;
@@ -2602,9 +2437,9 @@
 
       const viewer = isViewer();
       document.body.classList.toggle("viewer-layout", viewer);
-      $("appMain").classList.toggle("viewer-no-nav", viewer);
+      $("appMain").classList.remove("viewer-no-nav");
       document.querySelectorAll("[data-nav-viewer]").forEach((el) => {
-        el.style.display = "none";
+        el.style.display = viewer ? "" : "none";
       });
       document.querySelectorAll("[data-nav-staff]").forEach((el) => {
         el.style.display = viewer ? "none" : "";
@@ -2617,6 +2452,7 @@
         : "Fleet monitoring, live camera, operations, alerts, missions";
 
       applyViewerDashboardPermissions();
+      updateSettingsAccessUi();
 
       document.querySelectorAll("#opsActionGrid .op-btn").forEach((btn) => {
         btn.disabled = !canOperate();
@@ -2627,19 +2463,18 @@
           : "Operations are not available for your account.";
       }
 
-      if (viewer) {
-        document.querySelectorAll("section").forEach((sec) => sec.classList.remove("active"));
-        $("dashboard").classList.add("active");
+      const viewerTabs = ["dashboard", "settings"];
+      if (viewer && !viewerTabs.includes(state.activeTab)) {
         state.activeTab = "dashboard";
-        setTimeout(() => {
-          if (state.dashFleetMap) state.dashFleetMap.invalidateSize();
-        }, 120);
-      } else if (state.activeTab === "dashboard") {
-        document.querySelectorAll("section").forEach((sec) => sec.classList.remove("active"));
-        $("fleet").classList.add("active");
+      } else if (!viewer && state.activeTab === "dashboard") {
+        state.activeTab = "fleet";
+      } else if (!viewer && state.activeTab === "settings") {
         state.activeTab = "fleet";
       }
-      renderIntegrationFooter();
+      activateTab(state.activeTab);
+      if (state.activeTab === "dashboard" && state.dashFleetMap) {
+        setTimeout(() => state.dashFleetMap.invalidateSize(), 120);
+      }
     }
 
     document.querySelectorAll(".get-api-btn[data-api-card]").forEach((btn) => {
@@ -2666,9 +2501,7 @@
 
     document.querySelectorAll("nav button").forEach((btn) => btn.onclick = () => {
       if (btn.style.display === "none") return;
-      document.querySelectorAll("section").forEach((s) => s.classList.remove("active"));
-      $(btn.dataset.tab).classList.add("active");
-      state.activeTab = btn.dataset.tab;
+      activateTab(btn.dataset.tab);
       if (btn.dataset.tab === "fleet" && state.fleetMap) {
         setTimeout(() => state.fleetMap.invalidateSize(), 120);
       }
@@ -2678,9 +2511,16 @@
       if (btn.dataset.tab === "admin" && isAdmin()) {
         loadAdminViewerSettings().catch((e) => alert(e.message));
       }
+      if (btn.dataset.tab === "settings" && canManageWorkspaceApi()) {
+        loadSettingsPage().catch((e) => alert(e.message));
+      }
       if (btn.dataset.tab === "camera" && $("camDevice").value && state.session) {
         loadAllStreams();
       }
+    });
+
+    document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
+      btn.onclick = () => activateSettingsTab(btn.dataset.settingsTab);
     });
 
     function updateLiveBadge(active, lastAt) {
@@ -2832,7 +2672,11 @@
         startLiveUpdates();
         if (isViewer()) {
           await syncSessionFromServer();
-          await maybeShowIntegrationWelcome();
+        }
+        const initialTab = resolveInitialTab();
+        activateTab(initialTab);
+        if (initialTab === "settings" && canManageWorkspaceApi()) {
+          await loadSettingsPage();
         }
         await refreshDashboard();
       } catch (e) {
@@ -4104,10 +3948,18 @@
     if (savedShare) $("fh2ShareUrl").value = savedShare;
     updateRoleUi();
     if (state.session) {
+      const initialTab = resolveInitialTab();
+      if (initialTab !== state.activeTab) activateTab(initialTab);
+      activateSettingsTab(state.activeSettingsTab || "service-accounts");
       startLiveUpdates();
       if (isViewer()) {
         syncSessionFromServer()
-          .then(() => refreshDashboard())
+          .then(async () => {
+            if (state.activeTab === "settings" && canManageWorkspaceApi()) {
+              await loadSettingsPage();
+            }
+            await refreshDashboard();
+          })
           .catch((e) => alert(e.message));
       } else {
         refreshDashboard().catch((e) => alert(e.message));

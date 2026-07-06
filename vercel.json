@@ -2,18 +2,16 @@
   "version": 2,
   "buildCommand": "npm run build && mkdir -p public && cp dist/ui/command-center.html public/index.html",
   "installCommand": "npm install --include=dev",
-  "framework": null,
-  "outputDirectory": "public",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api"
+      "destination": "/api/$1"
     }
   ],
   "functions": {
     "api/[[...path]].ts": {
       "maxDuration": 60,
-      "includeFiles": "{data/**,openapi/**,dist/ui/**,dist/fixtures/**}"
+      "includeFiles": "{data/**,openapi/**,dist/**,public/**}"
     }
   }
 }

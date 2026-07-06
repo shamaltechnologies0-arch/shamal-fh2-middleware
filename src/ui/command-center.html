@@ -463,7 +463,7 @@
                 <h4 style="margin:0">Service Accounts</h4>
                 <button type="button" id="serviceAccountsNewBtn">+ New Service Account</button>
               </div>
-              <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). Exchange <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/marafiq/auth/token</code> for a short-lived JWT.</p>
+              <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). Exchange <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/viewer/auth/token</code> for a short-lived JWT.</p>
               <div id="serviceAccountsTableWrap"></div>
               <p id="serviceAccountsStatus" class="api-keys-error"></p>
             </div>
@@ -928,16 +928,16 @@
     };
 
     const INTEGRATION_API_ROUTES = {
-      fleet: "/v1/marafiq/integration/fleet",
-      "drone-telemetry": "/v1/marafiq/integration/drone-telemetry",
-      "dock-telemetry": "/v1/marafiq/integration/dock-telemetry",
-      battery: "/v1/marafiq/integration/battery-status",
-      gps: "/v1/marafiq/integration/gps-location",
-      online: "/v1/marafiq/integration/online-status",
-      camera: "/v1/marafiq/integration/camera",
-      "drone-fpv": "/v1/marafiq/integration/fpv",
-      alerts: "/v1/marafiq/integration/alerts-events",
-      missions: "/v1/marafiq/integration/media-history",
+      fleet: "/v1/platform/integration/fleet",
+      "drone-telemetry": "/v1/platform/integration/drone-telemetry",
+      "dock-telemetry": "/v1/platform/integration/dock-telemetry",
+      battery: "/v1/platform/integration/battery-status",
+      gps: "/v1/platform/integration/gps-location",
+      online: "/v1/platform/integration/online-status",
+      camera: "/v1/platform/integration/camera",
+      "drone-fpv": "/v1/platform/integration/fpv",
+      alerts: "/v1/platform/integration/alerts-events",
+      missions: "/v1/platform/integration/media-history",
     };
     const LIVE_INTERVAL_MS = 10_000;
     const $ = (id) => document.getElementById(id);
@@ -1132,7 +1132,7 @@
 
     async function syncSessionFromServer() {
       if (!state.session?.sessionToken) return;
-      const res = await api("/v1/marafiq/auth/me");
+      const res = await api("/v1/viewer/auth/me");
       if (res.data?.viewerDashboardPermissions) {
         state.session.viewerDashboardPermissions = res.data.viewerDashboardPermissions;
         saveSession(state.session);
@@ -1174,7 +1174,7 @@
     async function loadViewerIntegration() {
       if (!isViewer()) return;
       try {
-        const res = await api("/v1/marafiq/integration/profile");
+        const res = await api("/v1/platform/integration/profile");
         state.viewerIntegration = res.data;
       } catch {
         state.viewerIntegration = null;
@@ -1357,7 +1357,7 @@
     async function loadRestApiKeys() {
       if (!isViewer()) return;
       try {
-        const res = await api("/v1/marafiq/rest-api-keys");
+        const res = await api("/v1/viewer/rest-api-keys");
         state.restApiKeys = res.data || [];
         setRestApiKeysStatus("");
       } catch (e) {
@@ -1371,7 +1371,7 @@
       if (!accountId || !isAdmin()) return;
       try {
         const res = await api(
-          `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
+          `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
         );
         state.adminRestApiKeys = res.data || [];
         setAdminRestApiKeysStatus("");
@@ -1501,7 +1501,7 @@
       }
       try {
         if (mode === "create") {
-          const res = await api("/v1/marafiq/rest-api-keys", {
+          const res = await api("/v1/viewer/rest-api-keys", {
             method: "POST",
             body: JSON.stringify({ label, expiration }),
           });
@@ -1513,7 +1513,7 @@
         if (mode === "admin-create") {
           const accountId = $("adminViewerSelect").value;
           const res = await api(
-            `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
+            `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
             { method: "POST", body: JSON.stringify({ label, expiration }) },
           );
           closeApiKeyModal();
@@ -1527,13 +1527,13 @@
           const isAdminRename = document.getElementById("apiKeyModal").dataset.adminRename === "1";
           if (isAdminRename && accountId) {
             await api(
-              `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`,
+              `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`,
               { method: "PATCH", body: JSON.stringify({ label }) },
             );
             closeApiKeyModal();
             await loadAdminRestApiKeys(accountId);
           } else {
-            await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`, {
+            await api(`/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}`, {
               method: "PATCH",
               body: JSON.stringify({ label }),
             });
@@ -1555,8 +1555,8 @@
     async function patchRestApiKeyStatus(keyId, status, admin = false) {
       const accountId = $("adminViewerSelect")?.value;
       const path = admin
-        ? `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
-        : `/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`;
+        ? `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
+        : `/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}`;
       await api(path, { method: "PATCH", body: JSON.stringify({ status }) });
       if (admin) await loadAdminRestApiKeys(accountId);
       else await loadRestApiKeys();
@@ -1567,8 +1567,8 @@
       if (!confirm("Integrations using this key will stop working.")) return;
       const accountId = $("adminViewerSelect")?.value;
       const path = admin
-        ? `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
-        : `/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`;
+        ? `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
+        : `/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}`;
       await api(path, { method: "DELETE" });
       if (admin) await loadAdminRestApiKeys(accountId);
       else await loadRestApiKeys();
@@ -1576,7 +1576,7 @@
     }
 
     async function setRestApiKeyPrimary(keyId) {
-      await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}/set-primary`, {
+      await api(`/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}/set-primary`, {
         method: "POST",
         body: "{}",
       });
@@ -1586,7 +1586,7 @@
 
     async function revealRestApiKeyById(keyId) {
       try {
-        const res = await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}/reveal`, {
+        const res = await api(`/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}/reveal`, {
           method: "POST",
           body: "{}",
         });
@@ -1703,7 +1703,7 @@
     async function loadServiceAccounts() {
       if (!isViewer()) return;
       try {
-        const res = await api("/v1/marafiq/service-accounts");
+        const res = await api("/v1/viewer/service-accounts");
         state.serviceAccounts = res.data || [];
         state.serviceAccountAvailableScopes = res.meta?.availableScopes || [];
         $("serviceAccountsStatus").textContent = "";
@@ -1745,7 +1745,7 @@
     function openServiceAccountCreateModal() {
       $("serviceAccountModalTitle").textContent = "Create Service Account";
       $("serviceAccountModalDesc").textContent =
-        "Service accounts authenticate machines, not humans. Your application exchanges client credentials at POST /v1/marafiq/auth/token.";
+        "Service accounts authenticate machines, not humans. Your application exchanges client credentials at POST /v1/viewer/auth/token.";
       $("serviceAccountModalWarning").style.display = "none";
       $("serviceAccountModalFormWrap").style.display = "";
       $("serviceAccountModalPlainWrap").style.display = "none";
@@ -1795,7 +1795,7 @@
         return;
       }
       try {
-        const res = await api("/v1/marafiq/service-accounts", {
+        const res = await api("/v1/viewer/service-accounts", {
           method: "POST",
           body: JSON.stringify({
             name,
@@ -1813,19 +1813,19 @@
     }
 
     async function patchServiceAccountStatus(id, action) {
-      await api(`/v1/marafiq/service-accounts/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" });
+      await api(`/v1/viewer/service-accounts/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" });
       await loadServiceAccounts();
     }
 
     async function deleteServiceAccountById(id) {
       if (!confirm("Delete this service account? Applications using it will stop working.")) return;
-      await api(`/v1/marafiq/service-accounts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await api(`/v1/viewer/service-accounts/${encodeURIComponent(id)}`, { method: "DELETE" });
       await loadServiceAccounts();
     }
 
     async function rotateServiceAccountById(id) {
       if (!confirm("Rotate client secret? The previous secret and refresh tokens will stop working.")) return;
-      const res = await api(`/v1/marafiq/service-accounts/${encodeURIComponent(id)}/rotate-secret`, { method: "POST", body: "{}" });
+      const res = await api(`/v1/viewer/service-accounts/${encodeURIComponent(id)}/rotate-secret`, { method: "POST", body: "{}" });
       openServiceAccountCreatedModal(res.data);
       await loadServiceAccounts();
     }
@@ -1935,7 +1935,7 @@
     async function loadAdminViewerSettings() {
       if (!isAdmin()) return;
       buildAdminPermissionToggles();
-      const listRes = await api("/v1/marafiq/admin/integration-accounts");
+      const listRes = await api("/v1/platform/admin/integration-accounts");
       const viewers = listRes.data || [];
       renderAdminViewerList(viewers);
       await loadAdminProjects();
@@ -1962,7 +1962,7 @@
     }
 
     async function loadAdminViewerSettingsFor(accountId) {
-      const res = await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
+      const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
       fillAdminPermissionForm(res.data.permissions);
       setAdminSettingsStatus("");
       await loadAdminIntegrationSettings(accountId);
@@ -2005,7 +2005,7 @@
       if (!accountId || !isAdmin()) return;
       state.adminIntegrationPlainKey = null;
       try {
-        const res = await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/key`);
+        const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/key`);
         renderAdminIntegrationPanel(res.data);
         setAdminIntegrationStatusMsg("");
       } catch (e) {
@@ -2018,7 +2018,7 @@
       if (!accountId) return;
       setAdminIntegrationStatusMsg("Saving…");
       try {
-        const res = await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/key`, {
+        const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/key`, {
           method: "PATCH",
           body: JSON.stringify({ enabled: $("adminIntegrationEnabled").checked }),
         });
@@ -2049,7 +2049,7 @@
               ? "regenerate"
               : "revoke";
         const res = await api(
-          `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/key/${path}`,
+          `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/key/${path}`,
           {
             method: "POST",
             body: action === "revoke" ? "{}" : JSON.stringify({ expiration }),
@@ -2073,7 +2073,7 @@
       setAdminSettingsStatus("Saving…");
       try {
         const res = await api(
-          `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/access`,
+          `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`,
           { method: "PATCH", body: JSON.stringify(readAdminPermissionForm()) },
         );
         fillAdminPermissionForm(res.data.permissions);
@@ -2094,7 +2094,7 @@
       }
       setAdminViewerStatus("Creating…");
       try {
-        await api("/v1/marafiq/admin/integration-accounts", {
+        await api("/v1/platform/admin/integration-accounts", {
           method: "POST",
           body: JSON.stringify({ username, password, displayName }),
         });
@@ -2116,7 +2116,7 @@
       if (!confirm(`Delete integration account "${label}" (${accountId})? This cannot be undone.`)) return;
       setAdminViewerStatus("Deleting…");
       try {
-        await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}`, {
+        await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}`, {
           method: "DELETE",
         });
         setAdminViewerStatus(`Account "${accountId}" deleted.`, "ok");
@@ -2187,7 +2187,7 @@
 
     async function loadAdminProjects() {
       if (!isAdmin()) return;
-      const res = await api("/v1/marafiq/admin/fh2-projects");
+      const res = await api("/v1/platform/admin/fh2-projects");
       renderAdminProjects(res.data?.projects || []);
       const syncMeta = $("adminProjectSyncMeta");
       const last = res.data?.sync?.lastSyncAt;
@@ -2201,7 +2201,7 @@
 
     async function syncAdminProjects() {
       setAdminProjectStatus("Syncing from FlightHub 2…");
-      await api("/v1/marafiq/admin/fh2-projects/sync", {
+      await api("/v1/platform/admin/fh2-projects/sync", {
         method: "POST",
         body: "{}",
       });
@@ -2218,11 +2218,11 @@
       }
       setAdminAssignmentStatus(remove ? "Removing…" : "Assigning…");
       if (remove) {
-        await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/remove-viewer/${encodeURIComponent(viewerId)}`, {
+        await api(`/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId)}/remove-viewer/${encodeURIComponent(viewerId)}`, {
           method: "DELETE",
         });
       } else {
-        await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/assign-viewer`, {
+        await api(`/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId)}/assign-viewer`, {
           method: "POST",
           body: JSON.stringify({ viewerId }),
         });
@@ -2232,7 +2232,7 @@
     }
 
     async function deactivateAdminProject(projectId) {
-      await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/deactivate`, {
+      await api(`/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId)}/deactivate`, {
         method: "POST",
         body: "{}",
       });
@@ -2285,40 +2285,40 @@
       switch (cardKey) {
         case "fleet":
           return formatApiCopy(
-            "GET /v1/marafiq/devices",
+            "GET /v1/viewer/devices",
             s.devicesSample,
-            ["GET /v1/marafiq/fleet/summary", "GET /v1/marafiq/fleet/positions"],
+            ["GET /v1/viewer/fleet/summary", "GET /v1/viewer/fleet/positions"],
           );
         case "drone-telemetry":
-          return formatApiCopy(`GET /v1/marafiq/devices/${ds}/telemetry/latest`, s.droneTelemetry);
+          return formatApiCopy(`GET /v1/viewer/devices/${ds}/telemetry/latest`, s.droneTelemetry);
         case "dock-telemetry":
-          return formatApiCopy(`GET /v1/marafiq/docks/${gs}`, s.dockTelemetry);
+          return formatApiCopy(`GET /v1/viewer/docks/${gs}`, s.dockTelemetry);
         case "battery":
-          return formatApiCopy(`GET /v1/marafiq/devices/${ds}/telemetry/latest`, s.batterySample);
+          return formatApiCopy(`GET /v1/viewer/devices/${ds}/telemetry/latest`, s.batterySample);
         case "gps":
-          return formatApiCopy(`GET /v1/marafiq/fleet/positions`, s.gpsSample);
+          return formatApiCopy(`GET /v1/viewer/fleet/positions`, s.gpsSample);
         case "online":
-          return formatApiCopy("GET /v1/marafiq/fleet/summary", s.onlineSample);
+          return formatApiCopy("GET /v1/viewer/fleet/summary", s.onlineSample);
         case "camera":
           return formatApiCopy(
-            `GET /v1/marafiq/devices/${gs}/live-stream?camera=dock`,
+            `GET /v1/viewer/devices/${gs}/live-stream?camera=dock`,
             s.cameraSample?.dock || s.cameraSample,
           );
         case "drone-fpv":
           return formatApiCopy(
-            `GET /v1/marafiq/devices/${ds}/live-stream?camera=drone`,
+            `GET /v1/viewer/devices/${ds}/live-stream?camera=drone`,
             s.cameraSample?.drone || s.cameraSample,
           );
         case "alerts":
-          return formatApiCopy("GET /v1/marafiq/events?limit=25", s.alertsSample);
+          return formatApiCopy("GET /v1/viewer/events?limit=25", s.alertsSample);
         case "missions":
           return formatApiCopy(
-            "GET /v1/marafiq/media/recent",
+            "GET /v1/viewer/media/recent",
             s.missionsSample,
-            ["GET /v1/marafiq/tasks", "GET /v1/marafiq/tasks/{taskId}/media"],
+            ["GET /v1/viewer/tasks", "GET /v1/viewer/tasks/{taskId}/media"],
           );
         default:
-          return "Endpoint:\nGET /v1/marafiq/capabilities";
+          return "Endpoint:\nGET /v1/viewer/capabilities";
       }
     }
 
@@ -2595,7 +2595,7 @@
       const sn = $("camDevice").value;
       if (!sn) return;
       try {
-        const telem = await api(`/v1/marafiq/devices/${sn}/telemetry/latest`);
+        const telem = await api(`/v1/viewer/devices/${sn}/telemetry/latest`);
         const existing = $("streamInfo").textContent;
         const prefix = existing.includes("Snapshot") ? "" : existing + "\n\n";
         $("streamInfo").textContent =
@@ -2612,10 +2612,10 @@
       if (
         isViewer() &&
         projectCode &&
-        path.startsWith("/v1/marafiq/") &&
-        !path.startsWith("/v1/marafiq/auth/") &&
-        !path.startsWith("/v1/marafiq/admin/") &&
-        !path.startsWith("/v1/marafiq/rest-api-keys")
+        path.startsWith("/v1/viewer/") &&
+        !path.startsWith("/v1/viewer/auth/") &&
+        !path.startsWith("/v1/platform/admin/") &&
+        !path.startsWith("/v1/viewer/rest-api-keys")
       ) {
         const sep = path.includes("?") ? "&" : "?";
         requestPath = `${path}${sep}projectCode=${encodeURIComponent(projectCode)}`;
@@ -2641,7 +2641,7 @@
     $("loginBtn").onclick = async () => {
       $("loginError").textContent = "";
       try {
-        const res = await fetch("/v1/marafiq/auth/login", {
+        const res = await fetch("/v1/viewer/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2649,7 +2649,15 @@
             password: $("loginPass").value,
           }),
         });
-        const body = await res.json();
+        const raw = await res.text();
+        let body;
+        try {
+          body = raw ? JSON.parse(raw) : {};
+        } catch {
+          $("loginError").textContent =
+            res.ok ? "Invalid server response" : `Login failed (${res.status})`;
+          return;
+        }
         if (!res.ok) {
           $("loginError").textContent = body.message || body.error || "Login failed";
           return;
@@ -2962,9 +2970,9 @@
 
       try {
         const [dockRes, droneRes, telem] = await Promise.all([
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
-          api(`/v1/marafiq/devices/${encodeURIComponent(telemSn)}/telemetry/latest`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(telemSn)}/telemetry/latest`),
         ]);
 
         state.streamLoaded = true;
@@ -3018,8 +3026,8 @@
 
       try {
         const [dockRes, droneRes] = await Promise.all([
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
         ]);
         state.apiSamples.cameraSample = { dock: dockRes.data, drone: droneRes.data };
         mountPanelPlayer(
@@ -3091,14 +3099,14 @@
         const fetches = [];
         if (wantDock && $("dashDockPlayer")) {
           fetches.push(
-            api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`).then(
+            api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`).then(
               (r) => ({ slot: "dock", data: r.data }),
             ),
           );
         }
         if (wantDrone && $("dashDronePlayer")) {
           fetches.push(
-            api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`).then(
+            api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`).then(
               (r) => ({ slot: "drone", data: r.data }),
             ),
           );
@@ -3376,7 +3384,7 @@
     }
 
     async function loadMissionMediaSummary() {
-      const res = await api("/v1/marafiq/media/recent?task_limit=4&media_per_task=6");
+      const res = await api("/v1/viewer/media/recent?task_limit=4&media_per_task=6");
       state.apiSamples.missionsSample = res.data?.[0] || res.data;
       renderMissionsDashboard(res.data || [], res.meta || {});
     }
@@ -3390,7 +3398,7 @@
 
       if (cardAllowed("droneTelemetry") && drone) {
         fetches.push(
-          api(`/v1/marafiq/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
+          api(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
             state.apiSamples.droneTelemetry = r.data;
             if ($("dashDroneTelem") && r.data) {
               const t = r.data.telemetry || r.data;
@@ -3409,7 +3417,7 @@
 
       if (cardAllowed("dockTelemetry") && dock) {
         fetches.push(
-          api(`/v1/marafiq/docks/${dock.serialNumber}`).then((r) => {
+          api(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
             state.apiSamples.dockTelemetry = r.data;
             if ($("dashDockTelem") && r.data) {
               renderMetricList($("dashDockTelem"), [
@@ -3486,9 +3494,9 @@
 
     async function loadFleet(opts = {}) {
       const [sum, devices, positionsRes] = await Promise.all([
-        api("/v1/marafiq/fleet/summary"),
-        api("/v1/marafiq/devices"),
-        api("/v1/marafiq/fleet/positions"),
+        api("/v1/viewer/fleet/summary"),
+        api("/v1/viewer/devices"),
+        api("/v1/viewer/fleet/positions"),
       ]);
       state.devices = devices.data || [];
       const positions = positionsRes.data || [];
@@ -3539,7 +3547,7 @@
 
     $("snapshotBtn").onclick = async () => {
       const sn = $("camDevice").value;
-      const telem = await api(`/v1/marafiq/devices/${sn}/telemetry/latest`);
+      const telem = await api(`/v1/viewer/devices/${sn}/telemetry/latest`);
       $("streamInfo").textContent =
         `Snapshot at ${new Date().toISOString()}\n` + JSON.stringify(telem.data, null, 2);
     };
@@ -3594,7 +3602,7 @@
           missionId: $("missionId").value || undefined,
           note: `CC double-confirm by ${state.session.displayName}`,
         };
-        const res = await api(`/v1/marafiq/ops/${pending.path}`, {
+        const res = await api(`/v1/platform/ops/${pending.path}`, {
           method: "POST",
           body: JSON.stringify(body),
         });
@@ -3608,7 +3616,7 @@
     };
 
     async function loadOpsCatalog() {
-      const res = await api("/v1/marafiq/ops/catalog");
+      const res = await api("/v1/platform/ops/catalog");
       state.opsCatalog = res.data;
       renderOpsCategoryTabs();
       renderOpsActions();
@@ -3694,7 +3702,7 @@
       const sn = $("opsDevice").value;
       if (!sn || !state.session) return;
       try {
-        const res = await api(`/v1/marafiq/ops/readiness/${encodeURIComponent(sn)}`);
+        const res = await api(`/v1/platform/ops/readiness/${encodeURIComponent(sn)}`);
         updateOpsHud(res.data, res.meta);
       } catch (e) {
         $("opsReadyText").textContent = "Readiness check failed: " + e.message;
@@ -3705,7 +3713,7 @@
     $("opsRefreshReady").onclick = loadOpsReadiness;
 
     async function loadOpsLog() {
-      const res = await api("/v1/marafiq/ops/log?limit=20");
+      const res = await api("/v1/platform/ops/log?limit=20");
       const tbody = document.querySelector("#opsTable tbody");
       tbody.innerHTML = "";
       for (const r of res.data) {
@@ -3737,7 +3745,7 @@
       if (isViewer() && !cardAllowed("alertsEvents") && state.activeTab !== "alerts") {
         return;
       }
-      const res = await api("/v1/marafiq/events?limit=25");
+      const res = await api("/v1/viewer/events?limit=25");
       state.apiSamples.alertsSample = (res.data || []).slice(0, 2);
       if (!isViewer() || state.activeTab === "alerts") {
         renderEventsTable(res.data || []);
@@ -3763,7 +3771,7 @@
       document.querySelectorAll("[data-ack]").forEach((b) => {
         b.onclick = async () => {
           if (!confirm("Acknowledge this event?")) return;
-          await api(`/v1/marafiq/events/${b.dataset.ack}/ack`, { method: "POST" });
+          await api(`/v1/viewer/events/${b.dataset.ack}/ack`, { method: "POST" });
           await loadEvents();
         };
       });
@@ -3771,7 +3779,7 @@
     $("refreshEvents").onclick = loadEvents;
 
     async function loadTasks() {
-      const res = await api("/v1/marafiq/tasks");
+      const res = await api("/v1/viewer/tasks");
       state.tasks = res.data || [];
       $("taskInfo").textContent = JSON.stringify(res, null, 2);
       const sel = $("taskSelect");
@@ -3788,7 +3796,7 @@
     $("loadMedia").onclick = async () => {
       const id = $("taskSelect").value;
       if (!id) return alert("Load tasks first");
-      const res = await api(`/v1/marafiq/tasks/${id}/media`);
+      const res = await api(`/v1/viewer/tasks/${id}/media`);
       $("mediaInfo").textContent = JSON.stringify(res, null, 2);
     };
     $("loadTrack").onclick = async () => {
@@ -3799,15 +3807,15 @@
         "X-CC-Session": state.session.sessionToken,
       };
       const [geo, kml] = await Promise.all([
-        fetch(`/v1/marafiq/tasks/${id}/trajectory.geojson`, { headers }).then((r) => r.text()),
-        fetch(`/v1/marafiq/tasks/${id}/trajectory.kml`, { headers }).then((r) => r.text()),
+        fetch(`/v1/viewer/tasks/${id}/trajectory.geojson`, { headers }).then((r) => r.text()),
+        fetch(`/v1/viewer/tasks/${id}/trajectory.kml`, { headers }).then((r) => r.text()),
       ]);
       $("trackInfo").textContent = `GeoJSON:\n${geo.slice(0, 1200)}\n\nKML:\n${kml.slice(0, 1200)}`;
     };
 
     async function loadFh2Links() {
       try {
-        const res = await api("/v1/marafiq/capabilities");
+        const res = await api("/v1/viewer/capabilities");
         const url = res.data?.fh2CockpitUrl;
         if (url) {
           $("openFh2Cockpit").href = url;

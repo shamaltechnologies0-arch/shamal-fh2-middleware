@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
 import { registerMarafiqAuth } from "./plugins/auth.js";
+import { PLATFORM_PREFIX, LEGACY_PREFIX } from "./routes/viewerPaths.js";
 import { authRoutes } from "./routes/auth.js";
 import { adminRoutes } from "./routes/admin.js";
 import { viewerIntegrationRoutes } from "./routes/viewerIntegration.js";
@@ -55,6 +56,13 @@ export async function buildServer() {
     requestIdHeader: "x-request-id",
     genReqId: (req) =>
       (req.headers["x-request-id"] as string | undefined) ?? crypto.randomUUID(),
+    rewriteUrl: (req) => {
+      const url = req.url ?? "/";
+      if (url.startsWith(`${PLATFORM_PREFIX}/`)) {
+        return url.replace(PLATFORM_PREFIX, LEGACY_PREFIX);
+      }
+      return url;
+    },
   }) as Awaited<ReturnType<typeof Fastify>>;
 
   // Swagger "Try it out" from 127.0.0.1 → localhost (or vice versa) needs CORS in dev.

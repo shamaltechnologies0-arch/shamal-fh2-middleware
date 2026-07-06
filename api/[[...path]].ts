@@ -14,7 +14,9 @@ function normalizeRequestUrl(req: VercelRequest): void {
   }
   if (path.startsWith("/api/")) {
     req.url = `${path.slice("/api".length)}${query}`;
+    return;
   }
+  // Rewrite already forwarded the original path (no /api prefix).
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

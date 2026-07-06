@@ -1,7 +1,9 @@
 import type { FastifyInstance, RouteHandlerMethod } from "fastify";
 
-const LEGACY_PREFIX = "/v1/marafiq";
+export const LEGACY_PREFIX = "/v1/marafiq";
 const CANONICAL_PREFIX = "/v1/viewer";
+/** Shamal Platform internal routes (admin, integration session, ops). */
+export const PLATFORM_PREFIX = "/v1/platform";
 
 /** Shamal-internal /v1/marafiq paths that must not receive /v1/viewer aliases. */
 const INTERNAL_MARAFIQ_PREFIXES = [
@@ -26,8 +28,11 @@ export function viewerRoutePaths(legacyPath: string): string[] {
   return [canonicalPath, legacyPath];
 }
 
-/** Map canonical viewer paths to legacy paths for shared auth/permission checks. */
+/** Map canonical viewer/platform paths to legacy paths for shared auth/permission checks. */
 export function legacyMarafiqPath(path: string): string {
+  if (path.startsWith(`${PLATFORM_PREFIX}/`)) {
+    return path.replace(PLATFORM_PREFIX, LEGACY_PREFIX);
+  }
   if (path.startsWith(`${CANONICAL_PREFIX}/`)) {
     return path.replace(CANONICAL_PREFIX, LEGACY_PREFIX);
   }
@@ -35,7 +40,11 @@ export function legacyMarafiqPath(path: string): string {
 }
 
 export function isViewerOrLegacyApiPath(path: string): boolean {
-  return path.startsWith(LEGACY_PREFIX) || path.startsWith(`${CANONICAL_PREFIX}/`);
+  return (
+    path.startsWith(LEGACY_PREFIX) ||
+    path.startsWith(`${CANONICAL_PREFIX}/`) ||
+    path.startsWith(`${PLATFORM_PREFIX}/`)
+  );
 }
 
 type RouteOpts = Record<string, unknown>;

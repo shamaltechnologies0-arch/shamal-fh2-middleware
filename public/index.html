@@ -21,7 +21,10 @@
     button:disabled { opacity:.45; cursor:not-allowed; }
     main { padding:12px; display:grid; grid-template-columns:220px 1fr; gap:12px; flex:1; min-height:0; overflow:hidden; }
     nav { background:var(--card); border:1px solid #23344f; border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:6px; overflow:auto; }
-    nav button { text-align:left; }
+    nav button { text-align:left; display:flex; align-items:center; gap:8px; }
+    nav button.nav-active { background:#214271; border-color:#4ea2ff; }
+    nav .nav-icon { display:inline-flex; width:16px; height:16px; flex-shrink:0; opacity:.9; }
+    nav .nav-icon svg { width:16px; height:16px; fill:currentColor; }
     main > div { min-height:0; display:flex; flex-direction:column; overflow:hidden; }
     section { display:none; background:var(--card); border:1px solid #23344f; border-radius:12px; padding:12px; min-height:0; overflow:auto; }
     section.active { display:flex; flex-direction:column; flex:1; }
@@ -163,8 +166,11 @@
     .api-toast.show { opacity:1; }
     .viewer-note { font-size:11px; color:var(--muted); margin:0 0 8px; }
     .viewer-client-name { font-size:13px; color:#cfe4ff; font-weight:600; margin-top:4px; }
-    main.viewer-no-nav { grid-template-columns:1fr; }
-    main.viewer-no-nav nav { display:none; }
+    .settings-subtitle { margin:0 0 16px; max-width:640px; line-height:1.45; }
+    .settings-tabs { margin-bottom:14px; }
+    .settings-panel { display:none; }
+    .settings-panel.active { display:block; }
+    #settings .admin-settings-card { max-width:none; }
     body.viewer-layout #dashboard { padding:16px 18px; }
     body.viewer-layout #dashboard h3 { margin:0 0 4px; font-size:18px; }
     body.viewer-layout .viewer-note { margin-bottom:14px; }
@@ -208,36 +214,6 @@
     .integration-scopes .pill { font-size:10px; }
     .integration-example { margin-top:10px; }
     .integration-example pre { font-size:11px; max-height:140px; overflow:auto; }
-    #viewerIntegrationFooter {
-      display:none;
-      position:fixed;
-      left:0; right:0; bottom:0;
-      z-index:40;
-      background:#0a1322;
-      border-top:1px solid #22354f;
-      padding:8px 12px;
-      font-size:11px;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    body.viewer-integration-footer #viewerIntegrationFooter { display:flex; }
-    body.viewer-integration-footer main { padding-bottom:72px; }
-    .footer-chip {
-      display:flex; align-items:center; gap:6px;
-      background:#111c2e; border:1px solid #22354f; border-radius:8px;
-      padding:4px 8px; max-width:280px;
-    }
-    .footer-chip .lbl { color:var(--muted); white-space:nowrap; }
-    .footer-chip .val {
-      font-family:ui-monospace,Menlo,monospace;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;
-    }
-    .footer-chip button { font-size:10px; padding:3px 8px; }
-    #integrationWelcomeModal .modal { max-width:520px; width:94%; }
-    #integrationWelcomeModal .integration-field { margin-bottom:10px; }
-    body.viewer-layout .dash-card#dashIntegrationCard,
-    body.viewer-layout .dash-card#dashApiKeysCard { grid-column:1 / -1; }
     .api-keys-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
     .api-keys-table { width:100%; font-size:12px; }
     .api-keys-table th,.api-keys-table td { padding:8px 6px; vertical-align:middle; }
@@ -350,6 +326,10 @@
   <main id="appMain" style="opacity:.35;pointer-events:none">
     <nav id="sideNav">
       <button data-tab="dashboard" data-nav-viewer style="display:none">Monitoring Dashboard</button>
+      <button data-tab="settings" data-nav-viewer style="display:none">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8m8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06M12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14"/></svg></span>
+        Settings
+      </button>
       <button data-tab="fleet" data-nav-staff>1) Live Map + Fleet</button>
       <button data-tab="camera" data-nav-staff>2) Live Camera Panel</button>
       <button data-tab="ops" data-nav-staff>3) Operations Panel</button>
@@ -466,26 +446,41 @@
             </div>
             <div class="dash-card-body" id="dashMissions">Loading…</div>
           </div>
-          <div class="dash-card" id="dashIntegrationCard" data-card="integration" style="display:none">
-            <div class="dash-card-head">
-              <span class="dash-card-title">Integration Access</span>
-            </div>
-            <div class="dash-card-body" id="dashIntegrationBody">
-              <p class="small">Loading integration details…</p>
+        </div>
+      </section>
+
+      <section id="settings">
+        <h3>Settings</h3>
+        <p class="viewer-note settings-subtitle">Manage workspace access, API credentials, and integration configuration.</p>
+        <div id="settingsContent">
+          <div class="settings-tabs ops-tabs" role="tablist" aria-label="Settings sections">
+            <button type="button" role="tab" data-settings-tab="service-accounts" class="active" aria-selected="true">Service Accounts</button>
+            <button type="button" role="tab" data-settings-tab="api-keys" aria-selected="false">API Keys</button>
+          </div>
+          <div id="settingsServiceAccountsPanel" class="settings-panel active" role="tabpanel">
+            <div class="admin-settings-card" id="dashServiceAccountsCard">
+              <div class="api-keys-toolbar">
+                <h4 style="margin:0">Service Accounts</h4>
+                <button type="button" id="serviceAccountsNewBtn">+ New Service Account</button>
+              </div>
+              <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). Exchange <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/viewer/auth/token</code> for a short-lived JWT.</p>
+              <div id="serviceAccountsTableWrap"></div>
+              <p id="serviceAccountsStatus" class="api-keys-error"></p>
             </div>
           </div>
-          <div class="dash-card" id="dashApiKeysCard" data-card="api-keys" style="display:none">
-            <div class="dash-card-head">
-              <span class="dash-card-title">API Keys</span>
-              <button type="button" class="get-api-btn" id="restApiKeysNewBtn">+ New Key</button>
-            </div>
-            <div class="dash-card-body" id="dashApiKeysBody">
+          <div id="settingsApiKeysPanel" class="settings-panel" role="tabpanel">
+            <div class="admin-settings-card" id="dashApiKeysCard">
+              <div class="api-keys-toolbar">
+                <h4 style="margin:0">API Keys</h4>
+                <button type="button" id="restApiKeysNewBtn">+ New Key</button>
+              </div>
               <p class="small" style="margin:0 0 10px">Manage REST API keys for <code>X-Api-Key</code> authentication.</p>
               <div id="restApiKeysTableWrap"></div>
               <p id="restApiKeysStatus" class="api-keys-error"></p>
             </div>
           </div>
         </div>
+        <p id="settingsAccessDenied" class="small" style="display:none">API credential management is not available for your account.</p>
       </section>
 
       <section id="fleet" class="active">
@@ -734,6 +729,22 @@
               <div class="lbl">Last generated</div>
               <div class="val" id="adminIntegrationGenerated">—</div>
             </div>
+            <div class="integration-field">
+              <div class="lbl">Expires</div>
+              <div class="val" id="adminIntegrationExpires">—</div>
+            </div>
+            <div class="integration-field">
+              <label for="adminIntegrationExpiration">Key expiration (required when generating)</label>
+              <select id="adminIntegrationExpiration" required>
+                <option value="">Select expiration…</option>
+                <option value="1h">1 hour</option>
+                <option value="1d">1 day</option>
+                <option value="1mo">1 month</option>
+                <option value="3mo">3 months</option>
+                <option value="6mo">6 months</option>
+                <option value="1y">1 year</option>
+              </select>
+            </div>
             <div class="integration-field" id="adminIntegrationKeyWrap" style="display:none">
               <div class="lbl">Access key (shown once — copy now)</div>
               <div class="val" id="adminIntegrationKeyReveal"></div>
@@ -774,17 +785,6 @@
       <div id="cardZoomBody" class="card-zoom-body"></div>
     </div>
   </div>
-  <div id="integrationWelcomeModal" class="modal-backdrop" style="display:none">
-    <div class="modal">
-      <h3>Your integration credentials</h3>
-      <p class="small">Copy these values to connect your platform to Shamal. You can open this again from the footer bar anytime.</p>
-      <div id="integrationWelcomeBody"></div>
-      <div class="row" style="margin-top:14px">
-        <button type="button" id="integrationWelcomeClose">Got it — open dashboard</button>
-      </div>
-    </div>
-  </div>
-
   <div id="apiKeyModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
       <h3 id="apiKeyModalTitle">API Key</h3>
@@ -795,6 +795,18 @@
       <div id="apiKeyModalLabelWrap">
         <label for="apiKeyModalLabel">Name</label>
         <input id="apiKeyModalLabel" type="text" maxlength="128" placeholder="e.g. CAFM Production" autocomplete="off" />
+      </div>
+      <div id="apiKeyModalExpirationWrap">
+        <label for="apiKeyModalExpiration">Expiration</label>
+        <select id="apiKeyModalExpiration" required>
+          <option value="">Select expiration…</option>
+          <option value="1h">1 hour</option>
+          <option value="1d">1 day</option>
+          <option value="1mo">1 month</option>
+          <option value="3mo">3 months</option>
+          <option value="6mo">6 months</option>
+          <option value="1y">1 year</option>
+        </select>
       </div>
       <div id="apiKeyModalPlainWrap" style="display:none">
         <label>API key</label>
@@ -811,9 +823,49 @@
     </div>
   </div>
 
-  <div id="apiToast" class="api-toast">API value copied</div>
-  <footer id="viewerIntegrationFooter" aria-label="Integration credentials"></footer>
+  <div id="serviceAccountModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="serviceAccountModalTitle">
+      <h3 id="serviceAccountModalTitle">Service Account</h3>
+      <p id="serviceAccountModalDesc" class="small"></p>
+      <div id="serviceAccountModalWarning" class="api-key-warning" style="display:none">
+        Store the client secret securely. It is shown in full only once.
+      </div>
+      <div id="serviceAccountModalFormWrap">
+        <label for="serviceAccountModalName">Name</label>
+        <input id="serviceAccountModalName" type="text" maxlength="128" placeholder="e.g. Production ERP" autocomplete="off" />
+        <label for="serviceAccountModalDescription">Description (optional)</label>
+        <input id="serviceAccountModalDescription" type="text" maxlength="512" placeholder="What application uses this account?" autocomplete="off" />
+        <label>Scopes (least privilege)</label>
+        <div id="serviceAccountModalScopes" class="integration-scopes"></div>
+        <label for="serviceAccountModalExpiration">Expiration</label>
+        <select id="serviceAccountModalExpiration" required>
+          <option value="">Select expiration…</option>
+          <option value="1h">1 hour</option>
+          <option value="1d">1 day</option>
+          <option value="1mo">1 month</option>
+          <option value="3mo">3 months</option>
+          <option value="6mo">6 months</option>
+          <option value="1y">1 year</option>
+        </select>
+      </div>
+      <div id="serviceAccountModalPlainWrap" style="display:none">
+        <label>Client ID</label>
+        <div class="api-key-plain" id="serviceAccountModalClientId"></div>
+        <label>Client secret</label>
+        <div class="api-key-plain" id="serviceAccountModalClientSecret"></div>
+        <div class="integration-actions">
+          <button type="button" id="serviceAccountModalCopyBtn">Copy secret</button>
+        </div>
+      </div>
+      <p id="serviceAccountModalError" class="api-keys-error"></p>
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button type="button" id="serviceAccountModalCancel">Cancel</button>
+        <button type="button" id="serviceAccountModalConfirm">Create</button>
+      </div>
+    </div>
+  </div>
 
+  <div id="apiToast" class="api-toast">API value copied</div>
   <template id="zoomCameraTemplate">
     <p class="statusline">Live camera view — dock camera and drone FPV.</p>
     <div class="camera-split">
@@ -849,6 +901,7 @@
       opsCategory: "flight",
       liveTimer: null,
       activeTab: "fleet",
+      activeSettingsTab: "service-accounts",
       isRefreshing: false,
       streamLoaded: false,
       fleetMap: null,
@@ -866,6 +919,8 @@
       adminProjects: [],
       viewerIntegration: null,
       restApiKeys: [],
+      serviceAccounts: [],
+      serviceAccountAvailableScopes: [],
       adminIntegration: null,
       adminIntegrationPlainKey: null,
       adminRestApiKeys: [],
@@ -873,16 +928,16 @@
     };
 
     const INTEGRATION_API_ROUTES = {
-      fleet: "/v1/marafiq/integration/fleet",
-      "drone-telemetry": "/v1/marafiq/integration/drone-telemetry",
-      "dock-telemetry": "/v1/marafiq/integration/dock-telemetry",
-      battery: "/v1/marafiq/integration/battery-status",
-      gps: "/v1/marafiq/integration/gps-location",
-      online: "/v1/marafiq/integration/online-status",
-      camera: "/v1/marafiq/integration/camera",
-      "drone-fpv": "/v1/marafiq/integration/fpv",
-      alerts: "/v1/marafiq/integration/alerts-events",
-      missions: "/v1/marafiq/integration/media-history",
+      fleet: "/v1/platform/integration/fleet",
+      "drone-telemetry": "/v1/platform/integration/drone-telemetry",
+      "dock-telemetry": "/v1/platform/integration/dock-telemetry",
+      battery: "/v1/platform/integration/battery-status",
+      gps: "/v1/platform/integration/gps-location",
+      online: "/v1/platform/integration/online-status",
+      camera: "/v1/platform/integration/camera",
+      "drone-fpv": "/v1/platform/integration/fpv",
+      alerts: "/v1/platform/integration/alerts-events",
+      missions: "/v1/platform/integration/media-history",
     };
     const LIVE_INTERVAL_MS = 10_000;
     const $ = (id) => document.getElementById(id);
@@ -1077,7 +1132,7 @@
 
     async function syncSessionFromServer() {
       if (!state.session?.sessionToken) return;
-      const res = await api("/v1/marafiq/auth/me");
+      const res = await api("/v1/viewer/auth/me");
       if (res.data?.viewerDashboardPermissions) {
         state.session.viewerDashboardPermissions = res.data.viewerDashboardPermissions;
         saveSession(state.session);
@@ -1103,78 +1158,6 @@
       if (isViewer()) await loadViewerIntegration();
     }
 
-    function integrationFieldHtml(label, value, copyId) {
-      return `<div class="integration-field">
-        <div class="lbl">${label}</div>
-        <div class="val" id="${copyId || ""}">${escapeHtml(value)}</div>
-        ${copyId ? `<div class="integration-actions"><button type="button" class="integration-copy-btn" data-copy-target="${copyId}">Copy</button></div>` : ""}
-      </div>`;
-    }
-
-    function renderViewerIntegrationCard() {
-      const card = $("dashIntegrationCard");
-      const body = $("dashIntegrationBody");
-      if (!isViewer() || !card || !body) {
-        if (card) card.style.display = "none";
-        return;
-      }
-
-      card.style.display = "";
-      const info = state.viewerIntegration;
-
-      if (!info || !info.enabled) {
-        body.innerHTML = `<p class="small">API integration is not enabled for your account. Please contact Shamal Platform administrator.</p>`;
-        return;
-      }
-
-      const statusClass = info.status === "active" ? "ok" : info.status === "revoked" ? "bad" : "warn";
-
-      const examplePath = INTEGRATION_API_ROUTES["drone-telemetry"];
-      const curlExample = buildIntegrationCurlExample(examplePath);
-      const fetchExample = buildIntegrationFetchExample(examplePath);
-
-      body.innerHTML = `
-        <p class="small" style="margin:0 0 12px">Use these credentials to connect your system to Shamal Platform APIs.</p>
-        ${primaryRestApiKeyMasked() ? integrationFieldHtml("REST API key (X-Api-Key)", primaryRestApiKeyMasked(), "") : ""}
-        <p class="small" style="margin:0 0 8px">Manage multiple REST API keys in the <strong>API Keys</strong> section below.</p>
-        ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "intCopyBaseUrl")}
-        ${integrationFieldHtml("Account ID", info.accountId, "intCopyAccountId")}
-        <div class="integration-field">
-          <div class="lbl">Access Key</div>
-          <div class="val" id="intCopyAccessKey">${escapeHtml(info.tokenMasked || "••••••••••••••••")}</div>
-          <div class="integration-actions">
-            <button type="button" id="intCopyAccessKeyBtn">Copy Access Key</button>
-          </div>
-        </div>
-        ${integrationFieldHtml("Webhook URL", info.webhookUrl, "intCopyWebhook")}
-        <p class="small" style="margin:8px 0 0">${escapeHtml(info.accessNote || "Access is limited to the data enabled by Shamal Platform administrator.")}</p>
-        <div class="integration-field">
-          <div class="lbl">Key status</div>
-          <div><span class="pill ${statusClass}">${escapeHtml((info.status || "none").toUpperCase())}</span></div>
-        </div>
-        <div class="integration-field">
-          <div class="lbl">Last generated</div>
-          <div class="val">${info.generatedAt ? escapeHtml(new Date(info.generatedAt).toLocaleString()) : "—"}</div>
-        </div>
-        <details class="integration-example">
-          <summary class="small" style="cursor:pointer;color:#9fd0ff">Example API request</summary>
-          <pre id="intCurlExample">${escapeHtml(curlExample)}</pre>
-          <div class="integration-actions">
-            <button type="button" id="intCopyCurlBtn">Copy Example</button>
-          </div>
-          <pre class="small" style="margin-top:8px">${escapeHtml(fetchExample)}</pre>
-        </details>`;
-
-      body.querySelectorAll(".integration-copy-btn").forEach((btn) => {
-        btn.onclick = () => {
-          const el = $(btn.dataset.copyTarget);
-          if (el) copyText(el.textContent);
-        };
-      });
-      $("intCopyAccessKeyBtn").onclick = () => copyIntegrationAccessKey();
-      $("intCopyCurlBtn").onclick = () => copyText(curlExample);
-    }
-
     async function copyText(text) {
       try {
         await navigator.clipboard.writeText(text);
@@ -1184,149 +1167,80 @@
       }
     }
 
-    async function copyIntegrationAccessKey() {
-      try {
-        const res = await api("/v1/marafiq/integration/access-key");
-        await copyText(res.data.accessKey);
-      } catch (e) {
-        alert(e.message);
-      }
+    function canManageWorkspaceApi() {
+      return isViewer();
     }
 
     async function loadViewerIntegration() {
       if (!isViewer()) return;
       try {
-        const res = await api("/v1/marafiq/integration/profile");
+        const res = await api("/v1/platform/integration/profile");
         state.viewerIntegration = res.data;
       } catch {
         state.viewerIntegration = null;
       }
-      await loadRestApiKeys();
-      renderViewerIntegrationCard();
-      renderIntegrationFooter();
       applyViewerDashboardPermissions();
     }
 
-    function integrationWelcomeStorageKey() {
-      const u = state.session?.username;
-      return u ? `shamal.integrationIntro.${u}` : null;
+    async function loadSettingsPage() {
+      if (!canManageWorkspaceApi()) return;
+      await Promise.all([loadRestApiKeys(), loadServiceAccounts()]);
     }
 
-    function buildIntegrationCredentialsHtml(info, accessKeyPlain) {
-      const keyDisplay = accessKeyPlain || info.tokenMasked || "••••••••";
-      const keyCopyId = accessKeyPlain ? "welcomeCopyAccessKey" : "";
-      const restMasked = primaryRestApiKeyMasked();
-      return `
-        ${restMasked ? integrationFieldHtml("REST API key (header: X-Api-Key)", restMasked, "") : ""}
-        ${integrationFieldHtml("API Base URL", info.apiBaseUrl, "welcomeCopyBaseUrl")}
-        ${integrationFieldHtml("Account ID", info.accountId, "welcomeCopyAccountId")}
-        <div class="integration-field">
-          <div class="lbl">Integration access key (header: Authorization Bearer)</div>
-          <div class="val" id="${keyCopyId || "welcomeAccessKeyMasked"}">${escapeHtml(keyDisplay)}</div>
-          <div class="integration-actions">
-            <button type="button" class="integration-copy-btn" data-copy-target="${keyCopyId || ""}" id="welcomeCopyAccessKeyBtn">Copy access key</button>
-          </div>
-        </div>
-        ${integrationFieldHtml("Webhook URL", info.webhookUrl, "welcomeCopyWebhook")}
-        <p class="small">${escapeHtml(info.accessNote || "")}</p>`;
+    function updateSettingsAccessUi() {
+      const allowed = canManageWorkspaceApi();
+      const content = $("settingsContent");
+      const denied = $("settingsAccessDenied");
+      if (content) content.style.display = allowed ? "" : "none";
+      if (denied) denied.style.display = allowed ? "none" : "";
     }
 
-    function wireIntegrationCopyButtons(root) {
-      root.querySelectorAll(".integration-copy-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const target = btn.dataset.copyTarget;
-          if (target === "welcomeCopyAccessKeyBtn" || btn.id === "welcomeCopyAccessKeyBtn") {
-            await copyIntegrationAccessKey();
-            return;
-          }
-          if (target) {
-            const el = $(target);
-            if (el) await copyText(el.textContent);
-          }
-        };
+    function activateSettingsTab(tabId) {
+      state.activeSettingsTab = tabId;
+      document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
+        const active = btn.dataset.settingsTab === tabId;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
       });
-      const accessBtn = root.querySelector("#welcomeCopyAccessKeyBtn, #intCopyAccessKeyBtn");
-      if (accessBtn && !accessBtn.dataset.wired) {
-        accessBtn.dataset.wired = "1";
-        accessBtn.onclick = () => copyIntegrationAccessKey();
-      }
+      $("settingsServiceAccountsPanel")?.classList.toggle("active", tabId === "service-accounts");
+      $("settingsApiKeysPanel")?.classList.toggle("active", tabId === "api-keys");
     }
 
-    async function maybeShowIntegrationWelcome() {
-      if (!isViewer() || !integrationActive()) return;
-      const key = integrationWelcomeStorageKey();
-      if (!key || localStorage.getItem(key) === "1") return;
-
-      let accessKey = null;
-      try {
-        const res = await api("/v1/marafiq/integration/access-key");
-        accessKey = res.data.accessKey;
-      } catch {
-        /* show profile without plain key */
-      }
-
-      const info = state.viewerIntegration;
-      if (!info) return;
-
-      $("integrationWelcomeBody").innerHTML = buildIntegrationCredentialsHtml(info, accessKey);
-      wireIntegrationCopyButtons($("integrationWelcomeModal"));
-      $("integrationWelcomeModal").style.display = "flex";
-
-      $("integrationWelcomeClose").onclick = () => {
-        localStorage.setItem(key, "1");
-        $("integrationWelcomeModal").style.display = "none";
-      };
-    }
-
-    function renderIntegrationFooter() {
-      const footer = $("viewerIntegrationFooter");
-      if (!footer) return;
-      if (!isViewer() || !state.session || !integrationActive() || !state.viewerIntegration) {
-        document.body.classList.remove("viewer-integration-footer");
-        footer.innerHTML = "";
-        return;
-      }
-
-      const info = state.viewerIntegration;
-      document.body.classList.add("viewer-integration-footer");
-      const restMasked = primaryRestApiKeyMasked();
-      const chips = [
-        ["Base URL", info.apiBaseUrl, "footBase"],
-        restMasked ? ["REST key", restMasked, "footApiKey"] : null,
-        ["Webhook", info.webhookUrl, "footWebhook"],
-        ["Account", info.accountId, "footAccount"],
-      ].filter(Boolean);
-
-      footer.innerHTML = `
-        <span class="small" style="margin-right:4px">Integration:</span>
-        ${chips.map(([lbl, val, id]) => `
-          <div class="footer-chip">
-            <span class="lbl">${lbl}</span>
-            <span class="val" id="${id}">${escapeHtml(val)}</span>
-            <button type="button" data-foot-copy="${id}">Copy</button>
-          </div>`).join("")}
-        <button type="button" id="footCopyAccessKey">Copy access key</button>
-        <button type="button" id="footShowWelcome">Show all credentials</button>
-      `;
-
-      footer.querySelectorAll("[data-foot-copy]").forEach((btn) => {
-        btn.onclick = () => {
-          const el = $(btn.dataset.footCopy);
-          if (el) copyText(el.textContent);
-        };
+    function updateNavActiveState() {
+      document.querySelectorAll("#sideNav button").forEach((btn) => {
+        const visible = btn.style.display !== "none";
+        btn.classList.toggle("nav-active", visible && btn.dataset.tab === state.activeTab);
       });
-      $("footCopyAccessKey").onclick = () => copyIntegrationAccessKey();
-      $("footShowWelcome").onclick = () => {
-        const k = integrationWelcomeStorageKey();
-        if (k) localStorage.removeItem(k);
-        maybeShowIntegrationWelcome();
-      };
     }
 
-    function primaryRestApiKeyMasked() {
-      const keys = state.restApiKeys || [];
-      const primary = keys.find((k) => k.isPrimary) || keys.find((k) => k.status === "active");
-      return primary?.keyMasked || null;
+    function activateTab(tabId) {
+      const section = $(tabId);
+      if (!section) return;
+      document.querySelectorAll("section").forEach((s) => s.classList.remove("active"));
+      section.classList.add("active");
+      state.activeTab = tabId;
+      updateNavActiveState();
+      if (tabId === "settings") {
+        history.replaceState(null, "", "/?tab=settings");
+      } else if (tabId === "dashboard") {
+        history.replaceState(null, "", "/");
+      } else if (window.location.pathname === "/" || window.location.pathname === "/settings") {
+        history.replaceState(null, "", `/?tab=${encodeURIComponent(tabId)}`);
+      }
+    }
+
+    function resolveInitialTab() {
+      if (!state.session) return;
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get("tab");
+      if (window.location.pathname === "/settings") return "settings";
+      if (requested && $(requested)) {
+        if (isViewer() && !["dashboard", "settings"].includes(requested)) return "dashboard";
+        if (!isViewer() && requested === "settings") return "fleet";
+        if (requested === "admin" && !isAdmin()) return isViewer() ? "dashboard" : "fleet";
+        return requested;
+      }
+      return isViewer() ? "dashboard" : state.activeTab;
     }
 
     function formatRestApiKeyDate(value) {
@@ -1341,6 +1255,7 @@
     function restApiKeyStatusPill(status) {
       if (status === "active") return '<span class="pill ok">ACTIVE</span>';
       if (status === "disabled") return '<span class="pill warn">DISABLED</span>';
+      if (status === "expired") return '<span class="pill bad">EXPIRED</span>';
       return `<span class="pill bad">${escapeHtml((status || "unknown").toUpperCase())}</span>`;
     }
 
@@ -1423,6 +1338,7 @@
             <td>${restApiKeyStatusPill(key.status)}</td>
             <td>${key.isPrimary ? "Yes" : "—"}</td>
             <td>${escapeHtml(formatRestApiKeyDate(key.createdAt))}</td>
+            <td>${escapeHtml(formatRestApiKeyDate(key.expiresAt))}</td>
             <td>${escapeHtml(formatRestApiKeyDate(key.lastUsedAt))}</td>
             <td class="actions">${actionButtons.join("")}</td>
           </tr>`;
@@ -1431,7 +1347,7 @@
       return `<table class="api-keys-table admin-viewer-table">
         <thead>
           <tr>
-            <th>Name</th><th>Key</th><th>Status</th><th>Primary</th><th>Created</th><th>Last used</th><th>Actions</th>
+            <th>Name</th><th>Key</th><th>Status</th><th>Primary</th><th>Created</th><th>Expires</th><th>Last used</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1441,7 +1357,7 @@
     async function loadRestApiKeys() {
       if (!isViewer()) return;
       try {
-        const res = await api("/v1/marafiq/rest-api-keys");
+        const res = await api("/v1/viewer/rest-api-keys");
         state.restApiKeys = res.data || [];
         setRestApiKeysStatus("");
       } catch (e) {
@@ -1449,15 +1365,13 @@
         setRestApiKeysStatus(parseApiErrorMessage(e));
       }
       renderRestApiKeysTable();
-      renderIntegrationFooter();
-      if (state.viewerIntegration) renderViewerIntegrationCard();
     }
 
     async function loadAdminRestApiKeys(accountId) {
       if (!accountId || !isAdmin()) return;
       try {
         const res = await api(
-          `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
+          `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
         );
         state.adminRestApiKeys = res.data || [];
         setAdminRestApiKeysStatus("");
@@ -1488,10 +1402,12 @@
       $("apiKeyModalDesc").textContent = config.description || "";
       $("apiKeyModalWarning").style.display = config.showWarning ? "" : "none";
       $("apiKeyModalLabelWrap").style.display = config.showLabel ? "" : "none";
+      $("apiKeyModalExpirationWrap").style.display = config.showExpiration ? "" : "none";
       $("apiKeyModalPlainWrap").style.display = config.showPlain ? "" : "none";
       $("apiKeyModalConfirm").textContent = config.confirmLabel || "Save";
       $("apiKeyModalConfirm").style.display = config.hideConfirm ? "none" : "";
       $("apiKeyModalLabel").value = config.labelValue || "";
+      $("apiKeyModalExpiration").value = config.expirationValue || "";
       if (config.showPlain && config.plaintext) {
         $("apiKeyModalPlain").textContent = config.plaintext;
       }
@@ -1504,8 +1420,9 @@
       openApiKeyModal({
         mode: "create",
         title: "Create API Key",
-        description: "Choose a descriptive name to identify where this key is used.",
+        description: "Choose a descriptive name and expiration for this key.",
         showLabel: true,
+        showExpiration: true,
         showPlain: false,
         showWarning: false,
         confirmLabel: "Create Key",
@@ -1518,6 +1435,7 @@
         title: "Create API Key",
         description: "Create a REST API key for the selected integration account.",
         showLabel: true,
+        showExpiration: true,
         showPlain: false,
         showWarning: false,
         confirmLabel: "Create Key",
@@ -1567,9 +1485,14 @@
     async function submitApiKeyModal() {
       const mode = state.apiKeyModal.mode;
       const label = $("apiKeyModalLabel").value.trim();
+      const expiration = $("apiKeyModalExpiration").value;
       $("apiKeyModalError").textContent = "";
       if ((mode === "create" || mode === "admin-create" || mode === "rename") && !label) {
         $("apiKeyModalError").textContent = "Name is required.";
+        return;
+      }
+      if ((mode === "create" || mode === "admin-create") && !expiration) {
+        $("apiKeyModalError").textContent = "Expiration is required.";
         return;
       }
       if (label.length > 128) {
@@ -1578,9 +1501,9 @@
       }
       try {
         if (mode === "create") {
-          const res = await api("/v1/marafiq/rest-api-keys", {
+          const res = await api("/v1/viewer/rest-api-keys", {
             method: "POST",
-            body: JSON.stringify({ label }),
+            body: JSON.stringify({ label, expiration }),
           });
           closeApiKeyModal();
           await loadRestApiKeys();
@@ -1590,8 +1513,8 @@
         if (mode === "admin-create") {
           const accountId = $("adminViewerSelect").value;
           const res = await api(
-            `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
-            { method: "POST", body: JSON.stringify({ label }) },
+            `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys`,
+            { method: "POST", body: JSON.stringify({ label, expiration }) },
           );
           closeApiKeyModal();
           await loadAdminRestApiKeys(accountId);
@@ -1604,13 +1527,13 @@
           const isAdminRename = document.getElementById("apiKeyModal").dataset.adminRename === "1";
           if (isAdminRename && accountId) {
             await api(
-              `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`,
+              `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`,
               { method: "PATCH", body: JSON.stringify({ label }) },
             );
             closeApiKeyModal();
             await loadAdminRestApiKeys(accountId);
           } else {
-            await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`, {
+            await api(`/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}`, {
               method: "PATCH",
               body: JSON.stringify({ label }),
             });
@@ -1632,8 +1555,8 @@
     async function patchRestApiKeyStatus(keyId, status, admin = false) {
       const accountId = $("adminViewerSelect")?.value;
       const path = admin
-        ? `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
-        : `/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`;
+        ? `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
+        : `/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}`;
       await api(path, { method: "PATCH", body: JSON.stringify({ status }) });
       if (admin) await loadAdminRestApiKeys(accountId);
       else await loadRestApiKeys();
@@ -1644,8 +1567,8 @@
       if (!confirm("Integrations using this key will stop working.")) return;
       const accountId = $("adminViewerSelect")?.value;
       const path = admin
-        ? `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
-        : `/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}`;
+        ? `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/rest-api-keys/${encodeURIComponent(keyId)}`
+        : `/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}`;
       await api(path, { method: "DELETE" });
       if (admin) await loadAdminRestApiKeys(accountId);
       else await loadRestApiKeys();
@@ -1653,7 +1576,7 @@
     }
 
     async function setRestApiKeyPrimary(keyId) {
-      await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}/set-primary`, {
+      await api(`/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}/set-primary`, {
         method: "POST",
         body: "{}",
       });
@@ -1663,7 +1586,7 @@
 
     async function revealRestApiKeyById(keyId) {
       try {
-        const res = await api(`/v1/marafiq/rest-api-keys/${encodeURIComponent(keyId)}/reveal`, {
+        const res = await api(`/v1/viewer/rest-api-keys/${encodeURIComponent(keyId)}/reveal`, {
           method: "POST",
           body: "{}",
         });
@@ -1724,15 +1647,201 @@
       });
     }
 
-    function renderRestApiKeysTable() {
-      const card = $("dashApiKeysCard");
-      const wrap = $("restApiKeysTableWrap");
+    function renderServiceAccountsTable() {
+      const card = $("dashServiceAccountsCard");
+      const wrap = $("serviceAccountsTableWrap");
+      const newBtn = $("serviceAccountsNewBtn");
       if (!card || !wrap) return;
-      if (!isViewer()) {
+      if (!canManageWorkspaceApi()) {
         card.style.display = "none";
+        if (newBtn) newBtn.style.display = "none";
         return;
       }
       card.style.display = "";
+      if (newBtn) newBtn.style.display = "";
+      const accounts = state.serviceAccounts || [];
+      if (!accounts.length) {
+        wrap.innerHTML = `<div class="api-keys-empty"><p>No service accounts yet</p><button type="button" id="serviceAccountsEmptyCreate">+ New Service Account</button></div>`;
+        const emptyBtn = $("serviceAccountsEmptyCreate");
+        if (emptyBtn) emptyBtn.onclick = () => openServiceAccountCreateModal();
+        return;
+      }
+      const rows = accounts.map((acct) => {
+        const actions = [
+          `<button type="button" data-sa-rotate="${escapeHtml(acct.id)}">Rotate secret</button>`,
+          acct.status === "active"
+            ? `<button type="button" data-sa-disable="${escapeHtml(acct.id)}">Disable</button>`
+            : acct.status === "disabled"
+              ? `<button type="button" data-sa-enable="${escapeHtml(acct.id)}">Enable</button>`
+              : "",
+          `<button type="button" class="admin-delete-btn" data-sa-delete="${escapeHtml(acct.id)}">Delete</button>`,
+        ].filter(Boolean).join("");
+        return `<tr>
+          <td>${escapeHtml(acct.name)}</td>
+          <td class="key-mono">${escapeHtml(acct.client_id || acct.clientId || "—")}</td>
+            <td class="key-mono">${escapeHtml((acct.scopes || []).join(", "))}</td>
+            <td>${restApiKeyStatusPill(acct.status)}</td>
+          <td>${escapeHtml(formatRestApiKeyDate(acct.expiresAt))}</td>
+          <td class="actions">${actions}</td>
+        </tr>`;
+      }).join("");
+      wrap.innerHTML = `<table class="api-keys-table"><thead><tr><th>Name</th><th>Client ID</th><th>Scopes</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+      wrap.querySelectorAll("[data-sa-disable]").forEach((btn) => {
+        btn.onclick = () => patchServiceAccountStatus(btn.dataset.saDisable, "revoke");
+      });
+      wrap.querySelectorAll("[data-sa-enable]").forEach((btn) => {
+        btn.onclick = () => patchServiceAccountStatus(btn.dataset.saEnable, "reactivate");
+      });
+      wrap.querySelectorAll("[data-sa-delete]").forEach((btn) => {
+        btn.onclick = () => deleteServiceAccountById(btn.dataset.saDelete);
+      });
+      wrap.querySelectorAll("[data-sa-rotate]").forEach((btn) => {
+        btn.onclick = () => rotateServiceAccountById(btn.dataset.saRotate);
+      });
+    }
+
+    async function loadServiceAccounts() {
+      if (!isViewer()) return;
+      try {
+        const res = await api("/v1/viewer/service-accounts");
+        state.serviceAccounts = res.data || [];
+        state.serviceAccountAvailableScopes = res.meta?.availableScopes || [];
+        $("serviceAccountsStatus").textContent = "";
+      } catch (e) {
+        state.serviceAccounts = [];
+        $("serviceAccountsStatus").textContent = parseApiErrorMessage(e);
+      }
+      renderServiceAccountsTable();
+    }
+
+    function closeServiceAccountModal() {
+      $("serviceAccountModal").classList.remove("open");
+      $("serviceAccountModal").setAttribute("aria-hidden", "true");
+      $("serviceAccountModalError").textContent = "";
+    }
+
+    function renderServiceAccountScopeOptions() {
+      const wrap = $("serviceAccountModalScopes");
+      if (!wrap) return;
+      const scopes = state.serviceAccountAvailableScopes || [];
+      if (!scopes.length) {
+        wrap.innerHTML = '<span class="small">No API scopes available for your account.</span>';
+        return;
+      }
+      wrap.innerHTML = scopes
+        .map(
+          (scope) =>
+            `<label class="perm-toggle-row"><span>${escapeHtml(scope)}</span><span class="perm-switch"><input type="checkbox" data-sa-scope="${escapeHtml(scope)}" /><span class="slider"></span></span></label>`,
+        )
+        .join("");
+    }
+
+    function readSelectedServiceAccountScopes() {
+      return [...document.querySelectorAll("#serviceAccountModalScopes [data-sa-scope]")]
+        .filter((el) => el.checked)
+        .map((el) => el.dataset.saScope);
+    }
+
+    function openServiceAccountCreateModal() {
+      $("serviceAccountModalTitle").textContent = "Create Service Account";
+      $("serviceAccountModalDesc").textContent =
+        "Service accounts authenticate machines, not humans. Your application exchanges client credentials at POST /v1/viewer/auth/token.";
+      $("serviceAccountModalWarning").style.display = "none";
+      $("serviceAccountModalFormWrap").style.display = "";
+      $("serviceAccountModalPlainWrap").style.display = "none";
+      $("serviceAccountModalConfirm").style.display = "";
+      $("serviceAccountModalConfirm").textContent = "Create";
+      $("serviceAccountModalName").value = "";
+      $("serviceAccountModalDescription").value = "";
+      $("serviceAccountModalExpiration").value = "";
+      renderServiceAccountScopeOptions();
+      $("serviceAccountModal").classList.add("open");
+      $("serviceAccountModal").setAttribute("aria-hidden", "false");
+    }
+
+    function openServiceAccountCreatedModal(data) {
+      $("serviceAccountModalTitle").textContent = "Service Account Created";
+      $("serviceAccountModalDesc").textContent = "";
+      $("serviceAccountModalWarning").style.display = "";
+      $("serviceAccountModalFormWrap").style.display = "none";
+      $("serviceAccountModalPlainWrap").style.display = "";
+      $("serviceAccountModalClientId").textContent = data.client_id || data.clientId;
+      $("serviceAccountModalClientSecret").textContent = data.client_secret || data.clientSecret;
+      $("serviceAccountModalConfirm").textContent = "Done";
+      $("serviceAccountModal").classList.add("open");
+      $("serviceAccountModal").setAttribute("aria-hidden", "false");
+    }
+
+    async function submitServiceAccountModal() {
+      $("serviceAccountModalError").textContent = "";
+      if ($("serviceAccountModalPlainWrap").style.display !== "none") {
+        closeServiceAccountModal();
+        return;
+      }
+      const name = $("serviceAccountModalName").value.trim();
+      const description = $("serviceAccountModalDescription").value.trim();
+      const expiration = $("serviceAccountModalExpiration").value;
+      const scopes = readSelectedServiceAccountScopes();
+      if (!name) {
+        $("serviceAccountModalError").textContent = "Name is required.";
+        return;
+      }
+      if (!scopes.length) {
+        $("serviceAccountModalError").textContent = "Select at least one scope.";
+        return;
+      }
+      if (!expiration) {
+        $("serviceAccountModalError").textContent = "Expiration is required.";
+        return;
+      }
+      try {
+        const res = await api("/v1/viewer/service-accounts", {
+          method: "POST",
+          body: JSON.stringify({
+            name,
+            description: description || undefined,
+            scopes,
+            expiration,
+          }),
+        });
+        closeServiceAccountModal();
+        await loadServiceAccounts();
+        openServiceAccountCreatedModal(res.data);
+      } catch (e) {
+        $("serviceAccountModalError").textContent = parseApiErrorMessage(e);
+      }
+    }
+
+    async function patchServiceAccountStatus(id, action) {
+      await api(`/v1/viewer/service-accounts/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" });
+      await loadServiceAccounts();
+    }
+
+    async function deleteServiceAccountById(id) {
+      if (!confirm("Delete this service account? Applications using it will stop working.")) return;
+      await api(`/v1/viewer/service-accounts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await loadServiceAccounts();
+    }
+
+    async function rotateServiceAccountById(id) {
+      if (!confirm("Rotate client secret? The previous secret and refresh tokens will stop working.")) return;
+      const res = await api(`/v1/viewer/service-accounts/${encodeURIComponent(id)}/rotate-secret`, { method: "POST", body: "{}" });
+      openServiceAccountCreatedModal(res.data);
+      await loadServiceAccounts();
+    }
+
+    function renderRestApiKeysTable() {
+      const card = $("dashApiKeysCard");
+      const wrap = $("restApiKeysTableWrap");
+      const newBtn = $("restApiKeysNewBtn");
+      if (!card || !wrap) return;
+      if (!canManageWorkspaceApi()) {
+        card.style.display = "none";
+        if (newBtn) newBtn.style.display = "none";
+        return;
+      }
+      card.style.display = "";
+      if (newBtn) newBtn.style.display = "";
       wrap.innerHTML = renderRestApiKeysTableRows(state.restApiKeys || [], { viewerActions: true });
       wireRestApiKeysTableActions(wrap, false);
       const emptyBtn = $("restApiKeysEmptyCreate");
@@ -1826,7 +1935,7 @@
     async function loadAdminViewerSettings() {
       if (!isAdmin()) return;
       buildAdminPermissionToggles();
-      const listRes = await api("/v1/marafiq/admin/integration-accounts");
+      const listRes = await api("/v1/platform/admin/integration-accounts");
       const viewers = listRes.data || [];
       renderAdminViewerList(viewers);
       await loadAdminProjects();
@@ -1853,7 +1962,7 @@
     }
 
     async function loadAdminViewerSettingsFor(accountId) {
-      const res = await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
+      const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
       fillAdminPermissionForm(res.data.permissions);
       setAdminSettingsStatus("");
       await loadAdminIntegrationSettings(accountId);
@@ -1872,6 +1981,9 @@
       $("adminIntegrationStatus").textContent = (data.status || "none").toUpperCase();
       $("adminIntegrationGenerated").textContent = data.generatedAt
         ? new Date(data.generatedAt).toLocaleString()
+        : "—";
+      $("adminIntegrationExpires").textContent = data.expiresAt
+        ? new Date(data.expiresAt).toLocaleString()
         : "—";
       const scopesEl = $("adminIntegrationScopes");
       const accessItems = data.enabledDataAccess || [];
@@ -1893,7 +2005,7 @@
       if (!accountId || !isAdmin()) return;
       state.adminIntegrationPlainKey = null;
       try {
-        const res = await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/key`);
+        const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/key`);
         renderAdminIntegrationPanel(res.data);
         setAdminIntegrationStatusMsg("");
       } catch (e) {
@@ -1906,7 +2018,7 @@
       if (!accountId) return;
       setAdminIntegrationStatusMsg("Saving…");
       try {
-        const res = await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/key`, {
+        const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/key`, {
           method: "PATCH",
           body: JSON.stringify({ enabled: $("adminIntegrationEnabled").checked }),
         });
@@ -1920,6 +2032,11 @@
     async function adminIntegrationAction(action) {
       const accountId = $("adminViewerSelect").value;
       if (!accountId) return;
+      const expiration = $("adminIntegrationExpiration").value;
+      if ((action === "generate" || action === "regenerate") && !expiration) {
+        setAdminIntegrationStatusMsg("Select an expiration before generating a key.", "err");
+        return;
+      }
       if (action === "regenerate" && !confirm("Regenerate access key? The previous key will stop working immediately.")) return;
       if (action === "revoke" && !confirm("Revoke access key? Integration will stop working until a new key is generated.")) return;
 
@@ -1932,8 +2049,11 @@
               ? "regenerate"
               : "revoke";
         const res = await api(
-          `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/key/${path}`,
-          { method: "POST", body: "{}" },
+          `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/key/${path}`,
+          {
+            method: "POST",
+            body: action === "revoke" ? "{}" : JSON.stringify({ expiration }),
+          },
         );
         state.adminIntegrationPlainKey = res.data.accessKey || res.data.apiKey || null;
         renderAdminIntegrationPanel(res.data);
@@ -1953,7 +2073,7 @@
       setAdminSettingsStatus("Saving…");
       try {
         const res = await api(
-          `/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}/access`,
+          `/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`,
           { method: "PATCH", body: JSON.stringify(readAdminPermissionForm()) },
         );
         fillAdminPermissionForm(res.data.permissions);
@@ -1974,7 +2094,7 @@
       }
       setAdminViewerStatus("Creating…");
       try {
-        await api("/v1/marafiq/admin/integration-accounts", {
+        await api("/v1/platform/admin/integration-accounts", {
           method: "POST",
           body: JSON.stringify({ username, password, displayName }),
         });
@@ -1996,7 +2116,7 @@
       if (!confirm(`Delete integration account "${label}" (${accountId})? This cannot be undone.`)) return;
       setAdminViewerStatus("Deleting…");
       try {
-        await api(`/v1/marafiq/admin/integration-accounts/${encodeURIComponent(accountId)}`, {
+        await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}`, {
           method: "DELETE",
         });
         setAdminViewerStatus(`Account "${accountId}" deleted.`, "ok");
@@ -2067,7 +2187,7 @@
 
     async function loadAdminProjects() {
       if (!isAdmin()) return;
-      const res = await api("/v1/marafiq/admin/fh2-projects");
+      const res = await api("/v1/platform/admin/fh2-projects");
       renderAdminProjects(res.data?.projects || []);
       const syncMeta = $("adminProjectSyncMeta");
       const last = res.data?.sync?.lastSyncAt;
@@ -2081,7 +2201,7 @@
 
     async function syncAdminProjects() {
       setAdminProjectStatus("Syncing from FlightHub 2…");
-      await api("/v1/marafiq/admin/fh2-projects/sync", {
+      await api("/v1/platform/admin/fh2-projects/sync", {
         method: "POST",
         body: "{}",
       });
@@ -2098,11 +2218,11 @@
       }
       setAdminAssignmentStatus(remove ? "Removing…" : "Assigning…");
       if (remove) {
-        await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/remove-viewer/${encodeURIComponent(viewerId)}`, {
+        await api(`/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId)}/remove-viewer/${encodeURIComponent(viewerId)}`, {
           method: "DELETE",
         });
       } else {
-        await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/assign-viewer`, {
+        await api(`/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId)}/assign-viewer`, {
           method: "POST",
           body: JSON.stringify({ viewerId }),
         });
@@ -2112,7 +2232,7 @@
     }
 
     async function deactivateAdminProject(projectId) {
-      await api(`/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId)}/deactivate`, {
+      await api(`/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId)}/deactivate`, {
         method: "POST",
         body: "{}",
       });
@@ -2165,40 +2285,40 @@
       switch (cardKey) {
         case "fleet":
           return formatApiCopy(
-            "GET /v1/marafiq/devices",
+            "GET /v1/viewer/devices",
             s.devicesSample,
-            ["GET /v1/marafiq/fleet/summary", "GET /v1/marafiq/fleet/positions"],
+            ["GET /v1/viewer/fleet/summary", "GET /v1/viewer/fleet/positions"],
           );
         case "drone-telemetry":
-          return formatApiCopy(`GET /v1/marafiq/devices/${ds}/telemetry/latest`, s.droneTelemetry);
+          return formatApiCopy(`GET /v1/viewer/devices/${ds}/telemetry/latest`, s.droneTelemetry);
         case "dock-telemetry":
-          return formatApiCopy(`GET /v1/marafiq/docks/${gs}`, s.dockTelemetry);
+          return formatApiCopy(`GET /v1/viewer/docks/${gs}`, s.dockTelemetry);
         case "battery":
-          return formatApiCopy(`GET /v1/marafiq/devices/${ds}/telemetry/latest`, s.batterySample);
+          return formatApiCopy(`GET /v1/viewer/devices/${ds}/telemetry/latest`, s.batterySample);
         case "gps":
-          return formatApiCopy(`GET /v1/marafiq/fleet/positions`, s.gpsSample);
+          return formatApiCopy(`GET /v1/viewer/fleet/positions`, s.gpsSample);
         case "online":
-          return formatApiCopy("GET /v1/marafiq/fleet/summary", s.onlineSample);
+          return formatApiCopy("GET /v1/viewer/fleet/summary", s.onlineSample);
         case "camera":
           return formatApiCopy(
-            `GET /v1/marafiq/devices/${gs}/live-stream?camera=dock`,
+            `GET /v1/viewer/devices/${gs}/live-stream?camera=dock`,
             s.cameraSample?.dock || s.cameraSample,
           );
         case "drone-fpv":
           return formatApiCopy(
-            `GET /v1/marafiq/devices/${ds}/live-stream?camera=drone`,
+            `GET /v1/viewer/devices/${ds}/live-stream?camera=drone`,
             s.cameraSample?.drone || s.cameraSample,
           );
         case "alerts":
-          return formatApiCopy("GET /v1/marafiq/events?limit=25", s.alertsSample);
+          return formatApiCopy("GET /v1/viewer/events?limit=25", s.alertsSample);
         case "missions":
           return formatApiCopy(
-            "GET /v1/marafiq/media/recent",
+            "GET /v1/viewer/media/recent",
             s.missionsSample,
-            ["GET /v1/marafiq/tasks", "GET /v1/marafiq/tasks/{taskId}/media"],
+            ["GET /v1/viewer/tasks", "GET /v1/viewer/tasks/{taskId}/media"],
           );
         default:
-          return "Endpoint:\nGET /v1/marafiq/capabilities";
+          return "Endpoint:\nGET /v1/viewer/capabilities";
       }
     }
 
@@ -2304,7 +2424,8 @@
         state.restApiKeys = [];
         state.adminRestApiKeys = [];
         renderRestApiKeysTable();
-        renderIntegrationFooter();
+        renderServiceAccountsTable();
+        updateSettingsAccessUi();
         return;
       }
       badge.textContent = s.displayName;
@@ -2316,9 +2437,9 @@
 
       const viewer = isViewer();
       document.body.classList.toggle("viewer-layout", viewer);
-      $("appMain").classList.toggle("viewer-no-nav", viewer);
+      $("appMain").classList.remove("viewer-no-nav");
       document.querySelectorAll("[data-nav-viewer]").forEach((el) => {
-        el.style.display = "none";
+        el.style.display = viewer ? "" : "none";
       });
       document.querySelectorAll("[data-nav-staff]").forEach((el) => {
         el.style.display = viewer ? "none" : "";
@@ -2331,6 +2452,7 @@
         : "Fleet monitoring, live camera, operations, alerts, missions";
 
       applyViewerDashboardPermissions();
+      updateSettingsAccessUi();
 
       document.querySelectorAll("#opsActionGrid .op-btn").forEach((btn) => {
         btn.disabled = !canOperate();
@@ -2341,19 +2463,18 @@
           : "Operations are not available for your account.";
       }
 
-      if (viewer) {
-        document.querySelectorAll("section").forEach((sec) => sec.classList.remove("active"));
-        $("dashboard").classList.add("active");
+      const viewerTabs = ["dashboard", "settings"];
+      if (viewer && !viewerTabs.includes(state.activeTab)) {
         state.activeTab = "dashboard";
-        setTimeout(() => {
-          if (state.dashFleetMap) state.dashFleetMap.invalidateSize();
-        }, 120);
-      } else if (state.activeTab === "dashboard") {
-        document.querySelectorAll("section").forEach((sec) => sec.classList.remove("active"));
-        $("fleet").classList.add("active");
+      } else if (!viewer && state.activeTab === "dashboard") {
+        state.activeTab = "fleet";
+      } else if (!viewer && state.activeTab === "settings") {
         state.activeTab = "fleet";
       }
-      renderIntegrationFooter();
+      activateTab(state.activeTab);
+      if (state.activeTab === "dashboard" && state.dashFleetMap) {
+        setTimeout(() => state.dashFleetMap.invalidateSize(), 120);
+      }
     }
 
     document.querySelectorAll(".get-api-btn[data-api-card]").forEach((btn) => {
@@ -2380,9 +2501,7 @@
 
     document.querySelectorAll("nav button").forEach((btn) => btn.onclick = () => {
       if (btn.style.display === "none") return;
-      document.querySelectorAll("section").forEach((s) => s.classList.remove("active"));
-      $(btn.dataset.tab).classList.add("active");
-      state.activeTab = btn.dataset.tab;
+      activateTab(btn.dataset.tab);
       if (btn.dataset.tab === "fleet" && state.fleetMap) {
         setTimeout(() => state.fleetMap.invalidateSize(), 120);
       }
@@ -2392,9 +2511,16 @@
       if (btn.dataset.tab === "admin" && isAdmin()) {
         loadAdminViewerSettings().catch((e) => alert(e.message));
       }
+      if (btn.dataset.tab === "settings" && canManageWorkspaceApi()) {
+        loadSettingsPage().catch((e) => alert(e.message));
+      }
       if (btn.dataset.tab === "camera" && $("camDevice").value && state.session) {
         loadAllStreams();
       }
+    });
+
+    document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
+      btn.onclick = () => activateSettingsTab(btn.dataset.settingsTab);
     });
 
     function updateLiveBadge(active, lastAt) {
@@ -2469,7 +2595,7 @@
       const sn = $("camDevice").value;
       if (!sn) return;
       try {
-        const telem = await api(`/v1/marafiq/devices/${sn}/telemetry/latest`);
+        const telem = await api(`/v1/viewer/devices/${sn}/telemetry/latest`);
         const existing = $("streamInfo").textContent;
         const prefix = existing.includes("Snapshot") ? "" : existing + "\n\n";
         $("streamInfo").textContent =
@@ -2486,10 +2612,10 @@
       if (
         isViewer() &&
         projectCode &&
-        path.startsWith("/v1/marafiq/") &&
-        !path.startsWith("/v1/marafiq/auth/") &&
-        !path.startsWith("/v1/marafiq/admin/") &&
-        !path.startsWith("/v1/marafiq/rest-api-keys")
+        path.startsWith("/v1/viewer/") &&
+        !path.startsWith("/v1/viewer/auth/") &&
+        !path.startsWith("/v1/platform/admin/") &&
+        !path.startsWith("/v1/viewer/rest-api-keys")
       ) {
         const sep = path.includes("?") ? "&" : "?";
         requestPath = `${path}${sep}projectCode=${encodeURIComponent(projectCode)}`;
@@ -2515,7 +2641,7 @@
     $("loginBtn").onclick = async () => {
       $("loginError").textContent = "";
       try {
-        const res = await fetch("/v1/marafiq/auth/login", {
+        const res = await fetch("/v1/viewer/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2523,7 +2649,15 @@
             password: $("loginPass").value,
           }),
         });
-        const body = await res.json();
+        const raw = await res.text();
+        let body;
+        try {
+          body = raw ? JSON.parse(raw) : {};
+        } catch {
+          $("loginError").textContent =
+            res.ok ? "Invalid server response" : `Login failed (${res.status})`;
+          return;
+        }
         if (!res.ok) {
           $("loginError").textContent = body.message || body.error || "Login failed";
           return;
@@ -2546,7 +2680,11 @@
         startLiveUpdates();
         if (isViewer()) {
           await syncSessionFromServer();
-          await maybeShowIntegrationWelcome();
+        }
+        const initialTab = resolveInitialTab();
+        activateTab(initialTab);
+        if (initialTab === "settings" && canManageWorkspaceApi()) {
+          await loadSettingsPage();
         }
         await refreshDashboard();
       } catch (e) {
@@ -2832,9 +2970,9 @@
 
       try {
         const [dockRes, droneRes, telem] = await Promise.all([
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
-          api(`/v1/marafiq/devices/${encodeURIComponent(telemSn)}/telemetry/latest`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(telemSn)}/telemetry/latest`),
         ]);
 
         state.streamLoaded = true;
@@ -2888,8 +3026,8 @@
 
       try {
         const [dockRes, droneRes] = await Promise.all([
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
-          api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`),
+          api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`),
         ]);
         state.apiSamples.cameraSample = { dock: dockRes.data, drone: droneRes.data };
         mountPanelPlayer(
@@ -2961,14 +3099,14 @@
         const fetches = [];
         if (wantDock && $("dashDockPlayer")) {
           fetches.push(
-            api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`).then(
+            api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${dockParams}`).then(
               (r) => ({ slot: "dock", data: r.data }),
             ),
           );
         }
         if (wantDrone && $("dashDronePlayer")) {
           fetches.push(
-            api(`/v1/marafiq/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`).then(
+            api(`/v1/viewer/devices/${encodeURIComponent(sn)}/live-stream?${droneParams}`).then(
               (r) => ({ slot: "drone", data: r.data }),
             ),
           );
@@ -3246,7 +3384,7 @@
     }
 
     async function loadMissionMediaSummary() {
-      const res = await api("/v1/marafiq/media/recent?task_limit=4&media_per_task=6");
+      const res = await api("/v1/viewer/media/recent?task_limit=4&media_per_task=6");
       state.apiSamples.missionsSample = res.data?.[0] || res.data;
       renderMissionsDashboard(res.data || [], res.meta || {});
     }
@@ -3260,7 +3398,7 @@
 
       if (cardAllowed("droneTelemetry") && drone) {
         fetches.push(
-          api(`/v1/marafiq/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
+          api(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
             state.apiSamples.droneTelemetry = r.data;
             if ($("dashDroneTelem") && r.data) {
               const t = r.data.telemetry || r.data;
@@ -3279,7 +3417,7 @@
 
       if (cardAllowed("dockTelemetry") && dock) {
         fetches.push(
-          api(`/v1/marafiq/docks/${dock.serialNumber}`).then((r) => {
+          api(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
             state.apiSamples.dockTelemetry = r.data;
             if ($("dashDockTelem") && r.data) {
               renderMetricList($("dashDockTelem"), [
@@ -3356,9 +3494,9 @@
 
     async function loadFleet(opts = {}) {
       const [sum, devices, positionsRes] = await Promise.all([
-        api("/v1/marafiq/fleet/summary"),
-        api("/v1/marafiq/devices"),
-        api("/v1/marafiq/fleet/positions"),
+        api("/v1/viewer/fleet/summary"),
+        api("/v1/viewer/devices"),
+        api("/v1/viewer/fleet/positions"),
       ]);
       state.devices = devices.data || [];
       const positions = positionsRes.data || [];
@@ -3409,7 +3547,7 @@
 
     $("snapshotBtn").onclick = async () => {
       const sn = $("camDevice").value;
-      const telem = await api(`/v1/marafiq/devices/${sn}/telemetry/latest`);
+      const telem = await api(`/v1/viewer/devices/${sn}/telemetry/latest`);
       $("streamInfo").textContent =
         `Snapshot at ${new Date().toISOString()}\n` + JSON.stringify(telem.data, null, 2);
     };
@@ -3464,7 +3602,7 @@
           missionId: $("missionId").value || undefined,
           note: `CC double-confirm by ${state.session.displayName}`,
         };
-        const res = await api(`/v1/marafiq/ops/${pending.path}`, {
+        const res = await api(`/v1/platform/ops/${pending.path}`, {
           method: "POST",
           body: JSON.stringify(body),
         });
@@ -3478,7 +3616,7 @@
     };
 
     async function loadOpsCatalog() {
-      const res = await api("/v1/marafiq/ops/catalog");
+      const res = await api("/v1/platform/ops/catalog");
       state.opsCatalog = res.data;
       renderOpsCategoryTabs();
       renderOpsActions();
@@ -3564,7 +3702,7 @@
       const sn = $("opsDevice").value;
       if (!sn || !state.session) return;
       try {
-        const res = await api(`/v1/marafiq/ops/readiness/${encodeURIComponent(sn)}`);
+        const res = await api(`/v1/platform/ops/readiness/${encodeURIComponent(sn)}`);
         updateOpsHud(res.data, res.meta);
       } catch (e) {
         $("opsReadyText").textContent = "Readiness check failed: " + e.message;
@@ -3575,7 +3713,7 @@
     $("opsRefreshReady").onclick = loadOpsReadiness;
 
     async function loadOpsLog() {
-      const res = await api("/v1/marafiq/ops/log?limit=20");
+      const res = await api("/v1/platform/ops/log?limit=20");
       const tbody = document.querySelector("#opsTable tbody");
       tbody.innerHTML = "";
       for (const r of res.data) {
@@ -3607,7 +3745,7 @@
       if (isViewer() && !cardAllowed("alertsEvents") && state.activeTab !== "alerts") {
         return;
       }
-      const res = await api("/v1/marafiq/events?limit=25");
+      const res = await api("/v1/viewer/events?limit=25");
       state.apiSamples.alertsSample = (res.data || []).slice(0, 2);
       if (!isViewer() || state.activeTab === "alerts") {
         renderEventsTable(res.data || []);
@@ -3633,7 +3771,7 @@
       document.querySelectorAll("[data-ack]").forEach((b) => {
         b.onclick = async () => {
           if (!confirm("Acknowledge this event?")) return;
-          await api(`/v1/marafiq/events/${b.dataset.ack}/ack`, { method: "POST" });
+          await api(`/v1/viewer/events/${b.dataset.ack}/ack`, { method: "POST" });
           await loadEvents();
         };
       });
@@ -3641,7 +3779,7 @@
     $("refreshEvents").onclick = loadEvents;
 
     async function loadTasks() {
-      const res = await api("/v1/marafiq/tasks");
+      const res = await api("/v1/viewer/tasks");
       state.tasks = res.data || [];
       $("taskInfo").textContent = JSON.stringify(res, null, 2);
       const sel = $("taskSelect");
@@ -3658,7 +3796,7 @@
     $("loadMedia").onclick = async () => {
       const id = $("taskSelect").value;
       if (!id) return alert("Load tasks first");
-      const res = await api(`/v1/marafiq/tasks/${id}/media`);
+      const res = await api(`/v1/viewer/tasks/${id}/media`);
       $("mediaInfo").textContent = JSON.stringify(res, null, 2);
     };
     $("loadTrack").onclick = async () => {
@@ -3669,15 +3807,15 @@
         "X-CC-Session": state.session.sessionToken,
       };
       const [geo, kml] = await Promise.all([
-        fetch(`/v1/marafiq/tasks/${id}/trajectory.geojson`, { headers }).then((r) => r.text()),
-        fetch(`/v1/marafiq/tasks/${id}/trajectory.kml`, { headers }).then((r) => r.text()),
+        fetch(`/v1/viewer/tasks/${id}/trajectory.geojson`, { headers }).then((r) => r.text()),
+        fetch(`/v1/viewer/tasks/${id}/trajectory.kml`, { headers }).then((r) => r.text()),
       ]);
       $("trackInfo").textContent = `GeoJSON:\n${geo.slice(0, 1200)}\n\nKML:\n${kml.slice(0, 1200)}`;
     };
 
     async function loadFh2Links() {
       try {
-        const res = await api("/v1/marafiq/capabilities");
+        const res = await api("/v1/viewer/capabilities");
         const url = res.data?.fh2CockpitUrl;
         if (url) {
           $("openFh2Cockpit").href = url;
@@ -3790,6 +3928,15 @@
       if (state.adminIntegrationPlainKey) copyText(state.adminIntegrationPlainKey);
     };
     $("restApiKeysNewBtn").onclick = () => openRestApiKeyCreateModal();
+    $("serviceAccountsNewBtn").onclick = () => openServiceAccountCreateModal();
+    $("serviceAccountModalCancel").onclick = () => closeServiceAccountModal();
+    $("serviceAccountModalConfirm").onclick = () => submitServiceAccountModal();
+    $("serviceAccountModalCopyBtn").onclick = () => {
+      copyText($("serviceAccountModalClientSecret").textContent);
+    };
+    $("serviceAccountModal").onclick = (e) => {
+      if (e.target === $("serviceAccountModal")) closeServiceAccountModal();
+    };
     $("adminRestApiKeysNewBtn").onclick = () => openAdminRestApiKeyCreateModal();
     $("apiKeyModalCancel").onclick = () => closeApiKeyModal();
     $("apiKeyModalConfirm").onclick = () => submitApiKeyModal();
@@ -3809,10 +3956,18 @@
     if (savedShare) $("fh2ShareUrl").value = savedShare;
     updateRoleUi();
     if (state.session) {
+      const initialTab = resolveInitialTab();
+      if (initialTab !== state.activeTab) activateTab(initialTab);
+      activateSettingsTab(state.activeSettingsTab || "service-accounts");
       startLiveUpdates();
       if (isViewer()) {
         syncSessionFromServer()
-          .then(() => refreshDashboard())
+          .then(async () => {
+            if (state.activeTab === "settings" && canManageWorkspaceApi()) {
+              await loadSettingsPage();
+            }
+            await refreshDashboard();
+          })
           .catch((e) => alert(e.message));
       } else {
         refreshDashboard().catch((e) => alert(e.message));

@@ -2,6 +2,8 @@
   "version": 2,
   "buildCommand": "npm run build && mkdir -p public && cp dist/ui/command-center.html public/index.html",
   "installCommand": "npm install --include=dev",
+  "framework": null,
+  "outputDirectory": "public",
   "rewrites": [
     {
       "source": "/(.*)",

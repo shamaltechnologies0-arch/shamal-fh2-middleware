@@ -7,6 +7,10 @@ const uiPath = join(
   dirname(fileURLToPath(import.meta.url)),
   "../ui/command-center.html",
 );
+const loginBgPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../bg-image/bg-main.png",
+);
 
 export const commandCenterRoutes: FastifyPluginAsync = async (app) => {
   const servePlatform = async (
@@ -41,5 +45,11 @@ export const commandCenterRoutes: FastifyPluginAsync = async (app) => {
 
   app.get("/settings", { schema: { hide: true } }, async (_request, reply) => {
     return reply.redirect("/?tab=settings");
+  });
+
+  app.get("/admin", { schema: { hide: true } }, servePlatform);
+
+  app.get("/bg-image/bg-main.png", { schema: { hide: true } }, async (_request, reply) => {
+    reply.type("image/png").send(readFileSync(loginBgPath));
   });
 };

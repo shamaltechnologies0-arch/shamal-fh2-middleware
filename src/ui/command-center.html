@@ -56,8 +56,24 @@
     .advanced-panel summary, .debug-panel summary { cursor:pointer; color:#9fd0ff; margin-bottom:6px; }
     .advanced-panel[open], .debug-panel[open] { margin-bottom:8px; }
     .url-list code { color:#b8d4ff; word-break:break-all; }
-    .overlay { position:fixed; inset:0; background:rgba(5,10,20,.92); display:flex; align-items:center; justify-content:center; z-index:100; }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #050a14;
+      background-image:
+        linear-gradient(rgba(5, 10, 20, 0.45), rgba(5, 10, 20, 0.6)),
+        url("/bg-image/bg-main.png");
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
     .overlay.hidden { display:none; }
+    body.logged-out header,
+    body.logged-out main { visibility: hidden; }
     .card { background:var(--card); border:1px solid #2a4060; border-radius:14px; padding:22px; width:min(420px,92vw); }
     .card h2 { margin:0 0 8px; font-size:20px; }
     .card label { display:block; margin:10px 0 4px; font-size:12px; color:var(--muted); }
@@ -270,11 +286,11 @@
     }
   </style>
 </head>
-<body>
+<body class="logged-out">
   <div id="loginOverlay" class="overlay">
     <div class="card login-card">
-      <h2>Shamal Platform</h2>
-      <p class="small">Sign in with your assigned account credentials.</p>
+      <h2 id="loginTitle">Shamal Platform</h2>
+      <p class="small" id="loginSubtitle">Sign in with your assigned account credentials.</p>
       <label for="loginUser">Username</label>
       <input id="loginUser" placeholder="Username" autocomplete="username" />
       <label for="loginPass">Password</label>
@@ -942,6 +958,47 @@
     const LIVE_INTERVAL_MS = 10_000;
     const $ = (id) => document.getElementById(id);
 
+    function isAdminPortal() {
+      const path = window.location.pathname.replace(/\/$/, "") || "/";
+      return path === "/admin";
+    }
+
+    function updateLoginPortalUi() {
+      const title = $("loginTitle");
+      const subtitle = $("loginSubtitle");
+      const userInput = $("loginUser");
+      if (!title || !subtitle || !userInput) return;
+      if (isAdminPortal()) {
+        title.textContent = "Shamal Admin";
+        subtitle.textContent =
+          "Administrator sign-in for fleet management, integrations, and platform settings.";
+        userInput.placeholder = "Admin username";
+      } else {
+        title.textContent = "Shamal Platform";
+        subtitle.textContent = "Sign in with your assigned account credentials.";
+        userInput.placeholder = "Username";
+      }
+    }
+
+    function enforcePortalSession() {
+      if (!state.session) return false;
+      if (isAdminPortal()) {
+        if (!isAdmin()) {
+          clearSession();
+          updateRoleUi();
+          $("loginError").textContent =
+            "Administrator credentials required. User accounts sign in at the main platform.";
+          return true;
+        }
+        return false;
+      }
+      if (isAdmin()) {
+        window.location.replace("/admin");
+        return true;
+      }
+      return false;
+    }
+
     function loadSession() {
       try {
         const raw = localStorage.getItem("shamalCcSession");
@@ -1223,7 +1280,13 @@
       if (tabId === "settings") {
         history.replaceState(null, "", "/?tab=settings");
       } else if (tabId === "dashboard") {
-        history.replaceState(null, "", "/");
+        history.replaceState(null, "", isAdminPortal() ? "/admin" : "/");
+      } else if (isAdminPortal()) {
+        history.replaceState(
+          null,
+          "",
+          tabId === "admin" ? "/admin" : `/admin?tab=${encodeURIComponent(tabId)}`,
+        );
       } else if (window.location.pathname === "/" || window.location.pathname === "/settings") {
         history.replaceState(null, "", `/?tab=${encodeURIComponent(tabId)}`);
       }
@@ -1240,6 +1303,7 @@
         if (requested === "admin" && !isAdmin()) return isViewer() ? "dashboard" : "fleet";
         return requested;
       }
+      if (isAdminPortal() && isAdmin()) return "admin";
       return isViewer() ? "dashboard" : state.activeTab;
     }
 
@@ -2417,7 +2481,8 @@
         $("logoutBtn").style.display = "none";
         $("liveBadge").style.display = "none";
         overlay.classList.remove("hidden");
-        main.style.opacity = ".35";
+        document.body.classList.add("logged-out");
+        main.style.opacity = "0";
         main.style.pointerEvents = "none";
         document.body.classList.remove("viewer-layout");
         $("appMain").classList.remove("viewer-no-nav");
@@ -2432,6 +2497,7 @@
       badge.className = "pill";
       $("logoutBtn").style.display = "inline-block";
       overlay.classList.add("hidden");
+      document.body.classList.remove("logged-out");
       main.style.opacity = "1";
       main.style.pointerEvents = "auto";
 
@@ -2660,6 +2726,29 @@
         }
         if (!res.ok) {
           $("loginError").textContent = body.message || body.error || "Login failed";
+          return;
+        }
+        if (isAdminPortal() && body.data.role !== "admin") {
+          $("loginError").textContent =
+            "Administrator credentials required. User accounts sign in at the main platform.";
+          return;
+        }
+        if (!isAdminPortal() && body.data.role === "admin") {
+          saveSession({
+            apiKey: body.data.apiKey,
+            role: body.data.role,
+            displayName: body.data.displayName,
+            sessionToken: body.data.sessionToken,
+            username: body.data.username,
+            viewerDashboardPermissions: body.data.viewerDashboardPermissions,
+            assignedProjects: body.data.assignedProjects || [],
+            fallbackProjectCode: body.data.fallbackProjectCode || null,
+            selectedProjectCode:
+              body.data.assignedProjects?.[0]?.projectCode ||
+              body.data.fallbackProjectCode ||
+              null,
+          });
+          window.location.replace("/admin");
           return;
         }
         saveSession({
@@ -3952,9 +4041,12 @@
     });
 
     loadSession();
+    updateLoginPortalUi();
     const savedShare = localStorage.getItem("shamalFh2ShareUrl");
     if (savedShare) $("fh2ShareUrl").value = savedShare;
-    updateRoleUi();
+    if (!enforcePortalSession()) {
+      updateRoleUi();
+    }
     if (state.session) {
       const initialTab = resolveInitialTab();
       if (initialTab !== state.activeTab) activateTab(initialTab);

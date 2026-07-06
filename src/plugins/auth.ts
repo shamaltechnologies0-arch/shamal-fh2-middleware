@@ -209,6 +209,8 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
       request.url.startsWith("/docs") ||
       request.url.startsWith("/webhooks/fh2") ||
       requestPath(request.url) === "/" ||
+      request.url.startsWith("/admin") ||
+      request.url.startsWith("/bg-image/") ||
       request.url.startsWith("/platform") ||
       request.url.startsWith("/command-center")
     ) {

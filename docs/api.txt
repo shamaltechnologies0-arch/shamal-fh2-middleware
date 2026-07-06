@@ -1,16 +1,16 @@
 ================================================================================
-SHAMAL DRONE OPERATIONS API — MARAFIQ CAFM INTEGRATION
+SHAMAL DRONE OPERATIONS API — EXTERNAL VIEWER INTEGRATION
 ================================================================================
 
 From:   Shamal Technologies
-To:     Marafiq CAFM integration team
+To:     external integrator CAFM integration team
 Version: 3.0.0 (Phase 1 + Phase 2 + Event webhooks)
 
 Shamal owns and operates the drone fleet via DJI FlightHub 2. This middleware
-exposes Shamal's operational data to Marafiq CAFM. Marafiq never receives
+exposes Shamal's operational data to external integrator CAFM. external integrator never receives
 DJI credentials or FlightHub login details.
 
-The /v1/marafiq/* paths mean "API for Marafiq integrators" — not Marafiq-owned
+The /v1/viewer/* paths mean "API for external integrator integrators" — not external integrator-owned
 devices.
 
 
@@ -26,7 +26,7 @@ OpenAPI spec:     http://localhost:8080/openapi.yaml
 
 Authentication:
   Header name:    X-Api-Key
-  API key:        demo-marafiq-key-change-me
+  API key:        demo-viewer-key-change-me
                   (Shamal will issue a production key before go-live)
 
 Example device serial numbers (Shamal fleet):
@@ -34,16 +34,16 @@ Example device serial numbers (Shamal fleet):
   Dock:           8UUXN6300A09XS         (DJI Dock 3)
 
 Where to get IDs for detail calls:
-  serialNumber    → GET /v1/marafiq/devices          → data[].serialNumber
-  taskId          → GET /v1/marafiq/tasks              → data[].id
-  mappingModelId  → GET /v1/marafiq/mapping/models     → data[].id
+  serialNumber    → GET /v1/viewer/devices          → data[].serialNumber
+  taskId          → GET /v1/viewer/tasks              → data[].id
+  mappingModelId  → GET /v1/viewer/mapping/models     → data[].id
 
 
 ================================================================================
-2) REST API ENDPOINTS (Marafiq → Shamal)
+2) REST API ENDPOINTS (external integrator → Shamal)
 ================================================================================
 
-All endpoints below require header:  X-Api-Key: demo-marafiq-key-change-me
+All endpoints below require header:  X-Api-Key: demo-viewer-key-change-me
 Exception: GET /health (no key required)
 
 --- Health & meta ---
@@ -51,97 +51,97 @@ Exception: GET /health (no key required)
 GET  /health
      Service health check (no authentication)
 
-GET  /v1/marafiq/capabilities
+GET  /v1/viewer/capabilities
      Lists enabled features (phase 1 + phase 2) and integration flags
 
 
 --- Fleet & devices ---
 
-GET  /v1/marafiq/devices
+GET  /v1/viewer/devices
      Shamal fleet list (drones + docks). Start here.
 
-GET  /v1/marafiq/devices/{serialNumber}
+GET  /v1/viewer/devices/{serialNumber}
      Device detail, health (HMS), and state summary
 
-GET  /v1/marafiq/devices/{serialNumber}/telemetry/latest
+GET  /v1/viewer/devices/{serialNumber}/telemetry/latest
      Latest position/battery snapshot (poll every 10–15 seconds in CAFM)
 
-GET  /v1/marafiq/devices/{serialNumber}/telemetry/stream
+GET  /v1/viewer/devices/{serialNumber}/telemetry/stream
      Server-Sent Events (SSE) telemetry stream (~10s interval)
      Alternative to polling /telemetry/latest
 
-GET  /v1/marafiq/devices/{serialNumber}/live-stream
+GET  /v1/viewer/devices/{serialNumber}/live-stream
      Live video capacity info (RTMP/WebRTC readiness from FlightHub)
 
-GET  /v1/marafiq/fleet/summary
+GET  /v1/viewer/fleet/summary
      Dashboard counts: drones, docks, online/offline totals
 
 
 --- Docks ---
 
-GET  /v1/marafiq/docks
+GET  /v1/viewer/docks
      List Shamal DJI docks (gateways) only
 
-GET  /v1/marafiq/docks/{serialNumber}
+GET  /v1/viewer/docks/{serialNumber}
      Dock detail, linked drone, health, and state
 
 
 --- Flight tasks & media ---
 
-GET  /v1/marafiq/tasks
+GET  /v1/viewer/tasks
      Shamal flight / inspection jobs
      Query params (optional):
        sn       — device serialNumber (defaults to first project device)
        begin_at — Unix timestamp start (defaults: last 30 days)
        end_at   — Unix timestamp end (defaults: now)
 
-GET  /v1/marafiq/tasks/{taskId}
+GET  /v1/viewer/tasks/{taskId}
      Task detail
 
-GET  /v1/marafiq/tasks/{taskId}/media
+GET  /v1/viewer/tasks/{taskId}/media
      Inspection photos and videos for a task
 
-GET  /v1/marafiq/tasks/{taskId}/trajectory
+GET  /v1/viewer/tasks/{taskId}/trajectory
      Flight path polyline (JSON)
 
-GET  /v1/marafiq/tasks/{taskId}/trajectory.geojson
+GET  /v1/viewer/tasks/{taskId}/trajectory.geojson
      Flight path as GeoJSON (import into CAFM/GIS)
 
-GET  /v1/marafiq/tasks/{taskId}/trajectory.kml
+GET  /v1/viewer/tasks/{taskId}/trajectory.kml
      Flight path as KML (import into CAFM/GIS)
 
 
 --- Mapping / reconstruction ---
 
-GET  /v1/marafiq/mapping/models
+GET  /v1/viewer/mapping/models
      Cloud mapping / 2D–3D reconstruction jobs
 
-GET  /v1/marafiq/mapping/models/{modelId}
+GET  /v1/viewer/mapping/models/{modelId}
      Model detail and download URL
 
 
 --- Events (alerts) — pull mode ---
 
-GET  /v1/marafiq/events
+GET  /v1/viewer/events
      Alert / webhook event feed (stored FlightHub notifications)
      Query params (optional):
        since  — ISO-8601 datetime (return events after this time)
        limit  — 1–200, default 50
 
-POST /v1/marafiq/events/{eventId}/ack
+POST /v1/viewer/events/{eventId}/ack
      Mark an event as acknowledged in CAFM
      Requires operator or admin API key role
 
 
 --- Shamal operations (operator/admin only — not typical CAFM read-only) ---
 
-GET  /v1/marafiq/ops/catalog
-GET  /v1/marafiq/ops/readiness/{serialNumber}
-POST /v1/marafiq/ops/{operation}
-GET  /v1/marafiq/ops/status/{operationId}
-GET  /v1/marafiq/ops/log
+GET  /v1/platform/ops/catalog
+GET  /v1/platform/ops/readiness/{serialNumber}
+POST /v1/platform/ops/{operation}
+GET  /v1/platform/ops/status/{operationId}
+GET  /v1/platform/ops/log
 
-     Flight/dock/camera commands for Shamal operators. Marafiq CAFM display
+     Flight/dock/camera commands for Shamal operators. external integrator CAFM display
      integrations normally use the read APIs above only.
 
 
@@ -149,16 +149,16 @@ GET  /v1/marafiq/ops/log
 3) EVENT WEBHOOK — COMPLETE YOUR CAFM PLATFORM
 ================================================================================
 
-Marafiq needs real-time alerts (mission finished, media ready, device offline,
+external integrator needs real-time alerts (mission finished, media ready, device offline,
 battery low, etc.) inside CAFM. Use one or both modes below.
 
 
---- Mode A: Pull (simplest — no Marafiq server endpoint needed) ---
+--- Mode A: Pull (simplest — no external integrator server endpoint needed) ---
 
 Poll Shamal every 30–60 seconds:
 
-  GET /v1/marafiq/events?limit=50
-  GET /v1/marafiq/events?since=2026-06-21T00:00:00.000Z&limit=100
+  GET /v1/viewer/events?limit=50
+  GET /v1/viewer/events?since=2026-06-21T00:00:00.000Z&limit=100
 
 Response shape:
 
@@ -178,16 +178,16 @@ Response shape:
 
 After processing in CAFM, optionally acknowledge:
 
-  POST /v1/marafiq/events/{eventId}/ack
+  POST /v1/viewer/events/{eventId}/ack
 
 
 --- Mode B: Push webhook (recommended for real-time CAFM) ---
 
 Flow:
 
-  DJI FlightHub 2  →  Shamal middleware  →  Marafiq CAFM webhook URL
+  DJI FlightHub 2  →  Shamal middleware  →  external integrator CAFM webhook URL
 
-Step 1 — Marafiq implements a receiver on YOUR CAFM server:
+Step 1 — external integrator implements a receiver on YOUR CAFM server:
 
   Method:   POST
   Path:     (your choice, example below)
@@ -199,23 +199,23 @@ Step 1 — Marafiq implements a receiver on YOUR CAFM server:
     • Verify the X-Shamal-Signature header matches your agreed shared secret
     • Idempotent handling by event.id (Shamal may retry on failure)
 
-Step 2 — Marafiq sends Shamal these two values:
+Step 2 — external integrator sends Shamal these two values:
 
   Callback URL:     https://YOUR-CAFM-SERVER.com/api/integrations/shamal/events
   Shared secret:    (generate a strong random string — e.g. 32+ chars)
 
 Step 3 — Shamal configures on the middleware server:
 
-  MARAFIQ_EVENT_CALLBACK_URL=https://YOUR-CAFM-SERVER.com/api/integrations/shamal/events
-  MARAFIQ_EVENT_CALLBACK_SECRET=<same shared secret>
+  VIEWER_EVENT_CALLBACK_URL=https://YOUR-CAFM-SERVER.com/api/integrations/shamal/events
+  VIEWER_EVENT_CALLBACK_SECRET=<same shared secret>
 
 Step 4 — Shamal confirms push is active:
 
-  GET /v1/marafiq/capabilities
-  → marafiqEventCallbackConfigured: true
+  GET /v1/viewer/capabilities
+  → external-integratorEventCallbackConfigured: true
 
 
---- Push payload Shamal sends to Marafiq ---
+--- Push payload Shamal sends to external integrator ---
 
 Headers:
   Content-Type:       application/json
@@ -239,7 +239,7 @@ Body (JSON):
   }
 
 
---- Event types Marafiq should handle in CAFM ---
+--- Event types external integrator should handle in CAFM ---
 
   mission_completed   — Flight / inspection task finished successfully
   mission_updated     — Task status changed
@@ -255,12 +255,12 @@ Body (JSON):
 Suggested CAFM actions per event type:
 
   mission_completed / mission_failed  → Update work order / inspection status
-  media_ready                         → Fetch GET /v1/marafiq/tasks/{taskId}/media
+  media_ready                         → Fetch GET /v1/viewer/tasks/{taskId}/media
   device_offline / device_online      → Update asset availability in CAFM
   battery_low                         → Raise maintenance alert
 
 
---- Example: Marafiq webhook receiver (pseudo-code) ---
+--- Example: external integrator webhook receiver (pseudo-code) ---
 
   POST /api/integrations/shamal/events
 
@@ -276,12 +276,12 @@ Suggested CAFM actions per event type:
 --- Test push without waiting for FlightHub ---
 
 After Shamal enables your callback URL, Shamal can seed a test event.
-Marafiq verifies the POST arrives at your webhook URL with correct signature.
+external integrator verifies the POST arrives at your webhook URL with correct signature.
 
 You can also test pull mode immediately:
 
-  curl -s -H "X-Api-Key: demo-marafiq-key-change-me" \
-    "http://localhost:8080/v1/marafiq/events?limit=10"
+  curl -s -H "X-Api-Key: demo-viewer-key-change-me" \
+    "http://localhost:8080/v1/viewer/events?limit=10"
 
 
 ================================================================================
@@ -289,7 +289,7 @@ You can also test pull mode immediately:
 ================================================================================
 
 Replace {BASE}  = http://localhost:8080
-Replace {KEY}   = demo-marafiq-key-change-me
+Replace {KEY}   = demo-viewer-key-change-me
 Replace {SN}    = device serialNumber from /devices
 Replace {TASK}  = task UUID from /tasks
 Replace {MODEL} = mapping model id from /mapping/models
@@ -297,25 +297,25 @@ Replace {MODEL} = mapping model id from /mapping/models
 | #  | Purpose              | Method | URL |
 |----|----------------------|--------|-----|
 | 1  | Health               | GET    | {BASE}/health |
-| 2  | Capabilities         | GET    | {BASE}/v1/marafiq/capabilities |
-| 3  | Fleet list           | GET    | {BASE}/v1/marafiq/devices |
-| 4  | Device detail        | GET    | {BASE}/v1/marafiq/devices/{SN} |
-| 5  | Telemetry snapshot   | GET    | {BASE}/v1/marafiq/devices/{SN}/telemetry/latest |
-| 6  | Telemetry SSE        | GET    | {BASE}/v1/marafiq/devices/{SN}/telemetry/stream |
-| 7  | Live stream info     | GET    | {BASE}/v1/marafiq/devices/{SN}/live-stream |
-| 8  | Fleet summary        | GET    | {BASE}/v1/marafiq/fleet/summary |
-| 9  | Docks list           | GET    | {BASE}/v1/marafiq/docks |
-| 10 | Dock detail          | GET    | {BASE}/v1/marafiq/docks/{SN} |
-| 11 | Tasks list           | GET    | {BASE}/v1/marafiq/tasks |
-| 12 | Task detail          | GET    | {BASE}/v1/marafiq/tasks/{TASK} |
-| 13 | Task media           | GET    | {BASE}/v1/marafiq/tasks/{TASK}/media |
-| 14 | Task trajectory      | GET    | {BASE}/v1/marafiq/tasks/{TASK}/trajectory |
-| 15 | Trajectory GeoJSON   | GET    | {BASE}/v1/marafiq/tasks/{TASK}/trajectory.geojson |
-| 16 | Trajectory KML       | GET    | {BASE}/v1/marafiq/tasks/{TASK}/trajectory.kml |
-| 17 | Mapping models       | GET    | {BASE}/v1/marafiq/mapping/models |
-| 18 | Mapping model detail | GET    | {BASE}/v1/marafiq/mapping/models/{MODEL} |
-| 19 | Events (pull)        | GET    | {BASE}/v1/marafiq/events |
-| 20 | Event acknowledge    | POST   | {BASE}/v1/marafiq/events/{eventId}/ack |
+| 2  | Capabilities         | GET    | {BASE}/v1/viewer/capabilities |
+| 3  | Fleet list           | GET    | {BASE}/v1/viewer/devices |
+| 4  | Device detail        | GET    | {BASE}/v1/viewer/devices/{SN} |
+| 5  | Telemetry snapshot   | GET    | {BASE}/v1/viewer/devices/{SN}/telemetry/latest |
+| 6  | Telemetry SSE        | GET    | {BASE}/v1/viewer/devices/{SN}/telemetry/stream |
+| 7  | Live stream info     | GET    | {BASE}/v1/viewer/devices/{SN}/live-stream |
+| 8  | Fleet summary        | GET    | {BASE}/v1/viewer/fleet/summary |
+| 9  | Docks list           | GET    | {BASE}/v1/viewer/docks |
+| 10 | Dock detail          | GET    | {BASE}/v1/viewer/docks/{SN} |
+| 11 | Tasks list           | GET    | {BASE}/v1/viewer/tasks |
+| 12 | Task detail          | GET    | {BASE}/v1/viewer/tasks/{TASK} |
+| 13 | Task media           | GET    | {BASE}/v1/viewer/tasks/{TASK}/media |
+| 14 | Task trajectory      | GET    | {BASE}/v1/viewer/tasks/{TASK}/trajectory |
+| 15 | Trajectory GeoJSON   | GET    | {BASE}/v1/viewer/tasks/{TASK}/trajectory.geojson |
+| 16 | Trajectory KML       | GET    | {BASE}/v1/viewer/tasks/{TASK}/trajectory.kml |
+| 17 | Mapping models       | GET    | {BASE}/v1/viewer/mapping/models |
+| 18 | Mapping model detail | GET    | {BASE}/v1/viewer/mapping/models/{MODEL} |
+| 19 | Events (pull)        | GET    | {BASE}/v1/viewer/events |
+| 20 | Event acknowledge    | POST   | {BASE}/v1/viewer/events/{eventId}/ack |
 
 Header for rows 2–20:  X-Api-Key: {KEY}
 
@@ -325,37 +325,37 @@ Header for rows 2–20:  X-Api-Key: {KEY}
 ================================================================================
 
 BASE="http://localhost:8080"
-KEY="demo-marafiq-key-change-me"
+KEY="demo-viewer-key-change-me"
 SN="1581F8HGX254W00A0CHR"
 
 # Health (no key)
 curl -s "$BASE/health"
 
 # Fleet
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices/$SN"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices/$SN/telemetry/latest"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/fleet/summary"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/devices"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/devices/$SN"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/devices/$SN/telemetry/latest"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/fleet/summary"
 
 # Tasks (set TASK from tasks list response)
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/tasks"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/tasks"
 TASK="PASTE-TASK-UUID-HERE"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/tasks/$TASK"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/tasks/$TASK/media"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/tasks/$TASK"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/tasks/$TASK/media"
 
 # Events (pull)
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/events?limit=25"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/events?limit=25"
 
 # Event acknowledge
 EVENT_ID="PASTE-EVENT-UUID-HERE"
-curl -s -X POST -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/events/$EVENT_ID/ack"
+curl -s -X POST -H "X-Api-Key: $KEY" "$BASE/v1/viewer/events/$EVENT_ID/ack"
 
 
 ================================================================================
 6) RECOMMENDED CAFM INTEGRATION CHECKLIST
 ================================================================================
 
-[ ] Store Base URL and X-Api-Key securely in Marafiq CAFM config
+[ ] Store Base URL and X-Api-Key securely in external integrator CAFM config
 [ ] Implement fleet dashboard using GET /fleet/summary and /devices
 [ ] Poll telemetry every 10–15s OR subscribe to /telemetry/stream (SSE)
 [ ] Show inspection history from GET /tasks and link to /media
@@ -365,13 +365,13 @@ curl -s -X POST -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/events/$EVENT_ID/ack"
 [ ] Map event types to CAFM alerts and work orders
 [ ] Test with Swagger: {BASE}/docs → Authorize with API key
 
-Marafiq must provide Shamal (for push webhooks):
-  • HTTPS callback URL on Marafiq CAFM server
+external integrator must provide Shamal (for push webhooks):
+  • HTTPS callback URL on external integrator CAFM server
   • Shared secret for X-Shamal-Signature verification
 
 
 ================================================================================
-7) DO NOT SEND TO MARAFIQ (Shamal internal only)
+7) DO NOT SEND TO EXTERNAL INTEGRATORS (Shamal internal only)
 ================================================================================
 
   FH2_ORG_TOKEN              — DJI OpenAPI JWT
@@ -379,7 +379,7 @@ Marafiq must provide Shamal (for push webhooks):
   WEBHOOK_SECRET             — FlightHub → Shamal inbound webhook signing
   admin_id / admin_password  — Shamal Platform operator login
 
-Marafiq never calls POST /webhooks/fh2 — that endpoint is for DJI FlightHub 2
+external integrator never calls POST /webhooks/fh2 — that endpoint is for DJI FlightHub 2
 to push events to Shamal only.
 
 
@@ -387,8 +387,8 @@ to push events to Shamal only.
 8) ATTACHMENTS (also available from Shamal)
 ================================================================================
 
-  openapi/shamal-marafiq-v1.yaml
-  postman/Shamal-Marafiq-Middleware.postman_collection.json
+  openapi/shamal-external-integrator-v1.yaml
+  postman/Shamal-external integrator-Middleware.postman_collection.json
   docs/CYBERSECURITY.md
 
 Contact: Shamal Technologies — Authorized DJI dealer, FlightHub 2 operations

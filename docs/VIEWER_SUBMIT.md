@@ -11,11 +11,11 @@
 | **Shamal** | Owns drones, docks, and DJI FlightHub 2 account. Operates flights and inspections. |
 | **DJI FlightHub 2** | Source system for fleet, missions, media, and alerts. |
 | **Shamal FH2 Viewer Middleware** | Reads Shamal’s FlightHub 2 data and exposes a restricted REST API. |
-| **External viewer platform** | Displays **approved Shamal operational records** (read-only). Example: Marafiq CAFM. |
+| **External viewer platform** | Displays **approved Shamal operational records** (read-only). Example: external CAFM client. |
 
 External viewers connect to **Shamal’s platform only**. They never receive DJI FH2 login, credentials, or dashboard access.
 
-The `/v1/marafiq/*` paths are **legacy route aliases** (named during an early integrator demo). They do not mean viewer-owned devices.
+The `/v1/viewer/*` paths are **legacy route aliases** (named during an early integrator demo). They do not mean viewer-owned devices.
 
 ---
 
@@ -33,9 +33,9 @@ Base URL:        http://localhost:8080
 Swagger UI:      http://localhost:8080/docs
 OpenAPI file:    http://localhost:8080/openapi.yaml
 
-API Key:         demo-marafiq-key-change-me
+API Key:         demo-viewer-key-change-me
 Auth header:     X-Api-Key
-Auth value:      demo-marafiq-key-change-me
+Auth value:      demo-viewer-key-change-me
 
 Example Shamal drone SN:  1581F8HGX254W00A0CHR   (Matrice 4TD)
 Example Shamal dock SN:   8UUXN6300A09XS         (DJI Dock 3)
@@ -71,18 +71,18 @@ Connection:
 
 Authentication:
   Header:  X-Api-Key
-  Value:   demo-marafiq-key-change-me
+  Value:   demo-viewer-key-change-me
 
 Endpoints (GET, read-only — Shamal FlightHub data):
   /health
-  /v1/marafiq/devices                              → Shamal fleet list
-  /v1/marafiq/devices/{serialNumber}               → Shamal device detail
-  /v1/marafiq/devices/{serialNumber}/telemetry/latest
-  /v1/marafiq/tasks                                → Shamal flight / inspection jobs
-  /v1/marafiq/tasks/{taskId}
-  /v1/marafiq/tasks/{taskId}/media
-  /v1/marafiq/tasks/{taskId}/trajectory
-  /v1/marafiq/events                               → Shamal alerts / events
+  /v1/viewer/devices                              → Shamal fleet list
+  /v1/viewer/devices/{serialNumber}               → Shamal device detail
+  /v1/viewer/devices/{serialNumber}/telemetry/latest
+  /v1/viewer/tasks                                → Shamal flight / inspection jobs
+  /v1/viewer/tasks/{taskId}
+  /v1/viewer/tasks/{taskId}/media
+  /v1/viewer/tasks/{taskId}/trajectory
+  /v1/viewer/events                               → Shamal alerts / events
 
 Attached: OpenAPI YAML, Postman collection.
 
@@ -96,26 +96,26 @@ Authorized DJI dealer — FlightHub 2 operations
 ## 3) All API URLs (copy one line = one API)
 
 Replace `{BASE}` with `http://localhost:8080`  
-Replace `{KEY}` with `demo-marafiq-key-change-me`  
+Replace `{KEY}` with `demo-viewer-key-change-me`  
 Replace `{SN}` with a device serial (e.g. `1581F8HGX254W00A0CHR`)  
-Replace `{TASK}` with a task UUID from `/v1/marafiq/tasks`
+Replace `{TASK}` with a task UUID from `/v1/viewer/tasks`
 
 | # | API | Full URL |
 |---|-----|----------|
 | 1 | Health | `http://localhost:8080/health` |
-| 2 | Shamal fleet list | `http://localhost:8080/v1/marafiq/devices` |
-| 3 | Shamal device detail | `http://localhost:8080/v1/marafiq/devices/1581F8HGX254W00A0CHR` |
-| 4 | Shamal drone telemetry | `http://localhost:8080/v1/marafiq/devices/1581F8HGX254W00A0CHR/telemetry/latest` |
-| 5 | Shamal flight / inspection tasks | `http://localhost:8080/v1/marafiq/tasks` |
-| 6 | Task detail | `http://localhost:8080/v1/marafiq/tasks/{TASK}` |
-| 7 | Task media | `http://localhost:8080/v1/marafiq/tasks/{TASK}/media` |
-| 8 | Task trajectory | `http://localhost:8080/v1/marafiq/tasks/{TASK}/trajectory` |
-| 9 | Events / alerts | `http://localhost:8080/v1/marafiq/events` |
+| 2 | Shamal fleet list | `http://localhost:8080/v1/viewer/devices` |
+| 3 | Shamal device detail | `http://localhost:8080/v1/viewer/devices/1581F8HGX254W00A0CHR` |
+| 4 | Shamal drone telemetry | `http://localhost:8080/v1/viewer/devices/1581F8HGX254W00A0CHR/telemetry/latest` |
+| 5 | Shamal flight / inspection tasks | `http://localhost:8080/v1/viewer/tasks` |
+| 6 | Task detail | `http://localhost:8080/v1/viewer/tasks/{TASK}` |
+| 7 | Task media | `http://localhost:8080/v1/viewer/tasks/{TASK}/media` |
+| 8 | Task trajectory | `http://localhost:8080/v1/viewer/tasks/{TASK}/trajectory` |
+| 9 | Events / alerts | `http://localhost:8080/v1/viewer/events` |
 
 **Header for rows 2–9:**
 
 ```
-X-Api-Key: demo-marafiq-key-change-me
+X-Api-Key: demo-viewer-key-change-me
 ```
 
 ---
@@ -124,7 +124,7 @@ X-Api-Key: demo-marafiq-key-change-me
 
 ```bash
 BASE="http://localhost:8080"
-KEY="demo-marafiq-key-change-me"
+KEY="demo-viewer-key-change-me"
 SN="1581F8HGX254W00A0CHR"
 ```
 
@@ -137,34 +137,34 @@ curl -s "$BASE/health"
 ### Devices
 
 ```bash
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/devices"
 ```
 
 ```bash
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices/$SN"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/devices/$SN"
 ```
 
 ```bash
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/devices/$SN/telemetry/latest"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/devices/$SN/telemetry/latest"
 ```
 
 ### Tasks (use task id from tasks list when available)
 
 ```bash
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/tasks"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/tasks"
 ```
 
 ```bash
 TASK="PASTE-TASK-UUID-HERE"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/tasks/$TASK"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/tasks/$TASK/media"
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/tasks/$TASK/trajectory"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/tasks/$TASK"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/tasks/$TASK/media"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/tasks/$TASK/trajectory"
 ```
 
 ### Events
 
 ```bash
-curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/events"
+curl -s -H "X-Api-Key: $KEY" "$BASE/v1/viewer/events"
 ```
 
 ---
@@ -176,11 +176,11 @@ curl -s -H "X-Api-Key: $KEY" "$BASE/v1/marafiq/events"
 3. In **Value**, paste exactly:
 
 ```
-demo-marafiq-key-change-me
+demo-viewer-key-change-me
 ```
 
 4. Click **Authorize** → **Close**  
-5. Open any `GET /v1/marafiq/...` → **Try it out** → **Execute**
+5. Open any `GET /v1/viewer/...` → **Try it out** → **Execute**
 
 ---
 
@@ -188,7 +188,7 @@ demo-marafiq-key-change-me
 
 | File | Path in repo |
 |------|----------------|
-| OpenAPI spec | `openapi/shamal-marafiq-v1.yaml` |
+| OpenAPI spec | `openapi/shamal-external-integrator-v1.yaml` |
 | Postman | `postman/Shamal-FH2-Viewer-Middleware.postman_collection.json` |
 | Security brief | `docs/CYBERSECURITY.md` |
 | This sheet | `docs/VIEWER_SUBMIT.md` |
@@ -204,6 +204,6 @@ demo-marafiq-key-change-me
 
 ---
 
-## Example viewer: Marafiq
+## Example viewer: external viewer
 
-Marafiq CAFM was the first external viewer integration demo. The connection model above applies equally to Marafiq and any future viewer company Shamal onboards.
+external CAFM client was the first external viewer integration demo. The connection model above applies equally to external viewer and any future viewer company Shamal onboards.

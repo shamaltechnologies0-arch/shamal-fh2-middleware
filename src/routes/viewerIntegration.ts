@@ -24,6 +24,7 @@ import {
   fetchViewerMediaHistory,
   fetchViewerOnlineStatus,
 } from "../services/viewerApiData.js";
+import { PLATFORM_PREFIX, registerPlatformGet } from "./viewerPaths.js";
 
 function apiBaseFromRequest(request: FastifyRequest): string {
   const host = request.headers.host;
@@ -66,17 +67,16 @@ function scopedHandler(path: string, handler: DataHandler) {
 
 function registerDataRoute(
   app: Parameters<FastifyPluginAsync>[0],
-  publicPath: string,
-  deprecatedPath: string,
+  path: string,
   summary: string,
   handler: DataHandler,
 ) {
-  const routeHandler = scopedHandler(publicPath, handler);
-  const schema = { summary, tags: ["Integration"] as const };
-
-  app.get(publicPath, { schema }, routeHandler);
-  // @deprecated — backward-compat alias; do not document or show in UI
-  app.get(deprecatedPath, { schema: { ...schema, hide: true } }, routeHandler);
+  registerPlatformGet(
+    app,
+    path,
+    { summary, tags: ["Integration"] as const },
+    scopedHandler(path, handler),
+  );
 }
 
 async function integrationProfileHandler(
@@ -99,7 +99,6 @@ async function integrationProfileHandler(
       ...info,
       primaryRestApiKeyMasked,
       restApiKeyCount: restApiKeys.length,
-      /** @deprecated Use primaryRestApiKeyMasked — masked value only, never plaintext. */
       platformApiKey: primaryRestApiKeyMasked,
       authHeaders: {
         restApi: "X-Api-Key",
@@ -137,8 +136,9 @@ async function integrationAccessKeyHandler(
 }
 
 export const viewerIntegrationRoutes: FastifyPluginAsync = async (app) => {
-  app.get(
-    "/v1/marafiq/integration/profile",
+  registerPlatformGet(
+    app,
+    `${PLATFORM_PREFIX}/integration/profile`,
     {
       schema: {
         summary: "Integration account access details (session auth)",
@@ -147,15 +147,10 @@ export const viewerIntegrationRoutes: FastifyPluginAsync = async (app) => {
     },
     integrationProfileHandler,
   );
-  // @deprecated — backward-compat alias
-  app.get(
-    "/v1/marafiq/viewer/integration",
-    { schema: { hide: true } },
-    integrationProfileHandler,
-  );
 
-  app.get(
-    "/v1/marafiq/integration/access-key",
+  registerPlatformGet(
+    app,
+    `${PLATFORM_PREFIX}/integration/access-key`,
     {
       schema: {
         summary: "Reveal integration access key for clipboard copy (session auth)",
@@ -164,36 +159,10 @@ export const viewerIntegrationRoutes: FastifyPluginAsync = async (app) => {
     },
     integrationAccessKeyHandler,
   );
-  // @deprecated — backward-compat alias; returns apiKey field for legacy clients
-  app.get(
-    "/v1/marafiq/viewer/integration/token",
-    { schema: { hide: true } },
-    async (request, reply) => {
-      if (request.ccRole !== "viewer" || !request.ccUsername) {
-        return reply.status(403).send({
-          error: "forbidden",
-          message: "Integration account session required",
-        });
-      }
-      const token = revealViewerToken(request.ccUsername);
-      if (!token) {
-        return reply.status(404).send({
-          error: "not_available",
-          message:
-            "API integration is not enabled or no active access key exists for your account.",
-        });
-      }
-      return reply.send({
-        data: { accessKey: token, apiKey: token },
-        meta: { source: "shamal-platform" },
-      });
-    },
-  );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/fleet",
-    "/v1/marafiq/viewer/fleet",
+    `${PLATFORM_PREFIX}/integration/fleet`,
     "Fleet overview",
     async () => {
       const fleet = await fetchViewerFleet();
@@ -203,72 +172,63 @@ export const viewerIntegrationRoutes: FastifyPluginAsync = async (app) => {
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/drone-telemetry",
-    "/v1/marafiq/viewer/drone-telemetry",
+    `${PLATFORM_PREFIX}/integration/drone-telemetry`,
     "Drone telemetry",
     async () => fetchViewerDroneTelemetry(),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/dock-telemetry",
-    "/v1/marafiq/viewer/dock-telemetry",
+    `${PLATFORM_PREFIX}/integration/dock-telemetry`,
     "Dock telemetry",
     async () => fetchViewerDockTelemetry(),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/battery-status",
-    "/v1/marafiq/viewer/battery-status",
+    `${PLATFORM_PREFIX}/integration/battery-status`,
     "Battery status",
     async () => fetchViewerBatteryStatus(),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/gps-location",
-    "/v1/marafiq/viewer/gps-location",
+    `${PLATFORM_PREFIX}/integration/gps-location`,
     "GPS locations",
     async () => fetchViewerGpsLocation(),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/online-status",
-    "/v1/marafiq/viewer/online-status",
+    `${PLATFORM_PREFIX}/integration/online-status`,
     "Online/offline status",
     async () => fetchViewerOnlineStatus(),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/camera",
-    "/v1/marafiq/viewer/camera",
+    `${PLATFORM_PREFIX}/integration/camera`,
     "Dock live camera info",
     async () => fetchViewerCameraStream("dock"),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/fpv",
-    "/v1/marafiq/viewer/fpv",
+    `${PLATFORM_PREFIX}/integration/fpv`,
     "Drone FPV stream info",
     async () => fetchViewerCameraStream("drone"),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/alerts-events",
-    "/v1/marafiq/viewer/alerts-events",
+    `${PLATFORM_PREFIX}/integration/alerts-events`,
     "Alerts and events",
     async () => fetchViewerAlertsEvents(),
   );
 
   registerDataRoute(
     app,
-    "/v1/marafiq/integration/media-history",
-    "/v1/marafiq/viewer/media-history",
+    `${PLATFORM_PREFIX}/integration/media-history`,
     "Mission and media history",
     async () => fetchViewerMediaHistory(),
   );

@@ -13,7 +13,7 @@ docker compose up --build
 
 - API: http://localhost:8080
 - Swagger: http://localhost:8080/docs
-- Default viewer API key: `demo-marafiq-key-change-me` (set in `.env` via `VIEWER_API_KEYS`)
+- Default viewer API key: `demo-viewer-key-change-me` (set in `.env` via `VIEWER_API_KEYS`)
 
 ## Local development (without Docker)
 
@@ -51,7 +51,7 @@ npm run seed:demo-event   # optional: populate events table
 - [HANDOFF.md](docs/HANDOFF.md)
 - Postman: `postman/Shamal-FH2-Viewer-Middleware.postman_collection.json`
 
-Legacy docs and paths (`/v1/marafiq/*`, `MARAFIQ_*` env names) remain supported during migration. See [PRD.md](PRD.md).
+See [PRD.md](PRD.md) for product positioning.
 
 ## License
 

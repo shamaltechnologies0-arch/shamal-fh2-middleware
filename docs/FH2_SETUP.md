@@ -74,5 +74,5 @@ Until permissions are enabled, Shamal Platform shows **cached** GPS from the las
 
 ## Security
 
-- Never share `FH2_ORG_TOKEN` with Marafiq.
-- Marafiq receives only `X-Api-Key` for Shamal middleware.
+- Never share `FH2_ORG_TOKEN` with external viewer.
+- external viewer receives only `X-Api-Key` for Shamal middleware.

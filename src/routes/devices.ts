@@ -13,7 +13,7 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/devices",
+    "/v1/viewer/devices",
     {
       schema: {
         summary: "List Shamal fleet devices",
@@ -33,7 +33,7 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/devices/:sn",
+    "/v1/viewer/devices/:sn",
     {
       schema: {
         summary: "Get Shamal device detail",
@@ -76,7 +76,7 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/devices/:sn/telemetry/latest",
+    "/v1/viewer/devices/:sn/telemetry/latest",
     {
       schema: {
         summary: "Get latest Shamal telemetry snapshot",

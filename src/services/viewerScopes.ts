@@ -1,4 +1,5 @@
 import type { ViewerDashboardPermissions } from "./viewerDashboardPermissions.js";
+import { normalizeApiPath } from "../routes/viewerPaths.js";
 
 export type ViewerApiScope =
   | "fleet:read"
@@ -48,60 +49,29 @@ const DATA_ACCESS_PERMISSION_KEYS = Object.keys(
 ) as (keyof ViewerDashboardPermissions)[];
 
 export const INTEGRATION_ROUTE_SCOPES: Record<string, ViewerApiScope> = {
-  "/v1/marafiq/integration/fleet": "fleet:read",
-  "/v1/marafiq/integration/drone-telemetry": "drone:read",
-  "/v1/marafiq/integration/dock-telemetry": "dock:read",
-  "/v1/marafiq/integration/battery-status": "battery:read",
-  "/v1/marafiq/integration/gps-location": "gps:read",
-  "/v1/marafiq/integration/online-status": "status:read",
-  "/v1/marafiq/integration/camera": "camera:read",
-  "/v1/marafiq/integration/fpv": "fpv:read",
-  "/v1/marafiq/integration/alerts-events": "events:read",
-  "/v1/marafiq/integration/media-history": "media:read",
+  "/v1/platform/integration/fleet": "fleet:read",
+  "/v1/platform/integration/drone-telemetry": "drone:read",
+  "/v1/platform/integration/dock-telemetry": "dock:read",
+  "/v1/platform/integration/battery-status": "battery:read",
+  "/v1/platform/integration/gps-location": "gps:read",
+  "/v1/platform/integration/online-status": "status:read",
+  "/v1/platform/integration/camera": "camera:read",
+  "/v1/platform/integration/fpv": "fpv:read",
+  "/v1/platform/integration/alerts-events": "events:read",
+  "/v1/platform/integration/media-history": "media:read",
 };
-
-/** @deprecated Internal backward-compat aliases — do not document or show in UI */
-export const DEPRECATED_VIEWER_ROUTE_SCOPES: Record<string, ViewerApiScope> = {
-  "/v1/marafiq/viewer/fleet": "fleet:read",
-  "/v1/marafiq/viewer/drone-telemetry": "drone:read",
-  "/v1/marafiq/viewer/dock-telemetry": "dock:read",
-  "/v1/marafiq/viewer/battery-status": "battery:read",
-  "/v1/marafiq/viewer/gps-location": "gps:read",
-  "/v1/marafiq/viewer/online-status": "status:read",
-  "/v1/marafiq/viewer/camera": "camera:read",
-  "/v1/marafiq/viewer/fpv": "fpv:read",
-  "/v1/marafiq/viewer/alerts-events": "events:read",
-  "/v1/marafiq/viewer/media-history": "media:read",
-};
-
-/** @deprecated Use INTEGRATION_ROUTE_SLUGS */
-export const VIEWER_ROUTE_SCOPES = DEPRECATED_VIEWER_ROUTE_SCOPES;
 
 export const INTEGRATION_ROUTE_SLUGS: Record<string, string> = {
-  fleet: "/v1/marafiq/integration/fleet",
-  "drone-telemetry": "/v1/marafiq/integration/drone-telemetry",
-  "dock-telemetry": "/v1/marafiq/integration/dock-telemetry",
-  battery: "/v1/marafiq/integration/battery-status",
-  gps: "/v1/marafiq/integration/gps-location",
-  online: "/v1/marafiq/integration/online-status",
-  camera: "/v1/marafiq/integration/camera",
-  "drone-fpv": "/v1/marafiq/integration/fpv",
-  alerts: "/v1/marafiq/integration/alerts-events",
-  missions: "/v1/marafiq/integration/media-history",
-};
-
-/** @deprecated Use INTEGRATION_ROUTE_SLUGS */
-export const VIEWER_ROUTE_SLUGS: Record<string, string> = {
-  fleet: "/v1/marafiq/viewer/fleet",
-  "drone-telemetry": "/v1/marafiq/viewer/drone-telemetry",
-  "dock-telemetry": "/v1/marafiq/viewer/dock-telemetry",
-  battery: "/v1/marafiq/viewer/battery-status",
-  gps: "/v1/marafiq/viewer/gps-location",
-  online: "/v1/marafiq/viewer/online-status",
-  camera: "/v1/marafiq/viewer/camera",
-  "drone-fpv": "/v1/marafiq/viewer/fpv",
-  alerts: "/v1/marafiq/viewer/alerts-events",
-  missions: "/v1/marafiq/viewer/media-history",
+  fleet: "/v1/platform/integration/fleet",
+  "drone-telemetry": "/v1/platform/integration/drone-telemetry",
+  "dock-telemetry": "/v1/platform/integration/dock-telemetry",
+  battery: "/v1/platform/integration/battery-status",
+  gps: "/v1/platform/integration/gps-location",
+  online: "/v1/platform/integration/online-status",
+  camera: "/v1/platform/integration/camera",
+  "drone-fpv": "/v1/platform/integration/fpv",
+  alerts: "/v1/platform/integration/alerts-events",
+  missions: "/v1/platform/integration/media-history",
 };
 
 export function deriveViewerScopes(
@@ -124,16 +94,7 @@ export function hasViewerScope(
 }
 
 export function scopeForIntegrationPath(path: string): ViewerApiScope | null {
-  return (
-    INTEGRATION_ROUTE_SCOPES[path] ??
-    DEPRECATED_VIEWER_ROUTE_SCOPES[path] ??
-    null
-  );
-}
-
-/** @deprecated Use scopeForIntegrationPath */
-export function scopeForViewerPath(path: string): ViewerApiScope | null {
-  return scopeForIntegrationPath(path);
+  return INTEGRATION_ROUTE_SCOPES[normalizeApiPath(path)] ?? null;
 }
 
 export function enabledDataAccessLabels(

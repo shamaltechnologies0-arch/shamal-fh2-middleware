@@ -4,7 +4,7 @@
 
 | Feature | Storage |
 |---------|---------|
-| **Alerts / events** (`GET /v1/marafiq/events`, webhooks) | **MongoDB** (or temporary in-memory if DB is off) |
+| **Alerts / events** (`GET /v1/viewer/events`, webhooks) | **MongoDB** (or temporary in-memory if DB is off) |
 
 If MongoDB is unreachable at startup you will see:
 

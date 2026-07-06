@@ -1,92 +1,144 @@
 import type { FastifyInstance, RouteHandlerMethod } from "fastify";
 
-export const LEGACY_PREFIX = "/v1/marafiq";
-const CANONICAL_PREFIX = "/v1/viewer";
+export const VIEWER_PREFIX = "/v1/viewer";
 /** Shamal Platform internal routes (admin, integration session, ops). */
 export const PLATFORM_PREFIX = "/v1/platform";
 
-/** Shamal-internal /v1/marafiq paths that must not receive /v1/viewer aliases. */
-const INTERNAL_MARAFIQ_PREFIXES = [
-  "/v1/marafiq/admin/",
-  "/v1/marafiq/ops/",
-  "/v1/marafiq/integration/",
-  "/v1/marafiq/viewer/",
-];
-
-/**
- * Canonical `/v1/viewer/*` and legacy `/v1/marafiq/*` paths for a viewer API route.
- * Internal admin/ops/integration routes return legacy only.
- */
-export function viewerRoutePaths(legacyPath: string): string[] {
-  if (!legacyPath.startsWith(`${LEGACY_PREFIX}/`)) {
-    return [legacyPath];
-  }
-  if (INTERNAL_MARAFIQ_PREFIXES.some((prefix) => legacyPath.startsWith(prefix))) {
-    return [legacyPath];
-  }
-  const canonicalPath = legacyPath.replace(LEGACY_PREFIX, CANONICAL_PREFIX);
-  return [canonicalPath, legacyPath];
-}
-
-/** Map canonical viewer/platform paths to legacy paths for shared auth/permission checks. */
-export function legacyMarafiqPath(path: string): string {
-  if (path.startsWith(`${PLATFORM_PREFIX}/`)) {
-    return path.replace(PLATFORM_PREFIX, LEGACY_PREFIX);
-  }
-  if (path.startsWith(`${CANONICAL_PREFIX}/`)) {
-    return path.replace(CANONICAL_PREFIX, LEGACY_PREFIX);
-  }
-  return path;
-}
-
-export function isViewerOrLegacyApiPath(path: string): boolean {
-  return (
-    path.startsWith(LEGACY_PREFIX) ||
-    path.startsWith(`${CANONICAL_PREFIX}/`) ||
-    path.startsWith(`${PLATFORM_PREFIX}/`)
-  );
-}
-
 type RouteOpts = Record<string, unknown>;
+type HttpMethod = "get" | "post" | "patch" | "delete" | "put";
 
-export function registerViewerGet(
+function registerRoute(
   app: FastifyInstance,
-  legacyPath: string,
+  method: HttpMethod,
+  path: string,
   opts: RouteOpts,
   handler: RouteHandlerMethod,
 ): void {
-  for (const path of viewerRoutePaths(legacyPath)) {
-    app.get(path, opts, handler);
-  }
+  app[method](path, opts, handler);
+}
+
+export function registerViewerGet(
+  app: FastifyInstance,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, "get", path, opts, handler);
 }
 
 export function registerViewerPost(
   app: FastifyInstance,
-  legacyPath: string,
+  path: string,
   opts: RouteOpts,
   handler: RouteHandlerMethod,
 ): void {
-  for (const path of viewerRoutePaths(legacyPath)) {
-    app.post(path, opts, handler);
-  }
+  registerRoute(app, "post", path, opts, handler);
+}
+
+export function registerViewerPatch(
+  app: FastifyInstance,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, "patch", path, opts, handler);
+}
+
+export function registerViewerDelete(
+  app: FastifyInstance,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, "delete", path, opts, handler);
+}
+
+export function registerViewerRoutes(
+  app: FastifyInstance,
+  method: HttpMethod,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, method, path, opts, handler);
 }
 
 export function registerViewerGetBare(
   app: FastifyInstance,
-  legacyPath: string,
+  path: string,
   handler: RouteHandlerMethod,
 ): void {
-  for (const path of viewerRoutePaths(legacyPath)) {
-    app.get(path, handler);
-  }
+  app.get(path, handler);
 }
 
 export function registerViewerPostBare(
   app: FastifyInstance,
-  legacyPath: string,
+  path: string,
   handler: RouteHandlerMethod,
 ): void {
-  for (const path of viewerRoutePaths(legacyPath)) {
-    app.post(path, handler);
-  }
+  app.post(path, handler);
+}
+
+export function registerPlatformGet(
+  app: FastifyInstance,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, "get", path, opts, handler);
+}
+
+export function registerPlatformPost(
+  app: FastifyInstance,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, "post", path, opts, handler);
+}
+
+export function registerPlatformPatch(
+  app: FastifyInstance,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, "patch", path, opts, handler);
+}
+
+export function registerPlatformDelete(
+  app: FastifyInstance,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, "delete", path, opts, handler);
+}
+
+export const registerAdminGet = registerPlatformGet;
+export const registerAdminPost = registerPlatformPost;
+export const registerAdminPatch = registerPlatformPatch;
+export const registerAdminDelete = registerPlatformDelete;
+
+export function registerPlatformRoute(
+  app: FastifyInstance,
+  method: HttpMethod,
+  path: string,
+  opts: RouteOpts,
+  handler: RouteHandlerMethod,
+): void {
+  registerRoute(app, method, path, opts, handler);
+}
+
+export function isPlatformApiPath(path: string): boolean {
+  return (
+    path.startsWith(`${VIEWER_PREFIX}/`) || path.startsWith(`${PLATFORM_PREFIX}/`)
+  );
+}
+
+/** @deprecated Use isPlatformApiPath */
+export const isViewerOrLegacyApiPath = isPlatformApiPath;
+
+export function normalizeApiPath(path: string): string {
+  return path;
 }

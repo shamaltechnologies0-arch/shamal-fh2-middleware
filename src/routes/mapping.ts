@@ -7,7 +7,7 @@ export const mappingRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/mapping/models",
+    "/v1/viewer/mapping/models",
     {
       schema: {
         summary: "Cloud mapping / 2D-3D reconstruction jobs",
@@ -26,7 +26,7 @@ export const mappingRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/mapping/models/:id",
+    "/v1/viewer/mapping/models/:id",
     {
       schema: {
         summary: "Mapping model detail",
@@ -37,7 +37,7 @@ export const mappingRoutes: FastifyPluginAsync = async (app) => {
           properties: {
             id: {
               type: "string",
-              description: "Model id from GET /v1/marafiq/mapping/models",
+              description: "Model id from GET /v1/viewer/mapping/models",
             },
           },
         },

@@ -1,6 +1,6 @@
 # Read-only auto-test monitor
 
-Automated checks for **read-only** Marafiq API endpoints and Shamal Platform UI. No flight commands are sent.
+Automated checks for **read-only** external viewer API endpoints and Shamal Platform UI. No flight commands are sent.
 
 ## Quick start
 
@@ -9,10 +9,10 @@ Automated checks for **read-only** Marafiq API endpoints and Shamal Platform UI.
 npm run dev
 
 # Terminal 2 — single run
-KEY=marafiq-ro-26 npm run test:readonly
+KEY=viewer-ro-26 npm run test:readonly
 
 # Terminal 2 — 2-hour monitor (every 10 minutes)
-KEY=marafiq-ro-26 npm run test:readonly:monitor
+KEY=viewer-ro-26 npm run test:readonly:monitor
 
 # After monitoring — regenerate report
 npm run test:readonly:report
@@ -35,12 +35,12 @@ test-results/session-<timestamp>/
 
 | Area | Endpoints |
 |------|-----------|
-| Meta | `/health`, `/v1/marafiq/capabilities`, `/openapi.yaml` |
+| Meta | `/health`, `/v1/viewer/capabilities`, `/openapi.yaml` |
 | Fleet | `/devices`, `/fleet/summary`, `/docks` |
 | Device | `/devices/{sn}`, `/telemetry/latest`, `/live-stream`, `/ops/readiness` |
 | Tasks | `/tasks`, `/tasks/{id}`, media, trajectory, GeoJSON, KML |
 | Mapping | `/mapping/models` |
-| Events | `/v1/marafiq/events` |
+| Events | `/v1/viewer/events` |
 | Ops (GET only) | `/ops/catalog`, `/ops/log` |
 
 **Not tested:** POST operation commands (takeoff, land, etc.).
@@ -51,7 +51,7 @@ During monitoring, open:
 
 1. **FlightHub 2** — https://fh.dji.com (ops team login; verify devices when powered on)
 2. **Swagger** — http://localhost:8080/docs
-3. **Shamal Platform** — http://localhost:8080/ (viewer: `marafiq1`)
+3. **Shamal Platform** — http://localhost:8080/ (viewer: `external-integrator1`)
 
 Record browser checks:
 

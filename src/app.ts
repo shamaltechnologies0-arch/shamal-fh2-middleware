@@ -7,8 +7,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
-import { registerMarafiqAuth } from "./plugins/auth.js";
-import { PLATFORM_PREFIX, LEGACY_PREFIX } from "./routes/viewerPaths.js";
+import { registerPlatformAuth } from "./plugins/auth.js";
 import { authRoutes } from "./routes/auth.js";
 import { adminRoutes } from "./routes/admin.js";
 import { viewerIntegrationRoutes } from "./routes/viewerIntegration.js";
@@ -32,7 +31,7 @@ import { webhookRoutes } from "./routes/webhooks.js";
 
 const openapiPath = join(
   dirname(fileURLToPath(import.meta.url)),
-  "../openapi/shamal-marafiq-v1.yaml",
+  "../openapi/shamal-platform-v1.yaml",
 );
 
 export async function buildServer() {
@@ -56,13 +55,6 @@ export async function buildServer() {
     requestIdHeader: "x-request-id",
     genReqId: (req) =>
       (req.headers["x-request-id"] as string | undefined) ?? crypto.randomUUID(),
-    rewriteUrl: (req) => {
-      const url = req.url ?? "/";
-      if (url.startsWith(`${PLATFORM_PREFIX}/`)) {
-        return url.replace(PLATFORM_PREFIX, LEGACY_PREFIX);
-      }
-      return url;
-    },
   }) as Awaited<ReturnType<typeof Fastify>>;
 
   // Swagger "Try it out" from 127.0.0.1 → localhost (or vice versa) needs CORS in dev.
@@ -95,15 +87,13 @@ export async function buildServer() {
     openapi: {
       openapi: "3.1.0",
       info: {
-        title: "Shamal FH2 External Viewer Middleware API",
-        version: "2.0.0",
+        title: "Shamal Platform API",
+        version: "2.1.0",
         description:
-          "Shamal-controlled REST layer over DJI FlightHub 2. External viewer integrators use canonical /v1/viewer/* paths with X-Api-Key — never DJI credentials. " +
-          "Shamal Platform UI: GET /. Live spec JSON: GET /openapi.json. " +
-          "Legacy /v1/marafiq/* paths remain supported.",
+          "Shamal Platform REST API over DJI FlightHub 2 operations. " +
+          "External integrators use `/v1/viewer/*` with `X-Api-Key`. " +
+          "Shamal admin routes use `/v1/platform/admin/*`.",
       },
-      // Use same-origin by default so Swagger "Try it out" works regardless of
-      // opening docs via localhost or 127.0.0.1.
       servers: [{ url: "/", description: "Same origin" }],
       components: {
         securitySchemes: {
@@ -126,7 +116,7 @@ export async function buildServer() {
     reply.type("application/yaml").send(openapiSpec);
   });
 
-  await registerMarafiqAuth(app);
+  await registerPlatformAuth(app);
 
   await app.register(commandCenterRoutes);
   await app.register(authRoutes);

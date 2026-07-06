@@ -177,8 +177,8 @@ export const operationRoutes: FastifyPluginAsync = async (app) => {
   };
 
   app.get(
-    "/v1/marafiq/ops/catalog",
-    { schema: { summary: "Operations catalog (FH2-aligned)", tags: ["Operations"] } },
+    "/v1/platform/ops/catalog",
+    { schema: { hide: true, summary: "Operations catalog (FH2-aligned)", tags: ["Operations"] } },
     async () => ({
       data: {
         categories: OP_CATEGORIES,
@@ -192,8 +192,8 @@ export const operationRoutes: FastifyPluginAsync = async (app) => {
   );
 
   app.get<{ Params: { sn: string } }>(
-    "/v1/marafiq/ops/readiness/:sn",
-    { schema: { summary: "Device command readiness snapshot", tags: ["Operations"] } },
+    "/v1/platform/ops/readiness/:sn",
+    { schema: { hide: true, summary: "Device command readiness snapshot", tags: ["Operations"] } },
     async (request, reply) => {
       const sn = request.params.sn;
       const [telemetryResult, entries] = await Promise.all([
@@ -231,9 +231,10 @@ export const operationRoutes: FastifyPluginAsync = async (app) => {
 
   for (const op of OPERATIONS_CATALOG) {
     app.post(
-      `/v1/marafiq/ops/${op.path}`,
+      `/v1/platform/ops/${op.path}`,
       {
         schema: {
+          hide: true,
           summary: `Operation: ${op.label}`,
           description: op.description,
           tags: ["Operations"],
@@ -257,8 +258,8 @@ export const operationRoutes: FastifyPluginAsync = async (app) => {
   }
 
   app.get<{ Params: { id: string } }>(
-    "/v1/marafiq/ops/status/:id",
-    { schema: { summary: "Operation status", tags: ["Operations"] } },
+    "/v1/platform/ops/status/:id",
+    { schema: { hide: true, summary: "Operation status", tags: ["Operations"] } },
     async (request, reply) => {
       const row = operations.get(request.params.id);
       if (!row) {
@@ -269,8 +270,8 @@ export const operationRoutes: FastifyPluginAsync = async (app) => {
   );
 
   app.get(
-    "/v1/marafiq/ops/log",
-    { schema: { summary: "Operation log", tags: ["Operations"] } },
+    "/v1/platform/ops/log",
+    { schema: { hide: true, summary: "Operation log", tags: ["Operations"] } },
     async (request) => {
       const limitRaw = (request.query as { limit?: string | number }).limit;
       const limit = Math.max(1, Math.min(200, Number(limitRaw ?? 50)));

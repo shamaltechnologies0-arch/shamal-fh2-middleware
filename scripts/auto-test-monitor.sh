@@ -6,7 +6,7 @@ set -euo pipefail
 DURATION_HOURS="${1:-2}"
 INTERVAL_MIN="${2:-10}"
 BASE="${BASE:-http://localhost:8080}"
-KEY="${KEY:-marafiq-ro-26}"
+KEY="${KEY:-viewer-ro-26}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ -n "${OUT_DIR:-}" ]]; then
   SESSION_ID="$(basename "$OUT_DIR")"

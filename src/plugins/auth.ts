@@ -11,7 +11,7 @@ import {
   roleFromApiKey,
   type CcRole,
 } from "../services/commandCenterAuth.js";
-import { legacyMarafiqPath, isViewerOrLegacyApiPath } from "../routes/viewerPaths.js";
+import { normalizeApiPath, isPlatformApiPath } from "../routes/viewerPaths.js";
 import { assertRoleAccess } from "../services/apiAccess.js";
 import {
   hasConfiguredFh2Projects,
@@ -49,9 +49,9 @@ function requestPath(url: string): string {
 }
 
 function requiresOperatorRole(path: string, method: string): boolean {
-  const legacyPath = legacyMarafiqPath(path);
-  if (method === "POST" && legacyPath.startsWith("/v1/marafiq/ops/")) return true;
-  if (method === "POST" && /^\/v1\/marafiq\/events\/[^/]+\/ack$/.test(legacyPath)) return true;
+  const legacyPath = normalizeApiPath(path);
+  if (method === "POST" && legacyPath.startsWith("/v1/platform/ops/")) return true;
+  if (method === "POST" && /^\/v1\/viewer\/events\/[^/]+\/ack$/.test(legacyPath)) return true;
   return false;
 }
 
@@ -71,7 +71,7 @@ function resolveLegacyViewerApiKey(apiKey: string): boolean {
 }
 
 function isValidApiKey(apiKey: string): boolean {
-  if (config.marafiqApiKeys.includes(apiKey)) return true;
+  if (config.viewerApiKeys.includes(apiKey)) return true;
   ensureRestApiKeysMigrated();
   if (verifyRestApiKey(apiKey)) return true;
   return resolveLegacyViewerApiKey(apiKey);
@@ -86,26 +86,24 @@ function requestProjectCode(request: FastifyRequest): string | undefined {
 }
 
 function isProjectDataPath(path: string): boolean {
-  const legacyPath = legacyMarafiqPath(path);
+  const legacyPath = normalizeApiPath(path);
   if (
-    legacyPath === "/v1/marafiq/integration/profile" ||
-    legacyPath === "/v1/marafiq/integration/access-key" ||
-    legacyPath === "/v1/marafiq/viewer/integration" ||
-    legacyPath === "/v1/marafiq/viewer/integration/token"
+    legacyPath === "/v1/platform/integration/profile" ||
+    legacyPath === "/v1/platform/integration/access-key"
   ) {
     return false;
   }
   return (
-    legacyPath.startsWith("/v1/marafiq/devices") ||
-    legacyPath.startsWith("/v1/marafiq/fleet") ||
-    legacyPath.startsWith("/v1/marafiq/docks") ||
-    legacyPath.startsWith("/v1/marafiq/tasks") ||
-    legacyPath.startsWith("/v1/marafiq/mapping") ||
-    legacyPath.startsWith("/v1/marafiq/media") ||
-    legacyPath.startsWith("/v1/marafiq/gis") ||
-    legacyPath.startsWith("/v1/marafiq/streams") ||
-    legacyPath.startsWith("/v1/marafiq/telemetry") ||
-    legacyPath.startsWith("/v1/marafiq/integration/")
+    legacyPath.startsWith("/v1/viewer/devices") ||
+    legacyPath.startsWith("/v1/viewer/fleet") ||
+    legacyPath.startsWith("/v1/viewer/docks") ||
+    legacyPath.startsWith("/v1/viewer/tasks") ||
+    legacyPath.startsWith("/v1/viewer/mapping") ||
+    legacyPath.startsWith("/v1/viewer/media") ||
+    legacyPath.startsWith("/v1/viewer/gis") ||
+    legacyPath.startsWith("/v1/viewer/streams") ||
+    legacyPath.startsWith("/v1/viewer/telemetry") ||
+    legacyPath.startsWith("/v1/platform/integration/")
   );
 }
 
@@ -174,7 +172,7 @@ function applyViewerProjectScope(
     }
   }
 
-  if (legacyMarafiqPath(path).startsWith("/v1/marafiq/admin/")) {
+  if (normalizeApiPath(path).startsWith("/v1/platform/admin/")) {
     if (!hasMinRole(role, "admin")) {
       reply.status(403).send({
         error: "forbidden",
@@ -185,9 +183,9 @@ function applyViewerProjectScope(
     }
   }
 
-  if (config.marafiqIpAllowlist.length > 0) {
+  if (config.viewerIpAllowlist.length > 0) {
     const ip = clientIp(request);
-    if (!config.marafiqIpAllowlist.includes(ip)) {
+    if (!config.viewerIpAllowlist.includes(ip)) {
       reply.status(403).send({
         error: "forbidden",
         message: "IP address not allowlisted",
@@ -197,7 +195,7 @@ function applyViewerProjectScope(
 }
 
 /** Register on the root Fastify instance (not as an encapsulated plugin). */
-export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
+export async function registerPlatformAuth(app: FastifyInstance): Promise<void> {
   app.addHook("onRequest", async (request: FastifyRequest, reply: FastifyReply) => {
     setFh2RequestContext({});
     if (request.method === "OPTIONS") {
@@ -218,14 +216,12 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
     }
 
     const path = requestPath(request.url);
-    if (!isViewerOrLegacyApiPath(path)) {
+    if (!isPlatformApiPath(path)) {
       return;
     }
 
     if (
-      path === "/v1/marafiq/auth/login" ||
       path === "/v1/viewer/auth/login" ||
-      path === "/v1/marafiq/auth/token" ||
       path === "/v1/viewer/auth/token"
     ) {
       return;
@@ -257,15 +253,11 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
     }
 
     const isIntegrationSessionRoute =
-      path === "/v1/marafiq/integration/profile" ||
-      path === "/v1/marafiq/integration/access-key" ||
-      // @deprecated backward-compat aliases
-      path === "/v1/marafiq/viewer/integration" ||
-      path === "/v1/marafiq/viewer/integration/token";
+      path === "/v1/platform/integration/profile" ||
+      path === "/v1/platform/integration/access-key";
 
     const isIntegrationBearerRoute =
-      (path.startsWith("/v1/marafiq/integration/") && !isIntegrationSessionRoute) ||
-      (path.startsWith("/v1/marafiq/viewer/") && !isIntegrationSessionRoute);
+      path.startsWith("/v1/platform/integration/") && !isIntegrationSessionRoute;
 
     if (isIntegrationBearerRoute) {
       if (!bearerToken || !isViewerIntegrationToken(bearerToken)) {
@@ -345,5 +337,5 @@ export async function registerMarafiqAuth(app: FastifyInstance): Promise<void> {
   });
 }
 
-/** @deprecated Use registerMarafiqAuth on the root instance */
-export const marafiqAuthPlugin: FastifyPluginAsync = registerMarafiqAuth;
+/** @deprecated Use registerPlatformAuth on the root instance */
+export const platformAuthPlugin: FastifyPluginAsync = registerPlatformAuth;

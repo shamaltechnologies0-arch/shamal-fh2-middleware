@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   try {
     const loginAdmin = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       payload: { username: "admin", password: "admin1234" },
       headers: { "x-api-key": "proj-admin-key" },
     });
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
 
     const createViewer = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/integration-accounts",
+      url: "/v1/platform/admin/integration-accounts",
       headers: adminHeaders,
       payload: { username: "viewerA", password: "viewer1234", displayName: "Viewer A" },
     });
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
 
     const sync1 = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/fh2-projects/sync",
+      url: "/v1/platform/admin/fh2-projects/sync",
       headers: adminHeaders,
       payload: {},
     });
@@ -90,7 +90,7 @@ async function main(): Promise<void> {
 
     const sync2 = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/fh2-projects/sync",
+      url: "/v1/platform/admin/fh2-projects/sync",
       headers: adminHeaders,
       payload: {},
     });
@@ -102,7 +102,7 @@ async function main(): Promise<void> {
 
     const manualCreateRemoved = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/fh2-projects",
+      url: "/v1/platform/admin/fh2-projects",
       headers: adminHeaders,
       payload: { name: "manual", projectCode: "fake" },
     });
@@ -113,7 +113,7 @@ async function main(): Promise<void> {
 
     const assign = await app.inject({
       method: "POST",
-      url: `/v1/marafiq/admin/fh2-projects/${projectId}/assign-viewer`,
+      url: `/v1/platform/admin/fh2-projects/${projectId}/assign-viewer`,
       headers: adminHeaders,
       payload: { viewerId: "viewerA" },
     });
@@ -125,7 +125,7 @@ async function main(): Promise<void> {
     // Ensure assignment persists after another sync.
     await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/fh2-projects/sync",
+      url: "/v1/platform/admin/fh2-projects/sync",
       headers: adminHeaders,
       payload: {},
     });
@@ -133,7 +133,7 @@ async function main(): Promise<void> {
     const managedViewerApiKey = createViewer.json().data.apiKey as string;
     const loginViewer = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       headers: { "x-api-key": managedViewerApiKey },
       payload: { username: "viewerA", password: "viewer1234" },
     });
@@ -143,7 +143,7 @@ async function main(): Promise<void> {
     }
     const viewerSession = loginViewer.json().data.sessionToken as string;
     const viewerHeaders = { "x-api-key": managedViewerApiKey, "x-cc-session": viewerSession };
-    const me = await app.inject({ method: "GET", url: "/v1/marafiq/auth/me", headers: viewerHeaders });
+    const me = await app.inject({ method: "GET", url: "/v1/viewer/auth/me", headers: viewerHeaders });
     const assignedCode = me.json().data.assignedProjects?.[0]?.projectCode as string | undefined;
     if (!assignedCode) {
       failed += 1;
@@ -152,7 +152,7 @@ async function main(): Promise<void> {
 
     const viewerCanReadAssigned = await app.inject({
       method: "GET",
-      url: `/v1/marafiq/devices?projectCode=${encodeURIComponent(assignedCode || "")}`,
+      url: `/v1/viewer/devices?projectCode=${encodeURIComponent(assignedCode || "")}`,
       headers: viewerHeaders,
     });
     if (viewerCanReadAssigned.statusCode !== 200) {
@@ -162,7 +162,7 @@ async function main(): Promise<void> {
 
     const viewerCannotReadOther = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/devices?projectCode=550e8400-e29b-41d4-a716-446655440099",
+      url: "/v1/viewer/devices?projectCode=550e8400-e29b-41d4-a716-446655440099",
       headers: viewerHeaders,
     });
     if (viewerCannotReadOther.statusCode !== 403) {
@@ -172,7 +172,7 @@ async function main(): Promise<void> {
 
     const viewerCannotAdmin = await app.inject({
       method: "POST",
-      url: `/v1/marafiq/admin/fh2-projects/${encodeURIComponent(projectId || "x")}/assign-viewer`,
+      url: `/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId || "x")}/assign-viewer`,
       headers: viewerHeaders,
       payload: { viewerId: "viewerA" },
     });
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
 
     const remove = await app.inject({
       method: "DELETE",
-      url: `/v1/marafiq/admin/fh2-projects/${projectId}/remove-viewer/viewerA`,
+      url: `/v1/platform/admin/fh2-projects/${projectId}/remove-viewer/viewerA`,
       headers: adminHeaders,
     });
     if (remove.statusCode !== 200) {
@@ -193,7 +193,7 @@ async function main(): Promise<void> {
 
     const noAssignedDenied = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/devices",
+      url: "/v1/viewer/devices",
       headers: viewerHeaders,
     });
     if (noAssignedDenied.statusCode !== 403) {
@@ -203,7 +203,7 @@ async function main(): Promise<void> {
 
     const fallbackWorks = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/fleet/summary",
+      url: "/v1/viewer/fleet/summary",
       headers: adminHeaders,
     });
     if (fallbackWorks.statusCode !== 200) {

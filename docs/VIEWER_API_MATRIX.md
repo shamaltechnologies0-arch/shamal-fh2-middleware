@@ -2,7 +2,7 @@
 
 Shamal-controlled middleware between **DJI FlightHub 2** and **external viewer integrators** (CAFM platforms, dashboards, etc.).
 
-> **Note:** Marafiq is an example external viewer user/company. The same API model applies to any future viewer Shamal onboards.
+> **Note:** external viewer is an example external viewer user/company. The same API model applies to any future viewer Shamal onboards.
 
 ## How external viewers get API keys and values
 
@@ -11,7 +11,7 @@ Each external viewer receives **one connection package from Shamal**. They never
 | What viewers get from Shamal | Example | Used for |
 |------------------------------|---------|----------|
 | **Base URL** | `https://api.shamal.com` | All API calls |
-| **API key** | `viewer-ro-26` | Header `X-Api-Key` on every `/v1/marafiq/*` call (legacy path; `/v1/viewer/*` coming in a later phase) |
+| **API key** | `viewer-ro-26` | Header `X-Api-Key` on every `/v1/viewer/*` call (legacy path; `/v1/viewer/*` coming in a later phase) |
 | **Swagger / OpenAPI** | `/docs`, `/openapi.yaml` | Developers build integrations |
 | **IDs in responses** | `serialNumber`, task `id` | Copy from list APIs into detail APIs |
 
@@ -31,8 +31,8 @@ External viewer platform  --X-Api-Key-->  Shamal FH2 Viewer Middleware  --FH2_OR
 
 Viewer developers:
 
-1. Call `GET /v1/marafiq/devices` → copy `serialNumber`
-2. Call `GET /v1/marafiq/tasks` → copy `data[].id` (when tasks exist)
+1. Call `GET /v1/viewer/devices` → copy `serialNumber`
+2. Call `GET /v1/viewer/tasks` → copy `data[].id` (when tasks exist)
 3. Poll telemetry/events on a schedule in their platform
 
 ---
@@ -49,28 +49,28 @@ Legend:
 
 | DJI / industry API name | Viewer platform use | Shamal middleware today | Shamal endpoint (if any) |
 |-------------------------|---------------------|-------------------------|--------------------------|
-| **Device Management API** | Fleet list | **Live** | `GET /v1/marafiq/devices` |
-| **Fleet Management API** | Same as above | **Live** | `GET /v1/marafiq/devices` |
-| **Dock Management API** | Dock status | **Partial** | Dock in `devices`; detail via `GET /v1/marafiq/devices/{sn}` |
-| **Device Health API** | Alerts / HMS | **Partial** | `GET /v1/marafiq/devices/{sn}` → `health` |
+| **Device Management API** | Fleet list | **Live** | `GET /v1/viewer/devices` |
+| **Fleet Management API** | Same as above | **Live** | `GET /v1/viewer/devices` |
+| **Dock Management API** | Dock status | **Partial** | Dock in `devices`; detail via `GET /v1/viewer/devices/{sn}` |
+| **Device Health API** | Alerts / HMS | **Partial** | `GET /v1/viewer/devices/{sn}` → `health` |
 | **Device Status API** | Online/offline | **Live** | `devices` → `online`; detail in `devices/{sn}` |
-| **Aircraft Telemetry API** | Map, battery | **Partial** | `GET /v1/marafiq/devices/{sn}/telemetry/latest` |
-| **Live Flight Status API** | Mission state | **Partial** | `GET /v1/marafiq/tasks`, `tasks/{id}` |
-| **MQTT Real-Time Data API** | Live stream | **Phase 2** | `GET /v1/marafiq/devices/{sn}/telemetry/stream` (SSE) |
-| **Live Video Streaming API** | Live view | **Phase 2** | `GET /v1/marafiq/devices/{sn}/live-stream` |
+| **Aircraft Telemetry API** | Map, battery | **Partial** | `GET /v1/viewer/devices/{sn}/telemetry/latest` |
+| **Live Flight Status API** | Mission state | **Partial** | `GET /v1/viewer/tasks`, `tasks/{id}` |
+| **MQTT Real-Time Data API** | Live stream | **Phase 2** | `GET /v1/viewer/devices/{sn}/telemetry/stream` (SSE) |
+| **Live Video Streaming API** | Live view | **Phase 2** | `GET /v1/viewer/devices/{sn}/live-stream` |
 | **RTMP/WebRTC Stream API** | Video player | **Phase 2** | Same as live-stream |
-| **Flight Mission API** | Inspection jobs | **Live** | `GET /v1/marafiq/tasks` |
-| **Flight Task API** | Same | **Live** | `GET /v1/marafiq/tasks`, `tasks/{id}` |
+| **Flight Mission API** | Inspection jobs | **Live** | `GET /v1/viewer/tasks` |
+| **Flight Task API** | Same | **Live** | `GET /v1/viewer/tasks`, `tasks/{id}` |
 | **Waypoint Mission API** | Route metadata | **Partial** | Task detail / trajectory |
 | **Mission Execution API** | Progress | **Partial** | `tasks/{id}` → status, waypoint progress |
-| **Flight Record API** | History | **Live** | `GET /v1/marafiq/tasks` |
-| **Media File API** | Evidence | **Live** | `GET /v1/marafiq/tasks/{id}/media` |
+| **Flight Record API** | History | **Live** | `GET /v1/viewer/tasks` |
+| **Media File API** | Evidence | **Live** | `GET /v1/viewer/tasks/{id}/media` |
 | **Photo & Video Retrieval API** | Attachments | **Live** | `tasks/{id}/media` → `downloadUrl`, `previewUrl` |
-| **Cloud Mapping API** | Maps / ortho | **Phase 2** | `GET /v1/marafiq/mapping/models` |
-| **2D/3D Reconstruction API** | Digital twin | **Phase 2** | `GET /v1/marafiq/mapping/models/{id}` |
+| **Cloud Mapping API** | Maps / ortho | **Phase 2** | `GET /v1/viewer/mapping/models` |
+| **2D/3D Reconstruction API** | Digital twin | **Phase 2** | `GET /v1/viewer/mapping/models/{id}` |
 | **Map/GIS Data API** | Layers on map | **Phase 2** | Mapping models + trajectory exports |
-| **GeoJSON/KML API** | GIS import | **Live** | `GET /v1/marafiq/tasks/{id}/trajectory.geojson` / `.kml` |
-| **Event Notification API** | Alerts | **Live** | `GET /v1/marafiq/events` |
+| **GeoJSON/KML API** | GIS import | **Live** | `GET /v1/viewer/tasks/{id}/trajectory.geojson` / `.kml` |
+| **Event Notification API** | Alerts | **Live** | `GET /v1/viewer/events` |
 | **Webhook Push API** | Real-time push | **Live** | FH2 → Shamal webhook; optional `VIEWER_EVENT_CALLBACK_URL` |
 | **Remote Control Command API** | Fly drone | **N/A read-only** | Shamal operators only |
 | **Camera/Gimbal Control API** | Control camera | **N/A read-only** | Shamal operators only |
@@ -87,14 +87,14 @@ Legend:
 
 | Viewer need | Shamal provides | How |
 |-------------|-----------------|-----|
-| **Telemetry API** | Latest position/battery snapshot | `GET /v1/marafiq/devices/{sn}/telemetry/latest` |
-| **Live Video API** | Live capacity | `GET /v1/marafiq/devices/{sn}/live-stream` |
-| **Mission API** | Flight / inspection tasks | `GET /v1/marafiq/tasks`, `tasks/{id}` |
-| **Media API** | Photos/videos per task | `GET /v1/marafiq/tasks/{id}/media` |
-| **Event/Webhook API** | Alerts | `GET /v1/marafiq/events` + optional callback URL |
+| **Telemetry API** | Latest position/battery snapshot | `GET /v1/viewer/devices/{sn}/telemetry/latest` |
+| **Live Video API** | Live capacity | `GET /v1/viewer/devices/{sn}/live-stream` |
+| **Mission API** | Flight / inspection tasks | `GET /v1/viewer/tasks`, `tasks/{id}` |
+| **Media API** | Photos/videos per task | `GET /v1/viewer/tasks/{id}/media` |
+| **Event/Webhook API** | Alerts | `GET /v1/viewer/events` + optional callback URL |
 | **GIS/Mapping API** | Ortho + paths | `mapping/models`, `trajectory.geojson` |
-| **Device Status API** | Fleet online + detail | `GET /v1/marafiq/devices`, `fleet/summary` |
-| **Dock API** | Dock status | `GET /v1/marafiq/docks`, `docks/{sn}` |
+| **Device Status API** | Fleet online + detail | `GET /v1/viewer/devices`, `fleet/summary` |
+| **Dock API** | Dock status | `GET /v1/viewer/docks`, `docks/{sn}` |
 
 ---
 
@@ -110,18 +110,18 @@ API key:      viewer-ro-26          ← Shamal issues per viewer; change per cli
 
 Read APIs (legacy paths — still supported):
   GET /health
-  GET /v1/marafiq/devices
-  GET /v1/marafiq/devices/{serialNumber}
-  GET /v1/marafiq/devices/{serialNumber}/telemetry/latest
-  GET /v1/marafiq/tasks
-  GET /v1/marafiq/tasks/{taskId}
-  GET /v1/marafiq/tasks/{taskId}/media
-  GET /v1/marafiq/tasks/{taskId}/trajectory
-  GET /v1/marafiq/events
+  GET /v1/viewer/devices
+  GET /v1/viewer/devices/{serialNumber}
+  GET /v1/viewer/devices/{serialNumber}/telemetry/latest
+  GET /v1/viewer/tasks
+  GET /v1/viewer/tasks/{taskId}
+  GET /v1/viewer/tasks/{taskId}/media
+  GET /v1/viewer/tasks/{taskId}/trajectory
+  GET /v1/viewer/events
 
 Where to get IDs:
-  serialNumber  → from GET /v1/marafiq/devices → data[].serialNumber
-  taskId        → from GET /v1/marafiq/tasks → data[].id
+  serialNumber  → from GET /v1/viewer/devices → data[].serialNumber
+  taskId        → from GET /v1/viewer/tasks → data[].id
 
 DJI credentials: NOT provided to external viewers.
 ```
@@ -140,4 +140,4 @@ Commands (takeoff, gimbal, firmware) stay **Shamal operations only**, not extern
 
 ## Route migration (planned)
 
-`/v1/marafiq/*` paths remain supported as **legacy aliases**. Canonical `/v1/viewer/*` paths will be added in a later implementation phase. See [PRD.md](../PRD.md).
+`/v1/viewer/*` paths remain supported as **legacy aliases**. Canonical `/v1/viewer/*` paths will be added in a later implementation phase. See [PRD.md](../PRD.md).

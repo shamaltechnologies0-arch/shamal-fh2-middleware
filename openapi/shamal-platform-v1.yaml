@@ -1,0 +1,256 @@
+openapi: 3.1.0
+info:
+  title: Shamal Platform API
+  version: 2.1.0
+  description: |
+    Shamal-controlled REST layer over DJI FlightHub 2 operations.
+    External viewer integrators use **canonical** `/v1/viewer/*` paths with `X-Api-Key`.
+    Legacy client-specific URL prefixes are not part of this spec; use `/v1/viewer/*` and `/v1/platform/*` only.
+    Shamal owns FH2 credentials; external viewers never receive DJI access.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+security:
+  - ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+paths:
+  /health:
+    get:
+      summary: Service health
+      security: []
+      responses:
+        "200":
+          description: OK
+  /v1/viewer/devices:
+    get:
+      summary: List Shamal fleet devices from FlightHub 2 (normalized)
+      tags: [Devices]
+      responses:
+        "200":
+          description: Device list
+  /v1/viewer/devices/{sn}:
+    get:
+      summary: Device detail with health and state summary
+      description: "Use serialNumber from GET /v1/viewer/devices."
+      tags: [Devices]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string, example: "1581F8HGX254W00A0CHR" }
+      responses:
+        "200":
+          description: Device detail
+        "404":
+          description: Not found
+  /v1/viewer/devices/{sn}/telemetry/latest:
+    get:
+      summary: Latest telemetry snapshot (REST poll)
+      tags: [Devices]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Telemetry snapshot
+  /v1/viewer/devices/{sn}/live-stream:
+    get:
+      summary: Live video stream info
+      tags: [Streams]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+        - name: camera
+          in: query
+          schema: { type: string, enum: [drone, dock, auto] }
+      responses:
+        "200":
+          description: Stream metadata
+  /v1/viewer/devices/{sn}/telemetry/stream:
+    get:
+      summary: Telemetry SSE stream
+      tags: [Telemetry]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: SSE stream
+  /v1/viewer/tasks:
+    get:
+      summary: List flight tasks
+      tags: [Tasks]
+      responses:
+        "200":
+          description: Task list
+  /v1/viewer/tasks/{id}:
+    get:
+      summary: Flight task detail
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Task detail
+  /v1/viewer/tasks/{id}/trajectory:
+    get:
+      summary: Flight trajectory polyline
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Trajectory
+  /v1/viewer/tasks/{id}/media:
+    get:
+      summary: Inspection media for task
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Media list
+  /v1/viewer/tasks/{id}/trajectory.geojson:
+    get:
+      summary: Flight path GeoJSON
+      tags: [GIS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: GeoJSON
+  /v1/viewer/tasks/{id}/trajectory.kml:
+    get:
+      summary: Flight path KML
+      tags: [GIS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: KML
+  /v1/viewer/media/recent:
+    get:
+      summary: Recent tasks with media file names
+      tags: [Tasks]
+      responses:
+        "200":
+          description: Recent media
+  /v1/viewer/events:
+    get:
+      summary: Webhook event feed
+      tags: [Events]
+      responses:
+        "200":
+          description: Events
+  /v1/viewer/events/{id}/ack:
+    post:
+      summary: Acknowledge an event (operator/admin)
+      tags: [Events]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Acknowledged
+  /v1/viewer/fleet/summary:
+    get:
+      summary: Fleet summary
+      tags: [Fleet]
+      responses:
+        "200":
+          description: Fleet summary
+  /v1/viewer/fleet/positions:
+    get:
+      summary: Live fleet positions
+      tags: [Fleet]
+      responses:
+        "200":
+          description: Positions
+  /v1/viewer/docks:
+    get:
+      summary: List Shamal docks
+      tags: [Docks]
+      responses:
+        "200":
+          description: Dock list
+  /v1/viewer/docks/{sn}:
+    get:
+      summary: Dock detail
+      tags: [Docks]
+      parameters:
+        - name: sn
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Dock detail
+  /v1/viewer/mapping/models:
+    get:
+      summary: Cloud mapping models
+      tags: [Mapping]
+      responses:
+        "200":
+          description: Model list
+  /v1/viewer/mapping/models/{id}:
+    get:
+      summary: Mapping model detail
+      tags: [Mapping]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Model detail
+  /v1/viewer/capabilities:
+    get:
+      summary: API capabilities
+      tags: [Meta]
+      responses:
+        "200":
+          description: Capabilities
+  /v1/viewer/auth/login:
+    post:
+      summary: Shamal Platform login
+      tags: [Auth]
+      security: []
+      responses:
+        "200":
+          description: Session token and role
+  /v1/viewer/auth/me:
+    get:
+      summary: Current session and permissions
+      tags: [Auth]
+      responses:
+        "200":
+          description: Session info

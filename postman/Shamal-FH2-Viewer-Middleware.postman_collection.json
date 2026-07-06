@@ -1,12 +1,12 @@
 {
   "info": {
     "name": "Shamal FH2 Viewer Middleware",
-    "description": "Canonical /v1/viewer/* routes for external viewer integrators. X-Api-Key auth; legacy /v1/marafiq/* still supported.",
+    "description": "Canonical /v1/viewer/* routes for external viewer integrators. X-Api-Key auth; legacy /v1/viewer/* still supported.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "apiKey", "value": "demo-marafiq-key-change-me" },
+    { "key": "apiKey", "value": "demo-viewer-key-change-me" },
     { "key": "deviceSn", "value": "1581F6QAD23B00TEST01" },
     { "key": "taskId", "value": "0bbc74b4-5e5a-4390-9256-8e4ee08a241b" }
   ],

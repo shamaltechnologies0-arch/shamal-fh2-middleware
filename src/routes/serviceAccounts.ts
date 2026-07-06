@@ -23,9 +23,11 @@ import {
   updateServiceAccountSchema,
   type ServiceAccountPublic,
 } from "../services/serviceAccounts.js";
-import { viewerRoutePaths } from "./viewerPaths.js";
-
-type RouteOpts = Record<string, unknown>;
+import {
+  registerAdminGet,
+  registerAdminPost,
+  registerViewerRoutes,
+} from "./viewerPaths.js";
 
 function requireSignedInUser(
   request: FastifyRequest,
@@ -101,23 +103,13 @@ function handleServiceError(err: unknown, reply: FastifyReply) {
   return reply.status(500).send({ error: "internal_error", message });
 }
 
-function registerRoutes(
-  app: FastifyInstance,
-  method: "get" | "post" | "patch" | "delete",
-  legacyPath: string,
-  opts: RouteOpts,
-  handler: RouteHandlerMethod,
-): void {
-  for (const path of viewerRoutePaths(legacyPath)) {
-    app[method](path, opts, handler);
-  }
-}
+type RouteOpts = Record<string, unknown>;
 
 export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "get",
-    "/v1/marafiq/service-accounts",
+    "/v1/viewer/service-accounts",
     {
       schema: {
         summary: "List service accounts owned by the signed-in user",
@@ -131,10 +123,10 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "post",
-    "/v1/marafiq/service-accounts",
+    "/v1/viewer/service-accounts",
     {
       schema: {
         summary: "Create a service account for machine-to-machine API access",
@@ -169,10 +161,10 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "get",
-    "/v1/marafiq/service-accounts/:id",
+    "/v1/viewer/service-accounts/:id",
     {
       schema: { summary: "Get one service account", tags: ["Service Accounts"] },
     },
@@ -187,10 +179,10 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "patch",
-    "/v1/marafiq/service-accounts/:id",
+    "/v1/viewer/service-accounts/:id",
     {
       schema: { summary: "Update service account metadata or scopes", tags: ["Service Accounts"] },
     },
@@ -213,10 +205,10 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "post",
-    "/v1/marafiq/service-accounts/:id/revoke",
+    "/v1/viewer/service-accounts/:id/revoke",
     {
       schema: { summary: "Revoke a service account", tags: ["Service Accounts"] },
     },
@@ -232,10 +224,10 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "post",
-    "/v1/marafiq/service-accounts/:id/reactivate",
+    "/v1/viewer/service-accounts/:id/reactivate",
     {
       schema: { summary: "Reactivate a revoked service account", tags: ["Service Accounts"] },
     },
@@ -251,10 +243,10 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "post",
-    "/v1/marafiq/service-accounts/:id/rotate-secret",
+    "/v1/viewer/service-accounts/:id/rotate-secret",
     {
       schema: {
         summary: "Rotate client secret (shown once)",
@@ -279,10 +271,10 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  registerRoutes(
+  registerViewerRoutes(
     app,
     "delete",
-    "/v1/marafiq/service-accounts/:id",
+    "/v1/viewer/service-accounts/:id",
     {
       schema: { summary: "Delete a service account permanently", tags: ["Service Accounts"] },
     },
@@ -303,8 +295,9 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export function registerAdminServiceAccountRoutes(app: FastifyInstance): void {
-  app.get(
-    "/v1/marafiq/admin/service-accounts",
+  registerAdminGet(
+    app,
+    "/v1/platform/admin/service-accounts",
     {
       schema: {
         summary: "List service accounts (admin; optional ownerUserId filter)",
@@ -325,8 +318,9 @@ export function registerAdminServiceAccountRoutes(app: FastifyInstance): void {
     },
   );
 
-  app.post(
-    "/v1/marafiq/admin/service-accounts",
+  registerAdminPost(
+    app,
+    "/v1/platform/admin/service-accounts",
     {
       schema: {
         summary: "Create a service account for a user (admin)",

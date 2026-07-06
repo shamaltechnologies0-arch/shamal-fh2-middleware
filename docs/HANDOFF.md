@@ -1,15 +1,15 @@
 # Handoff package — external viewer integrators
 
-Shamal owns the drones and DJI FlightHub 2 account. External viewer platforms consume **approved Shamal operational records** via this middleware (read-only). Example viewer: Marafiq CAFM.
+Shamal owns the drones and DJI FlightHub 2 account. External viewer platforms consume **approved Shamal operational records** via this middleware (read-only). Example viewer: external CAFM client.
 
-The `/v1/marafiq/*` routes are **legacy aliases** from an early integrator demo. They remain supported during migration; canonical `/v1/viewer/*` paths are planned in a later phase (see [PRD.md](../PRD.md)).
+The `/v1/viewer/*` routes are **legacy aliases** from an early integrator demo. They remain supported during migration; canonical `/v1/viewer/*` paths are planned in a later phase (see [PRD.md](../PRD.md)).
 
 ## Deliverables
 
 | Item | Location |
 |------|----------|
 | REST API (running) | `docker compose up` → port 8080 |
-| OpenAPI spec | `/openapi.yaml` or `openapi/shamal-marafiq-v1.yaml` |
+| OpenAPI spec | `/openapi.yaml` or `openapi/shamal-platform-v1.yaml` |
 | Swagger UI | `http://localhost:8080/docs` |
 | Postman collection | `postman/Shamal-FH2-Viewer-Middleware.postman_collection.json` |
 | FH2 credential setup | `docs/FH2_SETUP.md` |
@@ -22,29 +22,29 @@ The `/v1/marafiq/*` routes are **legacy aliases** from an early integrator demo.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/v1/marafiq/devices` | Fleet list |
-| GET | `/v1/marafiq/devices/{sn}` | Device + HMS |
-| GET | `/v1/marafiq/devices/{sn}/telemetry/latest` | Position/battery snapshot |
-| GET | `/v1/marafiq/tasks` | Inspection jobs |
-| GET | `/v1/marafiq/tasks/{id}` | Task detail |
-| GET | `/v1/marafiq/tasks/{id}/media` | Photos/videos |
-| GET | `/v1/marafiq/tasks/{id}/trajectory` | Flight path |
-| GET | `/v1/marafiq/events` | Alert feed |
+| GET | `/v1/viewer/devices` | Fleet list |
+| GET | `/v1/viewer/devices/{sn}` | Device + HMS |
+| GET | `/v1/viewer/devices/{sn}/telemetry/latest` | Position/battery snapshot |
+| GET | `/v1/viewer/tasks` | Inspection jobs |
+| GET | `/v1/viewer/tasks/{id}` | Task detail |
+| GET | `/v1/viewer/tasks/{id}/media` | Photos/videos |
+| GET | `/v1/viewer/tasks/{id}/trajectory` | Flight path |
+| GET | `/v1/viewer/events` | Alert feed |
 
 ### Phase 2 (added)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/v1/marafiq/capabilities` | Feature list |
-| GET | `/v1/marafiq/fleet/summary` | Fleet dashboard |
-| GET | `/v1/marafiq/docks` | Dock list |
-| GET | `/v1/marafiq/docks/{sn}` | Dock detail |
-| GET | `/v1/marafiq/devices/{sn}/live-stream` | Live video info |
-| GET | `/v1/marafiq/devices/{sn}/telemetry/stream` | SSE telemetry |
-| GET | `/v1/marafiq/mapping/models` | Mapping jobs |
-| GET | `/v1/marafiq/mapping/models/{id}` | Model detail |
-| GET | `/v1/marafiq/tasks/{id}/trajectory.geojson` | GeoJSON path |
-| GET | `/v1/marafiq/tasks/{id}/trajectory.kml` | KML path |
+| GET | `/v1/viewer/capabilities` | Feature list |
+| GET | `/v1/viewer/fleet/summary` | Fleet dashboard |
+| GET | `/v1/viewer/docks` | Dock list |
+| GET | `/v1/viewer/docks/{sn}` | Dock detail |
+| GET | `/v1/viewer/devices/{sn}/live-stream` | Live video info |
+| GET | `/v1/viewer/devices/{sn}/telemetry/stream` | SSE telemetry |
+| GET | `/v1/viewer/mapping/models` | Mapping jobs |
+| GET | `/v1/viewer/mapping/models/{id}` | Model detail |
+| GET | `/v1/viewer/tasks/{id}/trajectory.geojson` | GeoJSON path |
+| GET | `/v1/viewer/tasks/{id}/trajectory.kml` | KML path |
 
 See [PHASE2.md](PHASE2.md).
 

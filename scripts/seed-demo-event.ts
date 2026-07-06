@@ -7,7 +7,7 @@ async function main() {
     task_uuid: "0bbc74b4-5e5a-4390-9256-8e4ee08a241b",
     status: "success",
     name: "Facility Perimeter Inspection",
-    message: "Demo seed event for Marafiq integration test",
+    message: "Demo seed event for external viewer integration test",
   });
   console.log("Seeded event:", row.id, row.event_type);
   await closeDatabase();

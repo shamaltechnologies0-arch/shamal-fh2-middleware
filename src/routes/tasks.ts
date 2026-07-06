@@ -26,7 +26,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/tasks",
+    "/v1/viewer/tasks",
     {
       schema: {
         summary: "List Shamal flight / inspection tasks",
@@ -39,7 +39,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
             sn: {
               type: "string",
               description:
-                "Optional Shamal device serialNumber from GET /v1/marafiq/devices. Leave empty to use the first project device.",
+                "Optional Shamal device serialNumber from GET /v1/viewer/devices. Leave empty to use the first project device.",
               examples: ["8UUXN6300A09XS", "1581F8HGX254W00A0CHR"],
             },
             begin_at: {
@@ -89,12 +89,12 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/tasks/:id",
+    "/v1/viewer/tasks/:id",
     {
       schema: {
         summary: "Get Shamal task detail",
         description:
-          "Use task id from GET /v1/marafiq/tasks -> data[].id. This is a FlightHub task UUID, not an email address.",
+          "Use task id from GET /v1/viewer/tasks -> data[].id. This is a FlightHub task UUID, not an email address.",
         tags: ["Tasks"],
         params: {
           type: "object",
@@ -103,7 +103,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
             id: {
               type: "string",
               format: "uuid",
-              description: "Task UUID copied from GET /v1/marafiq/tasks -> data[].id",
+              description: "Task UUID copied from GET /v1/viewer/tasks -> data[].id",
             },
           },
         },
@@ -130,12 +130,12 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/tasks/:id/trajectory",
+    "/v1/viewer/tasks/:id/trajectory",
     {
       schema: {
         summary: "Get Shamal task trajectory",
         description:
-          "Use task id from GET /v1/marafiq/tasks -> data[].id. This returns the flight path for a task.",
+          "Use task id from GET /v1/viewer/tasks -> data[].id. This returns the flight path for a task.",
         tags: ["Tasks"],
         params: {
           type: "object",
@@ -144,7 +144,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
             id: {
               type: "string",
               format: "uuid",
-              description: "Task UUID copied from GET /v1/marafiq/tasks -> data[].id",
+              description: "Task UUID copied from GET /v1/viewer/tasks -> data[].id",
             },
           },
         },
@@ -162,12 +162,12 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/tasks/:id/media",
+    "/v1/viewer/tasks/:id/media",
     {
       schema: {
         summary: "Get Shamal task media",
         description:
-          "Use task id from GET /v1/marafiq/tasks -> data[].id. This field is not an email address or user name.",
+          "Use task id from GET /v1/viewer/tasks -> data[].id. This field is not an email address or user name.",
         tags: ["Tasks"],
         params: {
           type: "object",
@@ -176,7 +176,7 @@ export const taskRoutes: FastifyPluginAsync = async (app) => {
             id: {
               type: "string",
               format: "uuid",
-              description: "Task UUID copied from GET /v1/marafiq/tasks -> data[].id",
+              description: "Task UUID copied from GET /v1/viewer/tasks -> data[].id",
             },
           },
         },

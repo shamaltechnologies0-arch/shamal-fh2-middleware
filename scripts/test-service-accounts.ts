@@ -57,7 +57,7 @@ async function main(): Promise<void> {
   try {
     const loginAdmin = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       payload: { username: "admin", password: "admin1234" },
       headers: { "x-api-key": "sa-test-admin" },
     });
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
 
     const createViewer = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/integration-accounts",
+      url: "/v1/platform/admin/integration-accounts",
       headers: adminHeaders,
       payload: { username: "clientuser", password: "viewer1234", displayName: "Client User" },
     });
@@ -74,7 +74,7 @@ async function main(): Promise<void> {
     const viewerApiKey = createViewer.json().data.apiKey as string;
     const loginViewer = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       headers: { "x-api-key": viewerApiKey },
       payload: { username: "clientuser", password: "viewer1234" },
     });
@@ -85,14 +85,14 @@ async function main(): Promise<void> {
 
     await app.inject({
       method: "PATCH",
-      url: "/v1/marafiq/admin/integration-accounts/clientuser/access",
+      url: "/v1/platform/admin/integration-accounts/clientuser/access",
       headers: adminHeaders,
       payload: { fleetOverview: true, alertsEvents: true },
     });
 
     const missingScopes = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/service-accounts",
+      url: "/v1/viewer/service-accounts",
       headers: viewerHeaders,
       payload: { name: "App", expiration: "1y" },
     });
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
 
     const createSa = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/service-accounts",
+      url: "/v1/viewer/service-accounts",
       headers: viewerHeaders,
       payload: {
         name: "ci-cd-deployment-worker",
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
 
     const tokenRes = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/token",
+      url: "/v1/viewer/auth/token",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       payload: new URLSearchParams({
         grant_type: "client_credentials",
@@ -133,14 +133,14 @@ async function main(): Promise<void> {
 
     const apiRes = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/capabilities",
+      url: "/v1/viewer/capabilities",
       headers: { authorization: `Bearer ${accessToken}` },
     });
     if (apiRes.statusCode !== 200) fail("service account JWT accesses API");
 
     const adminCreate = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/service-accounts",
+      url: "/v1/platform/admin/service-accounts",
       headers: adminHeaders,
       payload: {
         ownerUserId: "clientuser",

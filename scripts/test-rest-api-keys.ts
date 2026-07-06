@@ -54,7 +54,7 @@ async function main(): Promise<void> {
   try {
     const loginAdmin = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       payload: { username: "admin", password: "admin1234" },
       headers: { "x-api-key": "keys-admin-key" },
     });
@@ -65,13 +65,13 @@ async function main(): Promise<void> {
 
     const createViewerA = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/integration-accounts",
+      url: "/v1/platform/admin/integration-accounts",
       headers: adminHeaders,
       payload: { username: "viewerA", password: "viewer1234", displayName: "Viewer A" },
     });
     const createViewerB = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/integration-accounts",
+      url: "/v1/platform/admin/integration-accounts",
       headers: adminHeaders,
       payload: { username: "viewerB", password: "viewer1234", displayName: "Viewer B" },
     });
@@ -82,13 +82,13 @@ async function main(): Promise<void> {
     const viewerAApiKey = createViewerA.json().data.apiKey as string;
     const loginViewerA = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       headers: { "x-api-key": viewerAApiKey },
       payload: { username: "viewerA", password: "viewer1234" },
     });
     const loginViewerB = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       headers: { "x-api-key": createViewerB.json().data.apiKey as string },
       payload: { username: "viewerB", password: "viewer1234" },
     });
@@ -107,7 +107,7 @@ async function main(): Promise<void> {
 
     const listA = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/rest-api-keys",
+      url: "/v1/viewer/rest-api-keys",
       headers: viewerAHeaders,
     });
     if (listA.statusCode !== 200) fail("viewer list own keys");
@@ -122,7 +122,7 @@ async function main(): Promise<void> {
 
     const missingLabel = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/rest-api-keys",
+      url: "/v1/viewer/rest-api-keys",
       headers: viewerAHeaders,
       payload: {},
     });
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
 
     const missingExpiration = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/rest-api-keys",
+      url: "/v1/viewer/rest-api-keys",
       headers: viewerAHeaders,
       payload: { label: "No Expiry" },
     });
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
 
     const createKey = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/rest-api-keys",
+      url: "/v1/viewer/rest-api-keys",
       headers: viewerAHeaders,
       payload: { label: "Staging", expiration: "1y" },
     });
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
 
     const listAfterCreate = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/rest-api-keys",
+      url: "/v1/viewer/rest-api-keys",
       headers: viewerAHeaders,
     });
     if (listAfterCreate.json().data.some((row: { apiKey?: string }) => row.apiKey)) {
@@ -162,7 +162,7 @@ async function main(): Promise<void> {
 
     const crossViewerGet = await app.inject({
       method: "GET",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(created.id)}`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(created.id)}`,
       headers: viewerBHeaders,
     });
     if (crossViewerGet.statusCode !== 404) {
@@ -171,7 +171,7 @@ async function main(): Promise<void> {
 
     const invalidStatus = await app.inject({
       method: "PATCH",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(created.id)}`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(created.id)}`,
       headers: viewerAHeaders,
       payload: { status: "revoked" },
     });
@@ -179,7 +179,7 @@ async function main(): Promise<void> {
 
     const disableKey = await app.inject({
       method: "PATCH",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(created.id)}`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(created.id)}`,
       headers: viewerAHeaders,
       payload: { status: "disabled" },
     });
@@ -188,7 +188,7 @@ async function main(): Promise<void> {
 
     const enableKey = await app.inject({
       method: "PATCH",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(created.id)}`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(created.id)}`,
       headers: viewerAHeaders,
       payload: { status: "active" },
     });
@@ -197,14 +197,14 @@ async function main(): Promise<void> {
 
     const setPrimary = await app.inject({
       method: "POST",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(created.id)}/set-primary`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(created.id)}/set-primary`,
       headers: viewerAHeaders,
       payload: {},
     });
     if (setPrimary.statusCode !== 200) fail("set primary");
     const primaryList = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/rest-api-keys",
+      url: "/v1/viewer/rest-api-keys",
       headers: viewerAHeaders,
     });
     const primaryRows = primaryList.json().data as Array<{ id: string; isPrimary: boolean }>;
@@ -217,14 +217,14 @@ async function main(): Promise<void> {
 
     const adminList = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/admin/integration-accounts/viewerB/rest-api-keys",
+      url: "/v1/platform/admin/integration-accounts/viewerB/rest-api-keys",
       headers: adminHeaders,
     });
     if (adminList.statusCode !== 200) fail("admin list keys for account");
 
     const adminCreate = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/integration-accounts/viewerB/rest-api-keys",
+      url: "/v1/platform/admin/integration-accounts/viewerB/rest-api-keys",
       headers: adminHeaders,
       payload: { label: "Admin Created", expiration: "6mo" },
     });
@@ -234,7 +234,7 @@ async function main(): Promise<void> {
 
     const deleteKey = await app.inject({
       method: "DELETE",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(created.id)}`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(created.id)}`,
       headers: viewerAHeaders,
     });
     if (deleteKey.statusCode !== 200) fail("delete key");
@@ -242,7 +242,7 @@ async function main(): Promise<void> {
 
     const adminDelete = await app.inject({
       method: "DELETE",
-      url: `/v1/marafiq/admin/integration-accounts/viewerB/rest-api-keys/${encodeURIComponent(adminCreated.id)}`,
+      url: `/v1/platform/admin/integration-accounts/viewerB/rest-api-keys/${encodeURIComponent(adminCreated.id)}`,
       headers: adminHeaders,
     });
     if (adminDelete.statusCode !== 200) fail("admin delete key");

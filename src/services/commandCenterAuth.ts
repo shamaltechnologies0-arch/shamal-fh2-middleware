@@ -40,8 +40,7 @@ function parseApiKeyRoles(raw: string): Map<string, CcRole> {
 }
 
 function resolveAdminApiKey(apiKeys: string[]): string {
-  const rolesRaw =
-    config.VIEWER_API_KEY_ROLES?.trim() || config.MARAFIQ_API_KEY_ROLES?.trim();
+  const rolesRaw = config.VIEWER_API_KEY_ROLES?.trim();
   if (rolesRaw) {
     for (const [key, role] of parseApiKeyRoles(rolesRaw)) {
       if (role === "admin") return key;
@@ -114,9 +113,7 @@ export const ccUsers: CcUser[] = getCcUsers();
 /** Default role for headless API clients (no X-CC-Session). */
 export const apiKeyRoleMap: Map<string, CcRole> = config.VIEWER_API_KEY_ROLES
   ? parseApiKeyRoles(config.VIEWER_API_KEY_ROLES)
-  : config.MARAFIQ_API_KEY_ROLES
-    ? parseApiKeyRoles(config.MARAFIQ_API_KEY_ROLES)
-    : new Map(config.viewerApiKeys.map((key) => [key, "operator" as CcRole]));
+  : new Map(config.viewerApiKeys.map((key) => [key, "operator" as CcRole]));
 
 export function createSessionToken(user: CcUser): string {
   const exp = Date.now() + SESSION_TTL_MS;

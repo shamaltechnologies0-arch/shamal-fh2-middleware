@@ -1,7 +1,0 @@
-{"at":"2026-06-21T11:00:18.946Z","url":"https://fh.dji.com/login","ok":true,"note":"FH2 login page ready — user to complete SSO"}
-{"at":"2026-06-21T11:00:19.406Z","url":"http://localhost:8080/docs","ok":true,"note":"Swagger UI loaded"}
-{"at":"2026-06-21T11:00:19.886Z","url":"http://localhost:8080/","ok":true,"note":"Shamal Platform login page loaded"}
-{"at":"2026-06-21T11:00:59.622Z","url":"http://localhost:8080/ (fleet tab)","ok":true,"note":"2 devices listed, 0 online — Matrice 4TD + DJI Dock 3"}
-{"at":"2026-06-21T11:01:00.123Z","url":"http://localhost:8080/ (viewer login)","ok":true,"note":"marafiq1 viewer session — read-only ops disabled"}
-{"at":"2026-06-21T11:01:24.013Z","url":"http://localhost:8080/ (missions tab)","ok":false,"note":"Load Tasks — FH2 403 (devices offline / org token scope)"}
-{"at":"2026-06-21T11:06:26.786Z","url":"https://fh.dji.com (org project list)","ok":true,"note":"Logged in as s.ehsan@shamal.sa — Shamal org, Marafiq Kaust Test project visible"}

@@ -5,7 +5,7 @@ import { registerViewerGet } from "./viewerPaths.js";
 export const capabilitiesRoutes: FastifyPluginAsync = async (app) => {
   registerViewerGet(
     app,
-    "/v1/marafiq/capabilities",
+    "/v1/viewer/capabilities",
     {
       schema: {
         summary: "API capabilities (phase 1 + phase 2)",
@@ -31,7 +31,7 @@ export const capabilitiesRoutes: FastifyPluginAsync = async (app) => {
           "trajectory-geojson",
           "trajectory-kml",
           "telemetry-sse",
-          "marafiq-event-callback",
+          "viewer-event-callback",
           "operations-panel",
           "operations-catalog",
           "operations-readiness",
@@ -43,7 +43,7 @@ export const capabilitiesRoutes: FastifyPluginAsync = async (app) => {
         fh2LiveReady: config.fh2LiveReady,
         fh2LiveShareConfigured: Boolean(config.FH2_LIVE_SHARE_URL),
         fh2CockpitUrl: config.FH2_COCKPIT_URL ?? null,
-        marafiqEventCallbackConfigured: Boolean(config.MARAFIQ_EVENT_CALLBACK_URL),
+        viewerEventCallbackConfigured: Boolean(config.VIEWER_EVENT_CALLBACK_URL),
         readOnly: false,
       },
       meta: { version: "3.0.0" },

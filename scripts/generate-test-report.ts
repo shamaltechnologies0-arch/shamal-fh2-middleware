@@ -195,7 +195,7 @@ function main() {
   if (latest.fh2LiveReady === false) {
     lines.push("- Check `FH2_ORG_TOKEN` and `FH2_PROJECT_UUID` in `.env`.");
   }
-  lines.push("- Share this report with Marafiq integrators; read-only contract is validated.");
+  lines.push("- Share this report with external viewer integrators; read-only contract is validated.");
 
   const outPath = join(sessionDir, "READONLY_TEST_REPORT.md");
   writeFileSync(outPath, lines.join("\n"));

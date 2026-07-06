@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync, appendFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const BASE = process.env.BASE ?? "http://localhost:8080";
-const KEY = process.env.KEY ?? process.env.MARAFIQ_API_KEY ?? "marafiq-ro-26";
+const KEY = process.env.KEY ?? process.env.VIEWER_API_KEY ?? "viewer-ro-26";
 const RUN_LABEL = process.env.RUN_LABEL ?? new Date().toISOString();
 
 interface TestResult {
@@ -154,13 +154,13 @@ async function main() {
 
   // Capabilities
   results.push(
-    await runTest("capabilities", "GET", "/v1/marafiq/capabilities", (s) => ({
+    await runTest("capabilities", "GET", "/v1/viewer/capabilities", (s) => ({
       ok: s === 200,
     })),
   );
 
   // Fleet summary
-  const fleet = await runTest("fleet-summary", "GET", "/v1/marafiq/fleet/summary", (s, b) => {
+  const fleet = await runTest("fleet-summary", "GET", "/v1/viewer/fleet/summary", (s, b) => {
     const data = (b as { data?: { devices?: Array<{ serialNumber: string; role: string; online: boolean | null }> } })
       .data;
     if (data?.devices) {
@@ -177,7 +177,7 @@ async function main() {
   results.push(fleet);
 
   // Devices list
-  const devices = await runTest("devices-list", "GET", "/v1/marafiq/devices", (s, b) => {
+  const devices = await runTest("devices-list", "GET", "/v1/viewer/devices", (s, b) => {
     const data = (b as { data?: Array<{ serialNumber: string; role: string; online: boolean | null }> }).data;
     if (data?.length) {
       for (const d of data) {
@@ -194,7 +194,7 @@ async function main() {
 
   // Docks
   results.push(
-    await runTest("docks-list", "GET", "/v1/marafiq/docks", (s, b) => {
+    await runTest("docks-list", "GET", "/v1/viewer/docks", (s, b) => {
       const count = (b as { meta?: { count?: number } }).meta?.count ?? 0;
       return { ok: s === 200, note: `${count} docks` };
     }),
@@ -206,7 +206,7 @@ async function main() {
 
   if (primaryDevice) {
     results.push(
-      await runTest("device-detail", "GET", `/v1/marafiq/devices/${encodeURIComponent(primaryDevice)}`, (s) => ({
+      await runTest("device-detail", "GET", `/v1/viewer/devices/${encodeURIComponent(primaryDevice)}`, (s) => ({
         ok: s === 200,
       })),
     );
@@ -214,7 +214,7 @@ async function main() {
       await runTest(
         "telemetry-latest",
         "GET",
-        `/v1/marafiq/devices/${encodeURIComponent(primaryDevice)}/telemetry/latest`,
+        `/v1/viewer/devices/${encodeURIComponent(primaryDevice)}/telemetry/latest`,
         (s, b) => {
           const data = (b as { data?: { batteryPercent?: number | null; latitude?: number | null } }).data;
           const hasTelemetry = data && (data.batteryPercent != null || data.latitude != null);
@@ -229,7 +229,7 @@ async function main() {
       await runTest(
         "live-stream-info",
         "GET",
-        `/v1/marafiq/devices/${encodeURIComponent(primaryDevice)}/live-stream`,
+        `/v1/viewer/devices/${encodeURIComponent(primaryDevice)}/live-stream`,
         (s) => ({ ok: s === 200 }),
       ),
     );
@@ -237,7 +237,7 @@ async function main() {
       await runTest(
         "ops-readiness",
         "GET",
-        `/v1/marafiq/ops/readiness/${encodeURIComponent(primaryDevice)}`,
+        `/v1/platform/ops/readiness/${encodeURIComponent(primaryDevice)}`,
         (s, b) => {
           const data = (b as { data?: { commandReady?: boolean; online?: boolean | null } }).data;
           return {
@@ -253,7 +253,7 @@ async function main() {
     results.push({
       name: "device-detail",
       method: "GET",
-      path: "/v1/marafiq/devices/{sn}",
+      path: "/v1/viewer/devices/{sn}",
       status: 0,
       ok: false,
       durationMs: 0,
@@ -263,14 +263,14 @@ async function main() {
 
   if (primaryDock) {
     results.push(
-      await runTest("dock-detail", "GET", `/v1/marafiq/docks/${encodeURIComponent(primaryDock)}`, (s) => ({
+      await runTest("dock-detail", "GET", `/v1/viewer/docks/${encodeURIComponent(primaryDock)}`, (s) => ({
         ok: s === 200,
       })),
     );
   }
 
   // Tasks
-  const tasks = await runTest("tasks-list", "GET", "/v1/marafiq/tasks", (s, b) => {
+  const tasks = await runTest("tasks-list", "GET", "/v1/viewer/tasks", (s, b) => {
     const data = (b as { data?: Array<{ id: string }> }).data;
     if (data?.length) discovered.taskIds.push(...data.map((t) => t.id));
     return { ok: s === 200, note: data?.length ? `${data.length} tasks` : "no tasks in range" };
@@ -280,11 +280,11 @@ async function main() {
   const taskId = discovered.taskIds[0];
   if (taskId) {
     for (const [name, path] of [
-      ["task-detail", `/v1/marafiq/tasks/${taskId}`],
-      ["task-media", `/v1/marafiq/tasks/${taskId}/media`],
-      ["task-trajectory", `/v1/marafiq/tasks/${taskId}/trajectory`],
-      ["trajectory-geojson", `/v1/marafiq/tasks/${taskId}/trajectory.geojson`],
-      ["trajectory-kml", `/v1/marafiq/tasks/${taskId}/trajectory.kml`],
+      ["task-detail", `/v1/viewer/tasks/${taskId}`],
+      ["task-media", `/v1/viewer/tasks/${taskId}/media`],
+      ["task-trajectory", `/v1/viewer/tasks/${taskId}/trajectory`],
+      ["trajectory-geojson", `/v1/viewer/tasks/${taskId}/trajectory.geojson`],
+      ["trajectory-kml", `/v1/viewer/tasks/${taskId}/trajectory.kml`],
     ] as const) {
       results.push(
         await runTest(name, "GET", path, (s) => ({ ok: s === 200 }), {
@@ -299,7 +299,7 @@ async function main() {
   }
 
   // Mapping
-  const mapping = await runTest("mapping-models", "GET", "/v1/marafiq/mapping/models", (s, b) => {
+  const mapping = await runTest("mapping-models", "GET", "/v1/viewer/mapping/models", (s, b) => {
     const data = (b as { data?: Array<{ id: string }> }).data;
     if (data?.length) discovered.mappingModelIds.push(...data.map((m) => m.id));
     return { ok: s === 200, note: data?.length ? `${data.length} models` : "no models" };
@@ -311,7 +311,7 @@ async function main() {
       await runTest(
         "mapping-model-detail",
         "GET",
-        `/v1/marafiq/mapping/models/${discovered.mappingModelIds[0]}`,
+        `/v1/viewer/mapping/models/${discovered.mappingModelIds[0]}`,
         (s) => ({ ok: s === 200 || s === 404 }),
       ),
     );
@@ -319,13 +319,13 @@ async function main() {
 
   // Events + read-only ops catalog/log
   results.push(
-    await runTest("events-list", "GET", "/v1/marafiq/events?limit=10", (s) => ({ ok: s === 200 })),
+    await runTest("events-list", "GET", "/v1/viewer/events?limit=10", (s) => ({ ok: s === 200 })),
   );
   results.push(
-    await runTest("ops-catalog", "GET", "/v1/marafiq/ops/catalog", (s) => ({ ok: s === 200 })),
+    await runTest("ops-catalog", "GET", "/v1/platform/ops/catalog", (s) => ({ ok: s === 200 })),
   );
   results.push(
-    await runTest("ops-log", "GET", "/v1/marafiq/ops/log?limit=10", (s) => ({ ok: s === 200 })),
+    await runTest("ops-log", "GET", "/v1/platform/ops/log?limit=10", (s) => ({ ok: s === 200 })),
   );
 
   // OpenAPI spec

@@ -7,7 +7,7 @@ External viewer platform  →  Shamal FH2 Viewer Middleware (HTTPS)  →  DJI Fl
 ```
 
 - Shamal owns and operates DJI FlightHub 2.
-- External viewer users (e.g. Marafiq) connect to **Shamal’s platform only**.
+- External viewer users (e.g. external viewer) connect to **Shamal’s platform only**.
 - DJI organization key stays on Shamal infrastructure only.
 - External viewers must **never** receive FH2 login, credentials, organization access, or control operations.
 
@@ -20,12 +20,12 @@ External viewer platform  →  Shamal FH2 Viewer Middleware (HTTPS)  →  DJI Fl
 
 | Actor | Credential | Scope |
 |-------|------------|-------|
-| External viewer integrators | `X-Api-Key` (rotatable per viewer) | Shamal `/v1/marafiq/*` viewer routes (legacy aliases; `/v1/viewer/*` planned) |
+| External viewer integrators | `X-Api-Key` (rotatable per viewer) | Shamal `/v1/viewer/*` viewer routes (legacy aliases; `/v1/viewer/*` planned) |
 | Shamal backend | `FH2_ORG_TOKEN` + `FH2_PROJECT_UUID` | FlightHub 2 OpenAPI |
 | FH2 webhooks | HMAC `X-Webhook-Signature` | `POST /webhooks/fh2` only |
 | Shamal platform users | Session + role (admin / operator / viewer) | Command Center UI |
 
-Optional: `VIEWER_IP_ALLOWLIST` for source IP restriction (legacy: `MARAFIQ_IP_ALLOWLIST`).
+Optional: `VIEWER_IP_ALLOWLIST` for source IP restriction (legacy: `VIEWER_IP_ALLOWLIST`).
 
 ## Data handling
 
@@ -60,5 +60,5 @@ Never expose to external viewers:
 
 ## Incident response
 
-- Rotate `VIEWER_API_KEYS` (or legacy `MARAFIQ_API_KEYS`) and `FH2_ORG_TOKEN` independently.
+- Rotate `VIEWER_API_KEYS` (or legacy `VIEWER_API_KEYS`) and `FH2_ORG_TOKEN` independently.
 - Disable a viewer’s API keys without affecting Shamal FH2 operations.

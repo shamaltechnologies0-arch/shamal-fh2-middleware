@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
 import { config } from "../config.js";
 import { insertWebhookEvent, mapFh2PayloadToEventType } from "../db/index.js";
-import { notifyMarafiqEvent } from "../services/marafiqNotify.js";
+import { notifyViewerEventCallback } from "../services/viewerEventNotify.js";
 import { ingestEventPayload } from "../services/telemetryStore.js";
 
 function verifyWebhookSecret(
@@ -49,7 +49,7 @@ export const webhookRoutes: FastifyPluginAsync = async (app) => {
     ingestEventPayload(payload);
     const row = await insertWebhookEvent(eventType, payload);
 
-    void notifyMarafiqEvent({
+    void notifyViewerEventCallback({
       id: row.id,
       type: eventType,
       payload,

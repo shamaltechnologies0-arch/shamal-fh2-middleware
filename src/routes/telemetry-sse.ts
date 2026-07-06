@@ -9,12 +9,12 @@ export const telemetrySseRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/marafiq/devices/:sn/telemetry/stream",
+    "/v1/viewer/devices/:sn/telemetry/stream",
     {
       schema: {
         summary: "Telemetry stream (SSE) — CAFM substitute for MQTT polling",
         description:
-          "Server-Sent Events: pushes telemetry snapshots every TELEMETRY_SSE_INTERVAL_MS (default 10s). Marafiq can subscribe instead of polling /telemetry/latest.",
+          "Server-Sent Events: pushes telemetry snapshots every TELEMETRY_SSE_INTERVAL_MS (default 10s). Integrators can subscribe instead of polling /telemetry/latest.",
         tags: ["Telemetry"],
       },
     },

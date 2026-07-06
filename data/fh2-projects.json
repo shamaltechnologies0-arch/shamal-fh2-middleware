@@ -3,13 +3,13 @@
     {
       "fh2ProjectId": "083c9116-70c6-4dc1-baff-ea4051971e15",
       "fh2ProjectCode": "083c9116-70c6-4dc1-baff-ea4051971e15",
-      "projectName": "Marafiq Kaust Test",
+      "projectName": "Shamal Kaust Test",
       "fh2Status": "active",
       "localStatus": "active",
       "source": "FH2",
       "lastSyncedAt": "2026-07-02T10:19:31.552Z",
       "raw": {
-        "name": "Marafiq Kaust Test",
+        "name": "Shamal Kaust Test",
         "introduction": "",
         "uuid": "083c9116-70c6-4dc1-baff-ea4051971e15",
         "org_uuid": "c565bb42-050c-4e20-89d5-83d070c265c1",
@@ -211,10 +211,6 @@
       }
     }
   ],
-  "assignments": {
-    "marafiq": [
-      "083c9116-70c6-4dc1-baff-ea4051971e15"
-    ]
-  },
+  "assignments": {},
   "lastSyncAt": "2026-07-02T10:19:31.552Z"
 }

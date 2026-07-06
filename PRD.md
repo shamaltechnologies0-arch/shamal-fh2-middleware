@@ -15,15 +15,15 @@ The application already works: FH2 live/mock mode, device/task/media/telemetry A
 
 ### Problem
 
-The codebase, documentation, OpenAPI spec, environment variables, API paths, Postman collection, and UI labels currently present the product as **Marafiq-specific** (e.g. “Marafiq demo”, “Marafiq CAFM integration”, `/v1/marafiq/*` as the primary API namespace, `MARAFIQ_*` env vars). That misrepresents the product.
+The codebase, documentation, OpenAPI spec, environment variables, API paths, Postman collection, and UI labels currently present the product as **an external viewer client-specific** (e.g. “an external viewer client demo”, “an external viewer client CAFM integration”, `/v1/viewer/*` as the primary API namespace, `VIEWER_*` env vars). That misrepresents the product.
 
 ### Correct product meaning
 
 | Role | Description |
 |------|-------------|
 | **Shamal** | Owns and operates DJI FlightHub 2. Controls dock, drone, missions, telemetry, media, live monitoring, and FH2 project setup. Holds all FH2 credentials and admin secrets. |
-| **External viewer users** (e.g. Marafiq) | Third-party companies allowed by Shamal to see **approved** project data **only through Shamal’s platform**. Never receive direct DJI FH2 access. |
-| **Marafiq** | One **example** external viewer user/company. Not the product identity. Future viewer companies use the same restricted access model. |
+| **External viewer users** (e.g. an external viewer client) | Third-party companies allowed by Shamal to see **approved** project data **only through Shamal’s platform**. Never receive direct DJI FH2 access. |
+| **an external viewer client** | One **example** external viewer user/company. Not the product identity. Future viewer companies use the same restricted access model. |
 
 ### Product names (use interchangeably in docs)
 
@@ -46,7 +46,7 @@ Shamal FH2 Middleware / Viewer Platform   ← Shamal owns FH2 credentials (FH2_O
 Viewer User Access                        ← X-Api-Key / viewer session only; read-only by default
         │
         ▼
-Marafiq or any future external viewer user/company
+an external viewer client or any future external viewer user/company
 ```
 
 **Critical rule:** External users connect to **Shamal’s platform**. They do **not** connect directly to DJI FlightHub 2.
@@ -56,11 +56,11 @@ Marafiq or any future external viewer user/company
 | Layer | Location |
 |-------|----------|
 | FH2 adapters | `src/fh2/liveAdapter.ts`, `src/fh2/mockAdapter.ts`, `src/fh2/client.ts` |
-| API routes | `src/routes/*.ts` (today: all under `/v1/marafiq/*`) |
+| API routes | `src/routes/*.ts` (today: all under `/v1/viewer/*`) |
 | Auth & roles | `src/plugins/auth.ts`, `src/services/apiAccess.ts`, `src/services/commandCenterAuth.ts` |
 | Viewer permissions | `src/services/viewerDashboardPermissions.ts`, `data/viewer-dashboard-permissions.json` |
 | Platform UI | `src/ui/command-center.html` |
-| OpenAPI | `openapi/shamal-marafiq-v1.yaml` |
+| OpenAPI | `openapi/shamal-legacy-client-v1.yaml` |
 
 ---
 
@@ -99,13 +99,13 @@ External viewer users must **never** receive:
 
 ### Who is a viewer user?
 
-External users **allowed by Shamal** to see **approved** project data through Shamal’s platform only. Examples: Marafiq, or any future external company Shamal onboards.
+External users **allowed by Shamal** to see **approved** project data through Shamal’s platform only. Examples: an external viewer client, or any future external company Shamal onboards.
 
 ### Viewer users CAN
 
 | Capability | API / UI surface (after migration) |
 |------------|-------------------------------------|
-| Login to Shamal platform | `POST /v1/viewer/auth/login` (alias: `/v1/marafiq/auth/login`) |
+| Login to Shamal platform | `POST /v1/viewer/auth/login` (alias: `/v1/viewer/auth/login`) |
 | View assigned project dashboard | Command Center viewer role |
 | View approved dock status | `GET /v1/viewer/docks`, `GET /v1/viewer/docks/{sn}` |
 | View approved drone status | `GET /v1/viewer/devices`, `GET /v1/viewer/devices/{sn}` |
@@ -134,83 +134,83 @@ External users **allowed by Shamal** to see **approved** project data through Sh
 
 ---
 
-## 5. Marafiq naming correction
+## 5. an external viewer client naming correction
 
-Marafiq is **only** an example external viewer user/company. It must **not** be the product identity.
+an external viewer client is **only** an example external viewer user/company. It must **not** be the product identity.
 
 ### Remove / replace (product identity)
 
 | Current (wrong as product identity) | Replace with |
 |-------------------------------------|--------------|
-| Shamal FH2 Middleware (Marafiq demo) | Shamal FH2 Viewer Middleware |
-| Marafiq CAFM integration | External viewer integration |
-| Marafiq-facing endpoints | Viewer-facing endpoints |
-| Default Marafiq API key | Default viewer API key |
-| Marafiq API matrix | Viewer API matrix |
-| Marafiq submit sheet | Viewer handoff sheet |
-| Marafiq integration app | External viewer integration guide |
-| `registerMarafiqAuth` (internal name) | `registerViewerAuth` (or equivalent generic name) |
-| `marafiqNotify.ts` | `viewerEventNotify.ts` (or equivalent) |
+| Shamal FH2 Middleware (an external viewer client demo) | Shamal FH2 Viewer Middleware |
+| an external viewer client CAFM integration | External viewer integration |
+| an external viewer client-facing endpoints | Viewer-facing endpoints |
+| Default an external viewer client API key | Default viewer API key |
+| an external viewer client API matrix | Viewer API matrix |
+| an external viewer client submit sheet | Viewer handoff sheet |
+| an external viewer client integration app | External viewer integration guide |
+| `registeran external viewer clientAuth` (internal name) | `registerViewerAuth` (or equivalent generic name) |
+| `legacy-clientNotify.ts` | `viewerEventNotify.ts` (or equivalent) |
 
-### Where Marafiq MAY remain
+### Where an external viewer client MAY remain
 
-- Demo values (e.g. `demo-marafiq-key-change-me` in examples)
-- Placeholder text (e.g. admin form: “e.g. Marafiq”)
+- Demo values (e.g. `demo-legacy-client-key-change-me` in examples)
+- Placeholder text (e.g. admin form: “e.g. an external viewer client”)
 - Migration notes explaining the rename
-- Legacy doc copies with header: *“Marafiq is an example external viewer user/company.”*
+- Legacy doc copies with header: *“an external viewer client is an example external viewer user/company.”*
 
-### Files with Marafiq-specific identity today (must be updated)
+### Files with an external viewer client-specific identity today (must be updated)
 
 | File | Issue |
 |------|-------|
-| `README.md` | Title “(Marafiq demo)”, Marafiq CAFM wording |
-| `package.json` | `description` references Marafiq CAFM |
-| `.env.example` | Section “Marafiq API access”, `MARAFIQ_*` vars |
-| `docs/MARAFIQ_API_MATRIX.md` | Filename and content |
-| `docs/MARAFIQ_SUBMIT.md` | Filename and content |
-| `docs/HANDOFF.md` | “Marafiq CAFM integrators” framing |
-| `docs/DEMO_SCRIPT.md` | Marafiq-specific script wording if present |
-| `docs/CYBERSECURITY.md` | “for Marafiq”, Marafiq-centric architecture diagram |
-| `openapi/shamal-marafiq-v1.yaml` | Filename; paths under `/v1/marafiq/` |
-| `postman/Shamal-Marafiq-Middleware.postman_collection.json` | Collection name |
-| `src/plugins/auth.ts` | `registerMarafiqAuth`, `/v1/marafiq` path checks |
-| `src/config.ts` | `MARAFIQ_*` schema fields |
-| `src/services/marafiqNotify.ts` | Service filename and references |
+| `README.md` | Title “(an external viewer client demo)”, an external viewer client CAFM wording |
+| `package.json` | `description` references an external viewer client CAFM |
+| `.env.example` | Section “an external viewer client API access”, `VIEWER_*` vars |
+| `docs/VIEWER_API_MATRIX.md` | Filename and content |
+| `docs/VIEWER_SUBMIT.md` | Filename and content |
+| `docs/HANDOFF.md` | “an external viewer client CAFM integrators” framing |
+| `docs/DEMO_SCRIPT.md` | an external viewer client-specific script wording if present |
+| `docs/CYBERSECURITY.md` | “for an external viewer client”, an external viewer client-centric architecture diagram |
+| `openapi/shamal-legacy-client-v1.yaml` | Filename; paths under `/v1/viewer/` |
+| `postman/Shamal-an external viewer client-Middleware.postman_collection.json` | Collection name |
+| `src/plugins/auth.ts` | `registeran external viewer clientAuth`, `/v1/viewer` path checks |
+| `src/config.ts` | `VIEWER_*` schema fields |
+| `src/services/legacy-clientNotify.ts` | Service filename and references |
 | `src/ui/command-center.html` | Product labels; API path strings |
 
 ---
 
 ## 6. Route strategy
 
-**Do not break existing integrations.** All current `/v1/marafiq/*` routes must keep working during migration.
+**Do not break existing integrations.** All current `/v1/viewer/*` routes must keep working during migration.
 
 ### 6A. Add generic primary routes
 
-Register **new** canonical paths that delegate to the same handlers as today’s Marafiq routes:
+Register **new** canonical paths that delegate to the same handlers as today’s an external viewer client routes:
 
 | Method | New canonical path | Current equivalent |
 |--------|-------------------|-------------------|
-| GET | `/v1/viewer/devices` | `/v1/marafiq/devices` |
-| GET | `/v1/viewer/devices/{sn}` | `/v1/marafiq/devices/{sn}` |
-| GET | `/v1/viewer/devices/{sn}/telemetry/latest` | `/v1/marafiq/devices/{sn}/telemetry/latest` |
-| GET | `/v1/viewer/devices/{sn}/telemetry/stream` | `/v1/marafiq/devices/{sn}/telemetry/stream` |
-| GET | `/v1/viewer/devices/{sn}/live-stream` | `/v1/marafiq/devices/{sn}/live-stream` |
-| GET | `/v1/viewer/tasks` | `/v1/marafiq/tasks` |
-| GET | `/v1/viewer/tasks/{id}` | `/v1/marafiq/tasks/{id}` |
-| GET | `/v1/viewer/tasks/{id}/media` | `/v1/marafiq/tasks/{id}/media` |
-| GET | `/v1/viewer/tasks/{id}/trajectory` | `/v1/marafiq/tasks/{id}/trajectory` |
-| GET | `/v1/viewer/tasks/{id}/trajectory.geojson` | `/v1/marafiq/tasks/{id}/trajectory.geojson` |
-| GET | `/v1/viewer/tasks/{id}/trajectory.kml` | `/v1/marafiq/tasks/{id}/trajectory.kml` |
-| GET | `/v1/viewer/events` | `/v1/marafiq/events` |
-| POST | `/v1/viewer/events/{id}/ack` | `/v1/marafiq/events/{id}/ack` |
-| GET | `/v1/viewer/fleet/summary` | `/v1/marafiq/fleet/summary` |
-| GET | `/v1/viewer/fleet/positions` | `/v1/marafiq/fleet/positions` |
-| GET | `/v1/viewer/docks` | `/v1/marafiq/docks` |
-| GET | `/v1/viewer/docks/{sn}` | `/v1/marafiq/docks/{sn}` |
-| GET | `/v1/viewer/mapping/models` | `/v1/marafiq/mapping/models` |
-| GET | `/v1/viewer/mapping/models/{id}` | `/v1/marafiq/mapping/models/{id}` |
-| GET | `/v1/viewer/capabilities` | `/v1/marafiq/capabilities` |
-| GET | `/v1/viewer/media/recent` | `/v1/marafiq/media/recent` |
+| GET | `/v1/viewer/devices` | `/v1/viewer/devices` |
+| GET | `/v1/viewer/devices/{sn}` | `/v1/viewer/devices/{sn}` |
+| GET | `/v1/viewer/devices/{sn}/telemetry/latest` | `/v1/viewer/devices/{sn}/telemetry/latest` |
+| GET | `/v1/viewer/devices/{sn}/telemetry/stream` | `/v1/viewer/devices/{sn}/telemetry/stream` |
+| GET | `/v1/viewer/devices/{sn}/live-stream` | `/v1/viewer/devices/{sn}/live-stream` |
+| GET | `/v1/viewer/tasks` | `/v1/viewer/tasks` |
+| GET | `/v1/viewer/tasks/{id}` | `/v1/viewer/tasks/{id}` |
+| GET | `/v1/viewer/tasks/{id}/media` | `/v1/viewer/tasks/{id}/media` |
+| GET | `/v1/viewer/tasks/{id}/trajectory` | `/v1/viewer/tasks/{id}/trajectory` |
+| GET | `/v1/viewer/tasks/{id}/trajectory.geojson` | `/v1/viewer/tasks/{id}/trajectory.geojson` |
+| GET | `/v1/viewer/tasks/{id}/trajectory.kml` | `/v1/viewer/tasks/{id}/trajectory.kml` |
+| GET | `/v1/viewer/events` | `/v1/viewer/events` |
+| POST | `/v1/viewer/events/{id}/ack` | `/v1/viewer/events/{id}/ack` |
+| GET | `/v1/viewer/fleet/summary` | `/v1/viewer/fleet/summary` |
+| GET | `/v1/viewer/fleet/positions` | `/v1/viewer/fleet/positions` |
+| GET | `/v1/viewer/docks` | `/v1/viewer/docks` |
+| GET | `/v1/viewer/docks/{sn}` | `/v1/viewer/docks/{sn}` |
+| GET | `/v1/viewer/mapping/models` | `/v1/viewer/mapping/models` |
+| GET | `/v1/viewer/mapping/models/{id}` | `/v1/viewer/mapping/models/{id}` |
+| GET | `/v1/viewer/capabilities` | `/v1/viewer/capabilities` |
+| GET | `/v1/viewer/media/recent` | `/v1/viewer/media/recent` |
 
 **Implementation approach:** Prefer registering both path prefixes on the same route handlers (Fastify route array or thin alias registrar) rather than duplicating handler logic.
 
@@ -218,23 +218,23 @@ Register **new** canonical paths that delegate to the same handlers as today’s
 
 | New | Legacy alias |
 |-----|--------------|
-| `POST /v1/viewer/auth/login` | `POST /v1/marafiq/auth/login` |
-| `GET /v1/viewer/auth/me` | `GET /v1/marafiq/auth/me` |
+| `POST /v1/viewer/auth/login` | `POST /v1/viewer/auth/login` |
+| `GET /v1/viewer/auth/me` | `GET /v1/viewer/auth/me` |
 
-**Admin, ops, integration, and webhook routes** stay Shamal-internal. They are **not** part of the external viewer API surface. Legacy paths may remain under `/v1/marafiq/admin/*`, `/v1/marafiq/ops/*`, `/v1/marafiq/integration/*` for backward compatibility; new Shamal-internal docs should describe them as platform/admin routes, not “Marafiq routes.”
+**Admin, ops, integration, and webhook routes** stay Shamal-internal. They are **not** part of the external viewer API surface. Legacy paths may remain under `/v1/viewer/admin/*`, `/v1/viewer/ops/*`, `/v1/viewer/integration/*` for backward compatibility; new Shamal-internal docs should describe them as platform/admin routes, not “an external viewer client routes.”
 
-**Note on existing `/v1/marafiq/viewer/*` paths:** These are legacy integration-dashboard aliases (`src/routes/viewerIntegration.ts`). They are **not** the same as the new `/v1/viewer/*` REST namespace. Keep them as deprecated aliases; do not document them as the primary viewer API.
+**Note on existing `/v1/viewer/viewer/*` paths:** These are legacy integration-dashboard aliases (`src/routes/viewerIntegration.ts`). They are **not** the same as the new `/v1/viewer/*` REST namespace. Keep them as deprecated aliases; do not document them as the primary viewer API.
 
-### 6B. Keep `/v1/marafiq/*` as legacy aliases
+### 6B. Keep `/v1/viewer/*` as legacy aliases
 
-- All existing `/v1/marafiq/*` routes continue to respond identically.
+- All existing `/v1/viewer/*` routes continue to respond identically.
 - No behavior change for current API consumers until they choose to migrate.
 - Add `Deprecation` response header or log warning (optional, low priority).
 
 ### 6C. Mark legacy in docs
 
 - OpenAPI: tag legacy paths with `deprecated: true` and description “Use `/v1/viewer/*` instead.”
-- README and handoff docs: single “Legacy routes” section listing `/v1/marafiq/*`.
+- README and handoff docs: single “Legacy routes” section listing `/v1/viewer/*`.
 
 ### 6D. New artifacts use `/v1/viewer/*`
 
@@ -260,7 +260,7 @@ Register **new** canonical paths that delegate to the same handlers as today’s
 | `src/routes/streams.ts` | Add `/v1/viewer/devices/*/live-stream` |
 | `src/routes/gis.ts` | Add `/v1/viewer/tasks/*/trajectory.*` |
 | `src/routes/auth.ts` | Add `/v1/viewer/auth/*` |
-| `src/plugins/auth.ts` | Accept both `/v1/viewer` and `/v1/marafiq` prefixes |
+| `src/plugins/auth.ts` | Accept both `/v1/viewer` and `/v1/viewer` prefixes |
 | `src/services/apiAccess.ts` | Include `/v1/viewer/*` in viewer allowlists |
 | `src/services/viewerScopes.ts` | Map scopes to `/v1/viewer/*` as canonical |
 | `openapi/shamal-viewer-v1.yaml` | New spec with viewer paths primary |
@@ -271,22 +271,22 @@ Register **new** canonical paths that delegate to the same handlers as today’s
 
 ### Replace (canonical names)
 
-| Legacy (Marafiq-specific) | New (generic viewer) |
+| Legacy (an external viewer client-specific) | New (generic viewer) |
 |---------------------------|----------------------|
-| `MARAFIQ_API_KEYS` | `VIEWER_API_KEYS` |
-| `MARAFIQ_API_KEY_ROLES` | `VIEWER_API_KEY_ROLES` |
-| `MARAFIQ_IP_ALLOWLIST` | `VIEWER_IP_ALLOWLIST` |
-| `MARAFIQ_EVENT_CALLBACK_URL` | `VIEWER_EVENT_CALLBACK_URL` |
-| `MARAFIQ_EVENT_CALLBACK_SECRET` | `VIEWER_EVENT_CALLBACK_SECRET` |
+| `VIEWER_API_KEYS` | `VIEWER_API_KEYS` |
+| `VIEWER_API_KEY_ROLES` | `VIEWER_API_KEY_ROLES` |
+| `VIEWER_IP_ALLOWLIST` | `VIEWER_IP_ALLOWLIST` |
+| `VIEWER_EVENT_CALLBACK_URL` | `VIEWER_EVENT_CALLBACK_URL` |
+| `VIEWER_EVENT_CALLBACK_SECRET` | `VIEWER_EVENT_CALLBACK_SECRET` |
 
 ### Backward compatibility
 
 In `src/config.ts`:
 
 1. Parse `VIEWER_*` variables as primary.
-2. If a `VIEWER_*` variable is unset, fall back to the corresponding `MARAFIQ_*` value.
-3. Emit a one-time startup warning when legacy `MARAFIQ_*` vars are used without `VIEWER_*` equivalents.
-4. Export a single internal config object (e.g. `config.viewerApiKeys`) so application code does not reference `MARAFIQ_*` names.
+2. If a `VIEWER_*` variable is unset, fall back to the corresponding `VIEWER_*` value.
+3. Emit a one-time startup warning when legacy `VIEWER_*` vars are used without `VIEWER_*` equivalents.
+4. Export a single internal config object (e.g. `config.viewerApiKeys`) so application code does not reference `VIEWER_*` names.
 
 ### Documentation
 
@@ -302,7 +302,7 @@ VIEWER_API_KEY_ROLES=demo-viewer-key-change-me:operator,viewer-demo:viewer,admin
 VIEWER_IP_ALLOWLIST=
 VIEWER_EVENT_CALLBACK_URL=
 VIEWER_EVENT_CALLBACK_SECRET=
-# Legacy: MARAFIQ_* names still work as fallback during migration
+# Legacy: VIEWER_* names still work as fallback during migration
 ```
 
 ---
@@ -316,20 +316,20 @@ VIEWER_EVENT_CALLBACK_SECRET=
 | `README.md` | Update content | — |
 | `package.json` | Update `description` | — |
 | `.env.example` | Update to `VIEWER_*` | — |
-| `docs/MARAFIQ_API_MATRIX.md` | Rename + update | `docs/VIEWER_API_MATRIX.md` |
-| `docs/MARAFIQ_SUBMIT.md` | Rename + update | `docs/VIEWER_SUBMIT.md` |
+| `docs/VIEWER_API_MATRIX.md` | Rename + update | `docs/VIEWER_API_MATRIX.md` |
+| `docs/VIEWER_SUBMIT.md` | Rename + update | `docs/VIEWER_SUBMIT.md` |
 | `docs/HANDOFF.md` | Update framing | — |
 | `docs/DEMO_SCRIPT.md` | Update wording | — |
-| `docs/CYBERSECURITY.md` | De-Marafiq architecture | — |
-| `openapi/shamal-marafiq-v1.yaml` | Rename + update paths | `openapi/shamal-viewer-v1.yaml` |
-| `postman/Shamal-Marafiq-Middleware.postman_collection.json` | Rename collection | `postman/Shamal-FH2-Viewer-Middleware.postman_collection.json` |
+| `docs/CYBERSECURITY.md` | De-an external viewer client architecture | — |
+| `openapi/shamal-legacy-client-v1.yaml` | Rename + update paths | `openapi/shamal-viewer-v1.yaml` |
+| `postman/Shamal-an external viewer client-Middleware.postman_collection.json` | Rename collection | `postman/Shamal-FH2-Viewer-Middleware.postman_collection.json` |
 | `src/server.ts` | Point OpenAPI loader to new file (keep serving legacy yaml optionally) | — |
 
 ### Legacy doc copies (optional)
 
 If keeping old filenames for integrators who bookmarked them:
 
-- Add banner at top: **“Legacy document. Marafiq is an example external viewer user/company. See `docs/VIEWER_API_MATRIX.md`.”**
+- Add banner at top: **“Legacy document. an external viewer client is an example external viewer user/company. See `docs/VIEWER_API_MATRIX.md`.”**
 - Link to canonical viewer docs.
 
 ### OpenAPI / Swagger content requirements
@@ -337,7 +337,7 @@ If keeping old filenames for integrators who bookmarked them:
 - `info.title`: “Shamal FH2 Viewer Middleware API” (or similar generic title)
 - `info.description`: Shamal-controlled middleware; external integrators use `X-Api-Key`; never DJI credentials
 - Primary paths: `/v1/viewer/*`
-- Legacy paths: `/v1/marafiq/*` marked `deprecated: true`
+- Legacy paths: `/v1/viewer/*` marked `deprecated: true`
 
 ---
 
@@ -360,8 +360,8 @@ Dashboard cards enabled in `data/viewer-dashboard-permissions.json` for that acc
 
 ### Viewer role UI (must NOT show)
 
-- Operation controls (`/v1/marafiq/ops/*` panel)
-- Admin settings (`/v1/marafiq/admin/*`)
+- Operation controls (`/v1/viewer/ops/*` panel)
+- Admin settings (`/v1/viewer/admin/*`)
 - FH2 configuration
 - Integration key management
 - User management
@@ -373,12 +373,12 @@ Dashboard cards enabled in `data/viewer-dashboard-permissions.json` for that acc
 ### Operator / admin roles
 
 - Unchanged capability for Shamal staff.
-- UI labels should say “Shamal Platform” not “Marafiq Platform.”
+- UI labels should say “Shamal Platform” not “an external viewer client Platform.”
 
 ### Frontend API paths
 
 - New UI fetches should prefer `/v1/viewer/*`.
-- Legacy `/v1/marafiq/*` strings in JS may remain temporarily if both work; migrate to viewer paths in same iteration.
+- Legacy `/v1/viewer/*` strings in JS may remain temporarily if both work; migrate to viewer paths in same iteration.
 
 ---
 
@@ -427,7 +427,7 @@ This iteration is mainly:
 3. Documentation cleanup  
 4. Generic viewer API path addition  
 5. Permission / UI hardening for viewer role  
-6. Backward-compatible migration away from Marafiq-specific identity  
+6. Backward-compatible migration away from an external viewer client-specific identity  
 
 ---
 
@@ -438,7 +438,7 @@ This iteration is mainly:
 - [ ] Update `README.md` product title and description
 - [ ] Update `package.json` description
 - [ ] Update `.env.example` to `VIEWER_*` with legacy fallback note
-- [ ] Add `VIEWER_*` parsing with `MARAFIQ_*` fallback in `src/config.ts`
+- [ ] Add `VIEWER_*` parsing with `VIEWER_*` fallback in `src/config.ts`
 - [ ] Rename docs per Section 8 (or add legacy banners)
 - [ ] Update `docs/CYBERSECURITY.md` architecture diagram
 
@@ -460,17 +460,17 @@ This iteration is mainly:
 
 - [ ] Update `command-center.html` product labels and viewer-visible surfaces
 - [ ] Switch API path constants to `/v1/viewer/*` for new examples
-- [ ] Rename `registerMarafiqAuth` → generic name; update imports
-- [ ] Rename `marafiqNotify.ts` → generic viewer notify service
+- [ ] Rename `registeran external viewer clientAuth` → generic name; update imports
+- [ ] Rename `legacy-clientNotify.ts` → generic viewer notify service
 
 ### Phase 5 — Verification
 
 - [ ] Run `npm run lint`
 - [ ] Run `npm run test:readonly` (or manual smoke test)
-- [ ] Verify legacy `/v1/marafiq/*` still responds
+- [ ] Verify legacy `/v1/viewer/*` still responds
 - [ ] Verify new `/v1/viewer/*` responds identically
 - [ ] Verify viewer role cannot access ops/admin routes
-- [ ] Verify `MARAFIQ_*` env fallback works
+- [ ] Verify `VIEWER_*` env fallback works
 
 ---
 
@@ -478,15 +478,15 @@ This iteration is mainly:
 
 | # | Criterion | Verification |
 |---|-----------|--------------|
-| 1 | README no longer presents the app as Marafiq-only | README title/body review |
+| 1 | README no longer presents the app as an external viewer client-only | README title/body review |
 | 2 | `package.json` description is generic | Field check |
 | 3 | `.env.example` uses `VIEWER_*` variables | File review |
-| 4 | Old `MARAFIQ_*` env variables still work as fallback | Integration test with only `MARAFIQ_*` set |
+| 4 | Old `VIEWER_*` env variables still work as fallback | Integration test with only `VIEWER_*` set |
 | 5 | Swagger/OpenAPI title and description are generic | `/docs` UI review |
 | 6 | New `/v1/viewer/*` routes exist | HTTP smoke test all paths in Section 6A |
-| 7 | Old `/v1/marafiq/*` routes work as legacy aliases | Regression test existing Postman/readonly suite |
+| 7 | Old `/v1/viewer/*` routes work as legacy aliases | Regression test existing Postman/readonly suite |
 | 8 | Postman collection uses generic viewer naming | File name + request paths |
-| 9 | Docs explain Marafiq only as an example | Doc review |
+| 9 | Docs explain an external viewer client only as an example | Doc review |
 | 10 | Viewer user cannot access admin or operation control UI | Login as `CC_VIEWER_*`, UI audit |
 | 11 | Viewer user cannot trigger drone, dock, mission, camera, payload, or firmware control | API 403 on ops POST; UI buttons hidden |
 | 12 | `FH2_ORG_TOKEN` and `FH2_PROJECT_UUID` remain Shamal-only secrets | No exposure in viewer API responses |
@@ -500,7 +500,7 @@ This iteration is mainly:
 
 - Rebuilding the application from scratch
 - Removing working features
-- Breaking `/v1/marafiq/*` without alias period
+- Breaking `/v1/viewer/*` without alias period
 - Multi-tenant FH2 org support (future)
 - Per-viewer-company FH2 project mapping (future; today all viewers see Shamal’s configured project scope)
 - Removing operator role (Shamal staff may still need ops UI)
@@ -516,8 +516,8 @@ This iteration is mainly:
 | **Operator** | Shamal staff with mission/device operation access via platform |
 | **Admin** | Shamal staff managing viewer accounts, keys, and settings |
 | **FH2** | DJI FlightHub 2 |
-| **Legacy alias** | `/v1/marafiq/*` route kept for backward compatibility |
-| **Marafiq** | Example external viewer company; not the product name |
+| **Legacy alias** | `/v1/viewer/*` route kept for backward compatibility |
+| **an external viewer client** | Example external viewer company; not the product name |
 
 ---
 

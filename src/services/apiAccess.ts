@@ -1,46 +1,43 @@
 import type { CcRole } from "./commandCenterAuth.js";
-import { legacyMarafiqPath } from "../routes/viewerPaths.js";
+import { normalizeApiPath } from "../routes/viewerPaths.js";
 
 /** GET paths allowed for viewer role (read-only monitoring). */
 const VIEWER_GET_PREFIXES = [
-  "/v1/marafiq/capabilities",
-  "/v1/marafiq/auth/me",
-  "/v1/marafiq/integration/profile",
-  "/v1/marafiq/integration/access-key",
-  "/v1/marafiq/rest-api-keys",
-  "/v1/marafiq/service-accounts",
-  // @deprecated backward-compat aliases
-  "/v1/marafiq/viewer/integration",
-  "/v1/marafiq/viewer/integration/token",
-  "/v1/marafiq/devices",
-  "/v1/marafiq/fleet/",
-  "/v1/marafiq/docks",
-  "/v1/marafiq/tasks",
-  "/v1/marafiq/media/",
-  "/v1/marafiq/events",
-  "/v1/marafiq/mapping/",
+  "/v1/viewer/capabilities",
+  "/v1/viewer/auth/me",
+  "/v1/platform/integration/profile",
+  "/v1/platform/integration/access-key",
+  "/v1/viewer/rest-api-keys",
+  "/v1/viewer/service-accounts",
+  "/v1/viewer/devices",
+  "/v1/viewer/fleet/",
+  "/v1/viewer/docks",
+  "/v1/viewer/tasks",
+  "/v1/viewer/media/",
+  "/v1/viewer/events",
+  "/v1/viewer/mapping/",
 ];
 
 function isViewerRestApiKeyPath(path: string): boolean {
-  const legacyPath = legacyMarafiqPath(path);
+  const legacyPath = normalizeApiPath(path);
   return (
-    legacyPath === "/v1/marafiq/rest-api-keys" ||
-    legacyPath.startsWith("/v1/marafiq/rest-api-keys/")
+    legacyPath === "/v1/viewer/rest-api-keys" ||
+    legacyPath.startsWith("/v1/viewer/rest-api-keys/")
   );
 }
 
 function isViewerServiceAccountPath(path: string): boolean {
-  const legacyPath = legacyMarafiqPath(path);
+  const legacyPath = normalizeApiPath(path);
   return (
-    legacyPath === "/v1/marafiq/service-accounts" ||
-    legacyPath.startsWith("/v1/marafiq/service-accounts/")
+    legacyPath === "/v1/viewer/service-accounts" ||
+    legacyPath.startsWith("/v1/viewer/service-accounts/")
   );
 }
 
 export function isViewerReadOnlyAllowed(method: string, path: string): boolean {
   if (method !== "GET") return false;
-  const legacyPath = legacyMarafiqPath(path);
-  if (legacyPath.startsWith("/v1/marafiq/ops/")) return false;
+  const legacyPath = normalizeApiPath(path);
+  if (legacyPath.startsWith("/v1/platform/ops/")) return false;
   return VIEWER_GET_PREFIXES.some(
     (prefix) =>
       legacyPath === prefix.replace(/\/$/, "") || legacyPath.startsWith(prefix),
@@ -52,9 +49,9 @@ export function assertRoleAccess(
   method: string,
   path: string,
 ): { allowed: boolean; requiredRole?: CcRole; message?: string } {
-  const legacyPath = legacyMarafiqPath(path);
+  const legacyPath = normalizeApiPath(path);
 
-  if (legacyPath.startsWith("/v1/marafiq/admin/")) {
+  if (legacyPath.startsWith("/v1/platform/admin/")) {
     if (role !== "admin") {
       return {
         allowed: false,
@@ -88,7 +85,7 @@ export function assertRoleAccess(
     return { allowed: true };
   }
 
-  if (method === "POST" && legacyPath.startsWith("/v1/marafiq/ops/")) {
+  if (method === "POST" && legacyPath.startsWith("/v1/platform/ops/")) {
     if (role === "operator" || role === "admin") return { allowed: true };
     return {
       allowed: false,
@@ -97,7 +94,7 @@ export function assertRoleAccess(
     };
   }
 
-  if (method === "POST" && /^\/v1\/marafiq\/events\/[^/]+\/ack$/.test(legacyPath)) {
+  if (method === "POST" && /^\/v1\/viewer\/events\/[^/]+\/ack$/.test(legacyPath)) {
     if (role === "operator" || role === "admin") return { allowed: true };
     return {
       allowed: false,

@@ -51,7 +51,7 @@ async function main(): Promise<void> {
 
     const adminLogin = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       headers: { "x-api-key": "phase4-admin-key" },
       payload: { username: "admin", password: "admin1234" },
     });
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
 
     const createViewer = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/admin/integration-accounts",
+      url: "/v1/platform/admin/integration-accounts",
       headers: adminHeaders,
       payload: { username: "newviewer", password: "viewer1234", displayName: "New Viewer" },
     });
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 
     const profile = await app.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       headers: { "x-api-key": createData.apiKey },
       payload: { username: "newviewer", password: "viewer1234" },
     });
@@ -99,7 +99,7 @@ async function main(): Promise<void> {
 
     const integrationProfile = await app.inject({
       method: "GET",
-      url: "/v1/marafiq/integration/profile",
+      url: "/v1/platform/integration/profile",
       headers: viewerHeaders,
     });
     const profileData = integrationProfile.json().data as {
@@ -155,7 +155,7 @@ async function main(): Promise<void> {
     await app2.ready();
     const headlessAuth = await app2.inject({
       method: "GET",
-      url: "/v1/marafiq/capabilities",
+      url: "/v1/viewer/capabilities",
       headers: { "x-api-key": legacyKey },
     });
     if (headlessAuth.statusCode !== 200) {
@@ -164,7 +164,7 @@ async function main(): Promise<void> {
 
     const legacyLogin = await app2.inject({
       method: "POST",
-      url: "/v1/marafiq/auth/login",
+      url: "/v1/viewer/auth/login",
       headers: { "x-api-key": legacyKey },
       payload: { username: "legacyuser", password: "legacy1234" },
     });
@@ -176,14 +176,14 @@ async function main(): Promise<void> {
     };
     const createSecond = await app2.inject({
       method: "POST",
-      url: "/v1/marafiq/rest-api-keys",
+      url: "/v1/viewer/rest-api-keys",
       headers: legacyViewerHeaders,
       payload: { label: "Secondary", expiration: "1mo" },
     });
     const secondKey = createSecond.json().data.apiKey as string;
     const disableSecond = await app2.inject({
       method: "PATCH",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(createSecond.json().data.id)}`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(createSecond.json().data.id)}`,
       headers: legacyViewerHeaders,
       payload: { status: "disabled" },
     });
@@ -192,7 +192,7 @@ async function main(): Promise<void> {
 
     const deleteSecond = await app2.inject({
       method: "DELETE",
-      url: `/v1/marafiq/rest-api-keys/${encodeURIComponent(createSecond.json().data.id)}`,
+      url: `/v1/viewer/rest-api-keys/${encodeURIComponent(createSecond.json().data.id)}`,
       headers: legacyViewerHeaders,
     });
     if (deleteSecond.statusCode !== 200) fail("delete secondary key");

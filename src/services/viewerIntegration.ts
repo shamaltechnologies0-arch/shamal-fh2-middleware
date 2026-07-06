@@ -180,7 +180,7 @@ export function resolveApiBaseUrl(requestHost?: string): string {
 }
 
 export function buildViewerWebhookUrl(apiBaseUrl: string, viewerId: string): string {
-  return `${apiBaseUrl}/v1/marafiq/webhooks/viewer/${encodeURIComponent(viewerId)}`;
+  return `${apiBaseUrl}/v1/platform/webhooks/viewer/${encodeURIComponent(viewerId)}`;
 }
 
 export function getViewerIntegrationPublic(

@@ -10,7 +10,7 @@ const eventsQuerySchema = z.object({
 const ackedEventIds = new Set<string>();
 
 export const eventRoutes: FastifyPluginAsync = async (app) => {
-  registerViewerGetBare(app, "/v1/marafiq/events", async (request, reply) => {
+  registerViewerGetBare(app, "/v1/viewer/events", async (request, reply) => {
     const parsed = eventsQuerySchema.safeParse(request.query);
     if (!parsed.success) {
       return reply.status(400).send({ error: "validation_error", details: parsed.error.flatten() });
@@ -30,7 +30,7 @@ export const eventRoutes: FastifyPluginAsync = async (app) => {
     });
   });
 
-  registerViewerPostBare(app, "/v1/marafiq/events/:id/ack", async (request, reply) => {
+  registerViewerPostBare(app, "/v1/viewer/events/:id/ack", async (request, reply) => {
       ackedEventIds.add((request.params as { id: string }).id);
       return reply.send({
         data: { id: (request.params as { id: string }).id, acknowledged: true },

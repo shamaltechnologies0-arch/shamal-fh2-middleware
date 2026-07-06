@@ -21,7 +21,13 @@ import {
   updateRestApiKeySchema,
   type RestApiKeyPublic,
 } from "../services/restApiKeys.js";
-import { viewerRoutePaths } from "./viewerPaths.js";
+import {
+  registerAdminDelete,
+  registerAdminGet,
+  registerAdminPatch,
+  registerAdminPost,
+  registerViewerRoutes,
+} from "./viewerPaths.js";
 
 type RouteOpts = Record<string, unknown>;
 
@@ -114,23 +120,11 @@ function handleServiceError(err: unknown, reply: FastifyReply) {
   return reply.status(500).send({ error: "internal_error", message });
 }
 
-function registerViewerRoutes(
-  app: FastifyInstance,
-  method: "get" | "post" | "patch" | "delete",
-  legacyPath: string,
-  opts: RouteOpts,
-  handler: RouteHandlerMethod,
-): void {
-  for (const path of viewerRoutePaths(legacyPath)) {
-    app[method](path, opts, handler);
-  }
-}
-
 export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "get",
-    "/v1/marafiq/rest-api-keys",
+    "/v1/viewer/rest-api-keys",
     {
       schema: {
         summary: "List REST API keys for the signed-in viewer account",
@@ -147,7 +141,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/marafiq/rest-api-keys",
+    "/v1/viewer/rest-api-keys",
     {
       schema: {
         summary: "Create a REST API key (plaintext shown once)",
@@ -188,7 +182,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "get",
-    "/v1/marafiq/rest-api-keys/:id",
+    "/v1/viewer/rest-api-keys/:id",
     {
       schema: {
         summary: "Get one REST API key (masked)",
@@ -212,7 +206,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "patch",
-    "/v1/marafiq/rest-api-keys/:id",
+    "/v1/viewer/rest-api-keys/:id",
     {
       schema: {
         summary: "Update REST API key label or status",
@@ -248,7 +242,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "delete",
-    "/v1/marafiq/rest-api-keys/:id",
+    "/v1/viewer/rest-api-keys/:id",
     {
       schema: {
         summary: "Permanently delete a REST API key",
@@ -274,7 +268,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/marafiq/rest-api-keys/:id/reveal",
+    "/v1/viewer/rest-api-keys/:id/reveal",
     {
       schema: {
         summary: "Reveal full REST API key value (rate-limited)",
@@ -320,7 +314,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/marafiq/rest-api-keys/:id/set-primary",
+    "/v1/viewer/rest-api-keys/:id/set-primary",
     {
       schema: {
         summary: "Set the primary REST API key for Command Center login",
@@ -342,8 +336,9 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
-  app.get(
-    "/v1/marafiq/admin/integration-accounts/:accountId/rest-api-keys",
+  registerAdminGet(
+    app,
+    "/v1/platform/admin/integration-accounts/:accountId/rest-api-keys",
     {
       schema: {
         summary: "List REST API keys for an integration account (admin only)",
@@ -369,8 +364,9 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
     },
   );
 
-  app.post(
-    "/v1/marafiq/admin/integration-accounts/:accountId/rest-api-keys",
+  registerAdminPost(
+    app,
+    "/v1/platform/admin/integration-accounts/:accountId/rest-api-keys",
     {
       schema: {
         summary: "Create REST API key for an integration account (admin only)",
@@ -419,8 +415,9 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
     },
   );
 
-  app.patch(
-    "/v1/marafiq/admin/integration-accounts/:accountId/rest-api-keys/:id",
+  registerAdminPatch(
+    app,
+    "/v1/platform/admin/integration-accounts/:accountId/rest-api-keys/:id",
     {
       schema: {
         summary: "Update REST API key for an integration account (admin only)",
@@ -464,8 +461,9 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
     },
   );
 
-  app.delete(
-    "/v1/marafiq/admin/integration-accounts/:accountId/rest-api-keys/:id",
+  registerAdminDelete(
+    app,
+    "/v1/platform/admin/integration-accounts/:accountId/rest-api-keys/:id",
     {
       schema: {
         summary: "Delete REST API key for an integration account (admin only)",

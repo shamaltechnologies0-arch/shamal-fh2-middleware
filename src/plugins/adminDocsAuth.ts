@@ -3,31 +3,40 @@ import {
   hasMinRole,
   roleFromApiKey,
   verifySessionToken,
+  verifySessionTokenStandalone,
   type CcRole,
 } from "../services/commandCenterAuth.js";
 import { verifyRestApiKey } from "../services/restApiKeys.js";
+import {
+  parseCookieHeader,
+  SESSION_COOKIE_NAME,
+} from "../utils/sessionCookie.js";
 
 function requestPath(url: string): string {
   return url.split("?")[0] ?? url;
-}
-
-function isAdminDocsStaticAsset(path: string): boolean {
-  return path.startsWith("/admin-docs/static/");
-}
-
-function isAdminDocsJson(path: string): boolean {
-  return path === "/admin-docs/json";
-}
-
-function isAdminDocsUi(path: string): boolean {
-  return path === "/admin-docs" || path === "/admin-docs/";
 }
 
 export function isAdminDocsPath(path: string): boolean {
   return path.startsWith("/admin-docs");
 }
 
+function requiresAdminDocsAuth(path: string): boolean {
+  return (
+    path === "/admin-docs" ||
+    path === "/admin-docs/" ||
+    path === "/admin-docs/json" ||
+    path === "/admin-docs/yaml"
+  );
+}
+
 function resolveAdminRole(request: FastifyRequest): CcRole | null {
+  const cookies = parseCookieHeader(request.headers.cookie);
+  const sessionCookie = cookies[SESSION_COOKIE_NAME];
+  if (sessionCookie) {
+    const verified = verifySessionTokenStandalone(sessionCookie);
+    if (verified) return verified.role;
+  }
+
   const apiKeyHeader = request.headers["x-api-key"];
   const apiKey = typeof apiKeyHeader === "string" ? apiKeyHeader.trim() : "";
   if (!apiKey) return null;
@@ -60,13 +69,13 @@ export async function enforceAdminDocsAccess(
   reply: FastifyReply,
 ): Promise<void> {
   const path = requestPath(request.url);
-  if (!isAdminDocsPath(path) || isAdminDocsStaticAsset(path)) {
+  if (!requiresAdminDocsAuth(path)) {
     return;
   }
 
   const role = resolveAdminRole(request);
   if (!role) {
-    if (isAdminDocsUi(path) && wantsHtml(request)) {
+    if ((path === "/admin-docs" || path === "/admin-docs/") && wantsHtml(request)) {
       return reply.redirect("/admin?returnTo=/admin-docs");
     }
     return reply.status(401).send({

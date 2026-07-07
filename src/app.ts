@@ -120,6 +120,30 @@ export async function buildServer() {
 
   await registerAdminDocsAuth(app);
 
+  const adminDocsAuthScript = `
+(function () {
+  const originalFetch = window.fetch;
+  window.fetch = function (input, init) {
+    init = init || {};
+    const headers = new Headers(init.headers || {});
+    try {
+      const raw = localStorage.getItem("shamalCcSession");
+      if (raw) {
+        const session = JSON.parse(raw);
+        const url = typeof input === "string" ? input : input && input.url ? input.url : "";
+        if (url.includes("/admin-docs/json") && session.apiKey) {
+          if (!headers.has("X-Api-Key")) headers.set("X-Api-Key", session.apiKey);
+          if (session.sessionToken && !headers.has("X-CC-Session")) {
+            headers.set("X-CC-Session", session.sessionToken);
+          }
+        }
+      }
+    } catch (_) {}
+    return originalFetch.call(this, input, Object.assign({}, init, { headers }));
+  };
+})();
+`.trim();
+
   await app.register(async (adminDocsApp: Awaited<ReturnType<typeof Fastify>>) => {
     await adminDocsApp.register(swaggerUi, {
       routePrefix: "/admin-docs",
@@ -127,6 +151,9 @@ export async function buildServer() {
       transformSpecification: (swaggerObject: Record<string, unknown>) =>
         buildAdminOpenApiDocument(swaggerObject),
       transformSpecificationClone: true,
+      theme: {
+        js: [{ filename: "admin-docs-auth.js", content: adminDocsAuthScript }],
+      },
     });
   });
 

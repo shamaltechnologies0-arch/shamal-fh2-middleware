@@ -124,17 +124,15 @@ export function createSessionToken(user: CcUser): string {
   return Buffer.from(`${payload}|${sig}`).toString("base64url");
 }
 
-export function verifySessionToken(
+export function verifySessionTokenStandalone(
   token: string,
-  apiKey: string,
-): { role: CcRole; username: string } | null {
+): { role: CcRole; username: string; apiKey: string } | null {
   try {
     const decoded = Buffer.from(token, "base64url").toString("utf8");
     const parts = decoded.split("|");
     if (parts.length !== 5) return null;
     const [username, role, tokenApiKey, expStr, sig] = parts;
     if (!username || !role || !tokenApiKey || !expStr || !sig) return null;
-    if (tokenApiKey !== apiKey) return null;
     if (Date.now() > Number(expStr)) return null;
 
     const payload = `${username}|${role}|${tokenApiKey}|${expStr}`;
@@ -146,10 +144,19 @@ export function verifySessionToken(
     const normalizedRole = role.toLowerCase() as CcRole;
     if (!["viewer", "operator", "admin"].includes(normalizedRole)) return null;
 
-    return { role: normalizedRole, username };
+    return { role: normalizedRole, username, apiKey: tokenApiKey };
   } catch {
     return null;
   }
+}
+
+export function verifySessionToken(
+  token: string,
+  apiKey: string,
+): { role: CcRole; username: string } | null {
+  const verified = verifySessionTokenStandalone(token);
+  if (!verified || verified.apiKey !== apiKey) return null;
+  return { role: verified.role, username: verified.username };
 }
 
 function isAllowedUserApiKey(user: CcUser, envApiKeys: string[]): boolean {

@@ -963,6 +963,37 @@
       return path === "/admin";
     }
 
+    function safeReturnTo() {
+      const params = new URLSearchParams(window.location.search);
+      const returnTo = params.get("returnTo");
+      if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
+        return null;
+      }
+      return returnTo;
+    }
+
+    async function refreshBrowserSessionCookie() {
+      if (!state.session?.apiKey || !state.session?.sessionToken) return false;
+      const res = await fetch("/v1/auth/session-cookie", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-Api-Key": state.session.apiKey,
+          "X-CC-Session": state.session.sessionToken,
+        },
+      });
+      return res.ok;
+    }
+
+    async function redirectToReturnToIfReady() {
+      const returnTo = safeReturnTo();
+      if (!returnTo || !state.session || !isAdmin()) return false;
+      const cookieReady = await refreshBrowserSessionCookie();
+      if (!cookieReady) return false;
+      window.location.replace(returnTo);
+      return true;
+    }
+
     function updateLoginPortalUi() {
       const title = $("loginTitle");
       const subtitle = $("loginSubtitle");
@@ -2709,6 +2740,7 @@
       try {
         const res = await fetch("/v1/viewer/auth/login", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: $("loginUser").value.trim(),
@@ -2765,6 +2797,7 @@
             body.data.fallbackProjectCode ||
             null,
         });
+        if (await redirectToReturnToIfReady()) return;
         updateRoleUi();
         startLiveUpdates();
         if (isViewer()) {
@@ -2781,8 +2814,11 @@
       }
     };
 
-    $("logoutBtn").onclick = () => {
+    $("logoutBtn").onclick = async () => {
       stopLiveUpdates();
+      try {
+        await fetch("/v1/auth/logout", { method: "POST", credentials: "include" });
+      } catch (_) {}
       clearSession();
       destroyPlayer();
       destroyDashStreams();
@@ -4044,27 +4080,30 @@
     updateLoginPortalUi();
     const savedShare = localStorage.getItem("shamalFh2ShareUrl");
     if (savedShare) $("fh2ShareUrl").value = savedShare;
-    if (!enforcePortalSession()) {
-      updateRoleUi();
-    }
-    if (state.session) {
-      const initialTab = resolveInitialTab();
-      if (initialTab !== state.activeTab) activateTab(initialTab);
-      activateSettingsTab(state.activeSettingsTab || "service-accounts");
-      startLiveUpdates();
-      if (isViewer()) {
-        syncSessionFromServer()
-          .then(async () => {
-            if (state.activeTab === "settings" && canManageWorkspaceApi()) {
-              await loadSettingsPage();
-            }
-            await refreshDashboard();
-          })
-          .catch((e) => alert(e.message));
-      } else {
-        refreshDashboard().catch((e) => alert(e.message));
+    redirectToReturnToIfReady().then((redirected) => {
+      if (redirected) return;
+      if (!enforcePortalSession()) {
+        updateRoleUi();
       }
-    }
+      if (state.session) {
+        const initialTab = resolveInitialTab();
+        if (initialTab !== state.activeTab) activateTab(initialTab);
+        activateSettingsTab(state.activeSettingsTab || "service-accounts");
+        startLiveUpdates();
+        if (isViewer()) {
+          syncSessionFromServer()
+            .then(async () => {
+              if (state.activeTab === "settings" && canManageWorkspaceApi()) {
+                await loadSettingsPage();
+              }
+              await refreshDashboard();
+            })
+            .catch((e) => alert(e.message));
+        } else {
+          refreshDashboard().catch((e) => alert(e.message));
+        }
+      }
+    });
   </script>
 </body>
 </html>

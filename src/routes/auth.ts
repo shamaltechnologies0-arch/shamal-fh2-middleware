@@ -1,6 +1,11 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import { getCcUsers, login } from "../services/commandCenterAuth.js";
+import { getCcUsers, login, verifySessionToken } from "../services/commandCenterAuth.js";
+import {
+  buildClearSessionCookieHeader,
+  buildSessionCookieHeader,
+  isSecureCookieEnvironment,
+} from "../utils/sessionCookie.js";
 import { issueClientCredentialsToken } from "../services/serviceAccounts.js";
 import { getViewerDashboardPermissions } from "../services/viewerDashboardPermissions.js";
 import {
@@ -113,36 +118,108 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           });
         }
 
-        return reply.send({
-          data: {
-            apiKey: session.apiKey,
-            role: session.role,
-            displayName: session.displayName,
-            sessionToken: session.sessionToken,
-            username: parsed.data.username.trim(),
-            permissions: {
-              canView: true,
-              canOperate: session.role === "operator" || session.role === "admin",
-              canAdmin: session.role === "admin",
+        const secureCookie = isSecureCookieEnvironment();
+        return reply
+          .header(
+            "Set-Cookie",
+            buildSessionCookieHeader(session.sessionToken, { secure: secureCookie }),
+          )
+          .send({
+            data: {
+              apiKey: session.apiKey,
+              role: session.role,
+              displayName: session.displayName,
+              sessionToken: session.sessionToken,
+              username: parsed.data.username.trim(),
+              permissions: {
+                canView: true,
+                canOperate: session.role === "operator" || session.role === "admin",
+                canAdmin: session.role === "admin",
+              },
+              viewerDashboardPermissions:
+                session.role === "viewer"
+                  ? getViewerDashboardPermissions(parsed.data.username.trim())
+                  : undefined,
+              assignedProjects:
+                session.role === "viewer"
+                  ? listViewerProjectOptions(parsed.data.username.trim())
+                  : undefined,
+              fallbackProjectCode: resolveFallbackProjectCode(),
             },
-            viewerDashboardPermissions:
-              session.role === "viewer"
-                ? getViewerDashboardPermissions(parsed.data.username.trim())
-                : undefined,
-            assignedProjects:
-              session.role === "viewer"
-                ? listViewerProjectOptions(parsed.data.username.trim())
-                : undefined,
-            fallbackProjectCode: resolveFallbackProjectCode(),
-          },
-          meta: { source: "shamal-platform" },
-        });
+            meta: { source: "shamal-platform" },
+          });
       } catch (err) {
         return reply.status(500).send({
           error: "auth_config_error",
           message: (err as Error).message,
         });
       }
+    },
+  );
+
+  registerViewerPost(
+    app,
+    "/v1/auth/session-cookie",
+    {
+      schema: {
+        summary: "Refresh Shamal Platform browser session cookie from an active session",
+        tags: ["Auth"],
+        security: [],
+      },
+    },
+    async (request, reply) => {
+      const apiKeyHeader = request.headers["x-api-key"];
+      const apiKey = typeof apiKeyHeader === "string" ? apiKeyHeader.trim() : "";
+      const sessionHeader = request.headers["x-cc-session"];
+      const sessionToken =
+        typeof sessionHeader === "string" ? sessionHeader.trim() : "";
+
+      if (!apiKey || !sessionToken) {
+        return reply.status(401).send({
+          error: "unauthorized",
+          message: "X-Api-Key and X-CC-Session are required",
+        });
+      }
+
+      const verified = verifySessionToken(sessionToken, apiKey);
+      if (!verified) {
+        return reply.status(401).send({
+          error: "unauthorized",
+          message: "Invalid or expired session",
+        });
+      }
+
+      const secureCookie = isSecureCookieEnvironment();
+      return reply
+        .header(
+          "Set-Cookie",
+          buildSessionCookieHeader(sessionToken, { secure: secureCookie }),
+        )
+        .send({
+          data: { ok: true, role: verified.role },
+          meta: { source: "shamal-platform" },
+        });
+    },
+  );
+
+  registerViewerPost(
+    app,
+    "/v1/auth/logout",
+    {
+      schema: {
+        summary: "Clear Shamal Platform browser session cookie",
+        tags: ["Auth"],
+        security: [],
+      },
+    },
+    async (_request, reply) => {
+      const secureCookie = isSecureCookieEnvironment();
+      return reply
+        .header("Set-Cookie", buildClearSessionCookieHeader({ secure: secureCookie }))
+        .send({
+          data: { ok: true },
+          meta: { source: "shamal-platform" },
+        });
     },
   );
 

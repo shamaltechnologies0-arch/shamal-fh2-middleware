@@ -8,10 +8,15 @@ async function main(): Promise<void> {
   process.env.VIEWER_API_KEY_ROLES =
     "alias-test-viewer:viewer,alias-test-operator:operator,alias-test-admin:admin";
   process.env.CC_USERS = "";
+  process.env.CC_ADMIN_ID = "admin";
+  process.env.CC_ADMIN_PASSWORD = "admin1234";
 
   const { buildServer } = await import("../src/app.js");
-  const { roleFromApiKey } = await import("../src/services/commandCenterAuth.js");
+  const { createSessionToken, roleFromApiKey } = await import(
+    "../src/services/commandCenterAuth.js"
+  );
   const { findSecretLeaks } = await import("../src/services/openApiDocuments.js");
+  const { SESSION_COOKIE_NAME } = await import("../src/utils/sessionCookie.js");
 
   const API_KEY = "alias-test-operator";
   const VIEWER_KEY = "alias-test-viewer";
@@ -325,6 +330,63 @@ async function main(): Promise<void> {
       );
     } else {
       console.log("OK   admin-docs-json: no secret-like values in schema");
+    }
+  }
+
+  const adminDocsHtmlUnauth = await app.inject({
+    method: "GET",
+    url: "/admin-docs",
+    headers: { accept: "text/html" },
+  });
+  if (adminDocsHtmlUnauth.statusCode !== 302) {
+    failed += 1;
+    console.error(
+      `FAIL admin-docs-html-unauth: expected 302 got ${adminDocsHtmlUnauth.statusCode}`,
+    );
+  } else if (!String(adminDocsHtmlUnauth.headers.location).includes("returnTo=/admin-docs")) {
+    failed += 1;
+    console.error("FAIL admin-docs-html-unauth: expected returnTo=/admin-docs redirect");
+  } else {
+    console.log("OK   admin-docs-html-unauth: redirects unauthenticated browsers to /admin");
+  }
+
+  const loginRes = await app.inject({
+    method: "POST",
+    url: "/v1/auth/session-cookie",
+    headers: {
+      "x-api-key": ADMIN_KEY,
+      "x-cc-session": createSessionToken({
+        username: "admin",
+        password: "admin1234",
+        role: "admin",
+        apiKey: ADMIN_KEY,
+        displayName: "Admin",
+      }),
+    },
+  });
+  const setCookie = loginRes.headers["set-cookie"];
+  const cookieLine = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+  if (loginRes.statusCode !== 200 || !cookieLine) {
+    failed += 1;
+    console.error("FAIL admin-docs-cookie-login: session-cookie did not set browser cookie");
+  } else {
+    const cookieHeader = cookieLine.split(";")[0] ?? "";
+    if (!cookieHeader.startsWith(`${SESSION_COOKIE_NAME}=`)) {
+      failed += 1;
+      console.error("FAIL admin-docs-cookie-login: unexpected cookie name");
+    }
+    const adminDocsCookieRes = await app.inject({
+      method: "GET",
+      url: "/admin-docs/json",
+      headers: { cookie: cookieHeader },
+    });
+    if (adminDocsCookieRes.statusCode !== 200) {
+      failed += 1;
+      console.error(
+        `FAIL admin-docs-cookie: expected 200 got ${adminDocsCookieRes.statusCode}`,
+      );
+    } else {
+      console.log("OK   admin-docs-cookie: session cookie grants admin docs access");
     }
   }
 

@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
+import { registerAdminDocsAuth } from "./plugins/adminDocsAuth.js";
 import { registerPlatformAuth } from "./plugins/auth.js";
 import { authRoutes } from "./routes/auth.js";
 import { adminRoutes } from "./routes/admin.js";
@@ -28,6 +29,10 @@ import { telemetrySseRoutes } from "./routes/telemetry-sse.js";
 import { restApiKeysRoutes } from "./routes/restApiKeys.js";
 import { serviceAccountsRoutes } from "./routes/serviceAccounts.js";
 import { webhookRoutes } from "./routes/webhooks.js";
+import {
+  buildAdminOpenApiDocument,
+  buildPublicOpenApiDocument,
+} from "./services/openApiDocuments.js";
 
 const openapiPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -57,7 +62,6 @@ export async function buildServer() {
       (req.headers["x-request-id"] as string | undefined) ?? crypto.randomUUID(),
   }) as Awaited<ReturnType<typeof Fastify>>;
 
-  // Swagger "Try it out" from 127.0.0.1 → localhost (or vice versa) needs CORS in dev.
   await app.register(cors, {
     origin:
       config.NODE_ENV === "development"
@@ -87,12 +91,10 @@ export async function buildServer() {
     openapi: {
       openapi: "3.1.0",
       info: {
-        title: "Shamal Platform API",
-        version: "2.1.0",
+        title: "Shamal Platform Integration API",
+        version: "2.3.0",
         description:
-          "Shamal Platform REST API over DJI FlightHub 2 operations. " +
-          "External integrators use `/v1/viewer/*` with `X-Api-Key`. " +
-          "Shamal admin routes use `/v1/platform/admin/*`.",
+          "External API documentation for client developers and integration partners.",
       },
       servers: [{ url: "/", description: "Same origin" }],
       components: {
@@ -107,14 +109,34 @@ export async function buildServer() {
       security: [{ ApiKeyAuth: [] }],
     },
   });
+
   await app.register(swaggerUi, {
     routePrefix: "/docs",
     uiConfig: { docExpansion: "list" },
+    transformSpecification: (swaggerObject: Record<string, unknown>) =>
+      buildPublicOpenApiDocument(swaggerObject),
+    transformSpecificationClone: true,
   });
 
-  app.get("/openapi.yaml", async (_req: unknown, reply: { type: (t: string) => { send: (b: string) => void } }) => {
-    reply.type("application/yaml").send(openapiSpec);
+  await registerAdminDocsAuth(app);
+
+  await app.register(async (adminDocsApp: Awaited<ReturnType<typeof Fastify>>) => {
+    await adminDocsApp.register(swaggerUi, {
+      routePrefix: "/admin-docs",
+      uiConfig: { docExpansion: "list" },
+      transformSpecification: (swaggerObject: Record<string, unknown>) =>
+        buildAdminOpenApiDocument(swaggerObject),
+      transformSpecificationClone: true,
+    });
   });
+
+  app.get(
+    "/openapi.yaml",
+    { schema: { hide: true } },
+    async (_req: unknown, reply: { type: (t: string) => { send: (b: string) => void } }) => {
+      reply.type("application/yaml").send(openapiSpec);
+    },
+  );
 
   await registerPlatformAuth(app);
 
@@ -139,7 +161,11 @@ export async function buildServer() {
   await app.register(eventRoutes);
   await app.register(webhookRoutes);
 
-  app.get("/openapi.json", async () => app.swagger());
+  app.get(
+    "/openapi.json",
+    { schema: { hide: true } },
+    async () => buildPublicOpenApiDocument(app.swagger()),
+  );
 
   return app;
 }

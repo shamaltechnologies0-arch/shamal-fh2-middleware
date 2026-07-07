@@ -27,7 +27,7 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/media/recent",
+    "/v1/media/recent",
     {
       schema: {
         summary: "Recent flight tasks with FH2 media file names",

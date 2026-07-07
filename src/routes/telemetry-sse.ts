@@ -9,7 +9,7 @@ export const telemetrySseRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/devices/:sn/telemetry/stream",
+    "/v1/devices/:sn/telemetry/stream",
     {
       schema: {
         summary: "Telemetry stream (SSE) — CAFM substitute for MQTT polling",

@@ -7,7 +7,7 @@ export const streamRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/devices/:sn/live-stream",
+    "/v1/devices/:sn/live-stream",
     {
       schema: {
         summary: "Live video stream info (RTMP/WebRTC capacity)",
@@ -20,7 +20,7 @@ export const streamRoutes: FastifyPluginAsync = async (app) => {
           properties: {
             sn: {
               type: "string",
-              description: "Drone or dock serialNumber from GET /v1/viewer/devices",
+              description: "Drone or dock serialNumber from GET /v1/devices",
             },
           },
         },

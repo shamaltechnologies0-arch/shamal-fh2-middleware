@@ -9,7 +9,7 @@ export const fleetRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/fleet/summary",
+    "/v1/fleet/summary",
     {
       schema: {
         summary: "Fleet summary for CAFM dashboards",
@@ -42,7 +42,7 @@ export const fleetRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/fleet/positions",
+    "/v1/fleet/positions",
     {
       schema: {
         summary: "Fleet map positions (GPS pins for live map)",

@@ -1,12 +1,14 @@
 openapi: 3.1.0
 info:
   title: Shamal Platform API
-  version: 2.1.0
+  version: 2.2.0
   description: |
     Shamal-controlled REST layer over DJI FlightHub 2 operations.
-    External viewer integrators use **canonical** `/v1/viewer/*` paths with `X-Api-Key`.
-    Legacy client-specific URL prefixes are not part of this spec; use `/v1/viewer/*` and `/v1/platform/*` only.
-    Shamal owns FH2 credentials; external viewers never receive DJI access.
+
+    External integrators use resource-based `/v1/*` endpoints with `X-Api-Key`.
+    Shamal administrative and internal integration routes use `/v1/platform/*`.
+
+    Shamal owns FH2 credentials; external integrators never receive DJI access.
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -19,24 +21,17 @@ components:
       in: header
       name: X-Api-Key
 paths:
-  /health:
-    get:
-      summary: Service health
-      security: []
-      responses:
-        "200":
-          description: OK
-  /v1/viewer/devices:
+  /v1/devices:
     get:
       summary: List Shamal fleet devices from FlightHub 2 (normalized)
       tags: [Devices]
       responses:
         "200":
           description: Device list
-  /v1/viewer/devices/{sn}:
+  /v1/devices/{sn}:
     get:
       summary: Device detail with health and state summary
-      description: "Use serialNumber from GET /v1/viewer/devices."
+      description: "Use serialNumber from GET /v1/devices."
       tags: [Devices]
       parameters:
         - name: sn
@@ -48,7 +43,7 @@ paths:
           description: Device detail
         "404":
           description: Not found
-  /v1/viewer/devices/{sn}/telemetry/latest:
+  /v1/devices/{sn}/telemetry/latest:
     get:
       summary: Latest telemetry snapshot (REST poll)
       tags: [Devices]
@@ -60,7 +55,7 @@ paths:
       responses:
         "200":
           description: Telemetry snapshot
-  /v1/viewer/devices/{sn}/live-stream:
+  /v1/devices/{sn}/live-stream:
     get:
       summary: Live video stream info
       tags: [Streams]
@@ -75,7 +70,7 @@ paths:
       responses:
         "200":
           description: Stream metadata
-  /v1/viewer/devices/{sn}/telemetry/stream:
+  /v1/devices/{sn}/telemetry/stream:
     get:
       summary: Telemetry SSE stream
       tags: [Telemetry]
@@ -87,14 +82,15 @@ paths:
       responses:
         "200":
           description: SSE stream
-  /v1/viewer/tasks:
+
+  /v1/tasks:
     get:
       summary: List flight tasks
       tags: [Tasks]
       responses:
         "200":
           description: Task list
-  /v1/viewer/tasks/{id}:
+  /v1/tasks/{id}:
     get:
       summary: Flight task detail
       tags: [Tasks]
@@ -106,7 +102,7 @@ paths:
       responses:
         "200":
           description: Task detail
-  /v1/viewer/tasks/{id}/trajectory:
+  /v1/tasks/{id}/trajectory:
     get:
       summary: Flight trajectory polyline
       tags: [Tasks]
@@ -118,7 +114,7 @@ paths:
       responses:
         "200":
           description: Trajectory
-  /v1/viewer/tasks/{id}/media:
+  /v1/tasks/{id}/media:
     get:
       summary: Inspection media for task
       tags: [Tasks]
@@ -130,7 +126,7 @@ paths:
       responses:
         "200":
           description: Media list
-  /v1/viewer/tasks/{id}/trajectory.geojson:
+  /v1/tasks/{id}/trajectory.geojson:
     get:
       summary: Flight path GeoJSON
       tags: [GIS]
@@ -142,7 +138,7 @@ paths:
       responses:
         "200":
           description: GeoJSON
-  /v1/viewer/tasks/{id}/trajectory.kml:
+  /v1/tasks/{id}/trajectory.kml:
     get:
       summary: Flight path KML
       tags: [GIS]
@@ -154,21 +150,23 @@ paths:
       responses:
         "200":
           description: KML
-  /v1/viewer/media/recent:
+
+  /v1/media/recent:
     get:
       summary: Recent tasks with media file names
       tags: [Tasks]
       responses:
         "200":
           description: Recent media
-  /v1/viewer/events:
+
+  /v1/events:
     get:
       summary: Webhook event feed
       tags: [Events]
       responses:
         "200":
           description: Events
-  /v1/viewer/events/{id}/ack:
+  /v1/events/{id}/ack:
     post:
       summary: Acknowledge an event (operator/admin)
       tags: [Events]
@@ -180,28 +178,30 @@ paths:
       responses:
         "200":
           description: Acknowledged
-  /v1/viewer/fleet/summary:
+
+  /v1/fleet/summary:
     get:
       summary: Fleet summary
       tags: [Fleet]
       responses:
         "200":
           description: Fleet summary
-  /v1/viewer/fleet/positions:
+  /v1/fleet/positions:
     get:
       summary: Live fleet positions
       tags: [Fleet]
       responses:
         "200":
           description: Positions
-  /v1/viewer/docks:
+
+  /v1/docks:
     get:
       summary: List Shamal docks
       tags: [Docks]
       responses:
         "200":
           description: Dock list
-  /v1/viewer/docks/{sn}:
+  /v1/docks/{sn}:
     get:
       summary: Dock detail
       tags: [Docks]
@@ -213,14 +213,15 @@ paths:
       responses:
         "200":
           description: Dock detail
-  /v1/viewer/mapping/models:
+
+  /v1/mapping/models:
     get:
       summary: Cloud mapping models
       tags: [Mapping]
       responses:
         "200":
           description: Model list
-  /v1/viewer/mapping/models/{id}:
+  /v1/mapping/models/{id}:
     get:
       summary: Mapping model detail
       tags: [Mapping]
@@ -232,14 +233,16 @@ paths:
       responses:
         "200":
           description: Model detail
-  /v1/viewer/capabilities:
+
+  /v1/capabilities:
     get:
       summary: API capabilities
       tags: [Meta]
       responses:
         "200":
           description: Capabilities
-  /v1/viewer/auth/login:
+
+  /v1/auth/login:
     post:
       summary: Shamal Platform login
       tags: [Auth]
@@ -247,10 +250,46 @@ paths:
       responses:
         "200":
           description: Session token and role
-  /v1/viewer/auth/me:
+  /v1/auth/me:
     get:
       summary: Current session and permissions
       tags: [Auth]
       responses:
         "200":
           description: Session info
+  /v1/auth/token:
+    post:
+      summary: OAuth 2.0 Client Credentials (service accounts)
+      tags: [Auth]
+      security: []
+      responses:
+        "200":
+          description: Access token
+
+  /v1/api-keys:
+    get:
+      summary: List REST API keys for the current viewer account
+      tags: [REST API Keys]
+      responses:
+        "200":
+          description: API key list
+    post:
+      summary: Create a REST API key
+      tags: [REST API Keys]
+      responses:
+        "201":
+          description: Created
+
+  /v1/service-accounts:
+    get:
+      summary: List service accounts
+      tags: [Service Accounts]
+      responses:
+        "200":
+          description: Service account list
+    post:
+      summary: Create a service account
+      tags: [Service Accounts]
+      responses:
+        "201":
+          description: Created

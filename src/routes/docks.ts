@@ -13,7 +13,7 @@ export const dockRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/docks",
+    "/v1/docks",
     {
       schema: {
         summary: "List Shamal DJI docks (gateways)",
@@ -33,11 +33,11 @@ export const dockRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/docks/:sn",
+    "/v1/docks/:sn",
     {
       schema: {
         summary: "Dock detail and health",
-        description: "Use dock serialNumber from GET /v1/viewer/docks or /devices.",
+        description: "Use dock serialNumber from GET /v1/docks or /devices.",
         tags: ["Docks"],
         params: {
           type: "object",

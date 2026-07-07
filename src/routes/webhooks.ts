@@ -26,40 +26,55 @@ function verifyWebhookSecret(
 }
 
 export const webhookRoutes: FastifyPluginAsync = async (app) => {
-  app.post("/webhooks/fh2", { config: { rawBody: true } }, async (request, reply) => {
-    const rawBody =
-      typeof request.body === "string"
-        ? request.body
-        : JSON.stringify(request.body ?? {});
+  app.post(
+    "/webhooks/fh2",
+    {
+      config: { rawBody: true },
+      schema: {
+        publicDocs: true,
+        summary: "FlightHub 2 webhook ingress (Shamal-operated callback)",
+        description:
+          "Inbound webhook endpoint configured in DJI FlightHub 2 for Shamal event ingestion. " +
+          "External integrators receive outbound event callbacks separately via their assigned integration webhook URL.",
+        tags: ["Webhooks"],
+        security: [],
+      },
+    },
+    async (request, reply) => {
+      const rawBody =
+        typeof request.body === "string"
+          ? request.body
+          : JSON.stringify(request.body ?? {});
 
-    const signature =
-      (request.headers["x-webhook-signature"] as string | undefined) ??
-      (request.headers["x-fh2-signature"] as string | undefined);
+      const signature =
+        (request.headers["x-webhook-signature"] as string | undefined) ??
+        (request.headers["x-fh2-signature"] as string | undefined);
 
-    if (!verifyWebhookSecret(rawBody, signature)) {
-      return reply.status(401).send({ error: "invalid_signature" });
-    }
+      if (!verifyWebhookSecret(rawBody, signature)) {
+        return reply.status(401).send({ error: "invalid_signature" });
+      }
 
-    const payload =
-      typeof request.body === "object" && request.body !== null
-        ? (request.body as Record<string, unknown>)
-        : (JSON.parse(rawBody) as Record<string, unknown>);
+      const payload =
+        typeof request.body === "object" && request.body !== null
+          ? (request.body as Record<string, unknown>)
+          : (JSON.parse(rawBody) as Record<string, unknown>);
 
-    const eventType = mapFh2PayloadToEventType(payload);
-    ingestEventPayload(payload);
-    const row = await insertWebhookEvent(eventType, payload);
+      const eventType = mapFh2PayloadToEventType(payload);
+      ingestEventPayload(payload);
+      const row = await insertWebhookEvent(eventType, payload);
 
-    void notifyViewerEventCallback({
-      id: row.id,
-      type: eventType,
-      payload,
-      receivedAt: row.received_at.toISOString(),
-    });
+      void notifyViewerEventCallback({
+        id: row.id,
+        type: eventType,
+        payload,
+        receivedAt: row.received_at.toISOString(),
+      });
 
-    return reply.status(202).send({
-      accepted: true,
-      eventId: row.id,
-      eventType,
-    });
-  });
+      return reply.status(202).send({
+        accepted: true,
+        eventId: row.id,
+        eventType,
+      });
+    },
+  );
 };

@@ -74,7 +74,12 @@ function registerDataRoute(
   registerPlatformGet(
     app,
     path,
-    { summary, tags: ["Integration"] as const },
+    {
+      schema: {
+        summary,
+        tags: ["Integration"],
+      },
+    },
     scopedHandler(path, handler),
   );
 }

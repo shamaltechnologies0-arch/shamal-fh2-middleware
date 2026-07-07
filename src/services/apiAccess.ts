@@ -1,46 +1,47 @@
 import type { CcRole } from "./commandCenterAuth.js";
 import { normalizeApiPath } from "../routes/viewerPaths.js";
 
-/** GET paths allowed for viewer role (read-only monitoring). */
+/** GET paths allowed for viewer role (read-only monitoring). Canonical resource paths. */
 const VIEWER_GET_PREFIXES = [
-  "/v1/viewer/capabilities",
-  "/v1/viewer/auth/me",
+  "/v1/capabilities",
+  "/v1/auth/me",
   "/v1/platform/integration/profile",
   "/v1/platform/integration/access-key",
-  "/v1/viewer/rest-api-keys",
-  "/v1/viewer/service-accounts",
-  "/v1/viewer/devices",
-  "/v1/viewer/fleet/",
-  "/v1/viewer/docks",
-  "/v1/viewer/tasks",
-  "/v1/viewer/media/",
-  "/v1/viewer/events",
-  "/v1/viewer/mapping/",
+  "/v1/api-keys",
+  "/v1/service-accounts",
+  "/v1/devices",
+  "/v1/fleet/",
+  "/v1/docks",
+  "/v1/tasks",
+  "/v1/media/",
+  "/v1/events",
+  "/v1/mapping/",
 ];
 
 function isViewerRestApiKeyPath(path: string): boolean {
-  const legacyPath = normalizeApiPath(path);
+  const canonicalPath = normalizeApiPath(path);
   return (
-    legacyPath === "/v1/viewer/rest-api-keys" ||
-    legacyPath.startsWith("/v1/viewer/rest-api-keys/")
+    canonicalPath === "/v1/api-keys" ||
+    canonicalPath.startsWith("/v1/api-keys/")
   );
 }
 
 function isViewerServiceAccountPath(path: string): boolean {
-  const legacyPath = normalizeApiPath(path);
+  const canonicalPath = normalizeApiPath(path);
   return (
-    legacyPath === "/v1/viewer/service-accounts" ||
-    legacyPath.startsWith("/v1/viewer/service-accounts/")
+    canonicalPath === "/v1/service-accounts" ||
+    canonicalPath.startsWith("/v1/service-accounts/")
   );
 }
 
 export function isViewerReadOnlyAllowed(method: string, path: string): boolean {
   if (method !== "GET") return false;
-  const legacyPath = normalizeApiPath(path);
-  if (legacyPath.startsWith("/v1/platform/ops/")) return false;
+  const canonicalPath = normalizeApiPath(path);
+  if (canonicalPath.startsWith("/v1/platform/ops/")) return false;
   return VIEWER_GET_PREFIXES.some(
     (prefix) =>
-      legacyPath === prefix.replace(/\/$/, "") || legacyPath.startsWith(prefix),
+      canonicalPath === prefix.replace(/\/$/, "") ||
+      canonicalPath.startsWith(prefix),
   );
 }
 
@@ -49,9 +50,9 @@ export function assertRoleAccess(
   method: string,
   path: string,
 ): { allowed: boolean; requiredRole?: CcRole; message?: string } {
-  const legacyPath = normalizeApiPath(path);
+  const canonicalPath = normalizeApiPath(path);
 
-  if (legacyPath.startsWith("/v1/platform/admin/")) {
+  if (canonicalPath.startsWith("/v1/platform/admin/")) {
     if (role !== "admin") {
       return {
         allowed: false,
@@ -85,7 +86,7 @@ export function assertRoleAccess(
     return { allowed: true };
   }
 
-  if (method === "POST" && legacyPath.startsWith("/v1/platform/ops/")) {
+  if (method === "POST" && canonicalPath.startsWith("/v1/platform/ops/")) {
     if (role === "operator" || role === "admin") return { allowed: true };
     return {
       allowed: false,
@@ -94,7 +95,7 @@ export function assertRoleAccess(
     };
   }
 
-  if (method === "POST" && /^\/v1\/viewer\/events\/[^/]+\/ack$/.test(legacyPath)) {
+  if (method === "POST" && /^\/v1\/events\/[^/]+\/ack$/.test(canonicalPath)) {
     if (role === "operator" || role === "admin") return { allowed: true };
     return {
       allowed: false,

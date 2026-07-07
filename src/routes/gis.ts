@@ -14,11 +14,11 @@ export const gisRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/tasks/:id/trajectory.geojson",
+    "/v1/tasks/:id/trajectory.geojson",
     {
       schema: {
         summary: "Flight path as GeoJSON",
-        description: "Use task id from GET /v1/viewer/tasks. Import into CAFM/GIS layers.",
+        description: "Use task id from GET /v1/tasks. Import into CAFM/GIS layers.",
         tags: ["GIS"],
       },
     },
@@ -33,7 +33,7 @@ export const gisRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/tasks/:id/trajectory.kml",
+    "/v1/tasks/:id/trajectory.kml",
     {
       schema: {
         summary: "Flight path as KML",

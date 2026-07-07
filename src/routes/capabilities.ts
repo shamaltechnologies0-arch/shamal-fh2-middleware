@@ -5,7 +5,7 @@ import { registerViewerGet } from "./viewerPaths.js";
 export const capabilitiesRoutes: FastifyPluginAsync = async (app) => {
   registerViewerGet(
     app,
-    "/v1/viewer/capabilities",
+    "/v1/capabilities",
     {
       schema: {
         summary: "API capabilities (phase 1 + phase 2)",

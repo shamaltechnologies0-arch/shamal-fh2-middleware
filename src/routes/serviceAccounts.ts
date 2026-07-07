@@ -109,7 +109,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "get",
-    "/v1/viewer/service-accounts",
+    "/v1/service-accounts",
     {
       schema: {
         summary: "List service accounts owned by the signed-in user",
@@ -126,7 +126,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/viewer/service-accounts",
+    "/v1/service-accounts",
     {
       schema: {
         summary: "Create a service account for machine-to-machine API access",
@@ -164,7 +164,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "get",
-    "/v1/viewer/service-accounts/:id",
+    "/v1/service-accounts/:id",
     {
       schema: { summary: "Get one service account", tags: ["Service Accounts"] },
     },
@@ -182,7 +182,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "patch",
-    "/v1/viewer/service-accounts/:id",
+    "/v1/service-accounts/:id",
     {
       schema: { summary: "Update service account metadata or scopes", tags: ["Service Accounts"] },
     },
@@ -208,7 +208,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/viewer/service-accounts/:id/revoke",
+    "/v1/service-accounts/:id/revoke",
     {
       schema: { summary: "Revoke a service account", tags: ["Service Accounts"] },
     },
@@ -227,7 +227,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/viewer/service-accounts/:id/reactivate",
+    "/v1/service-accounts/:id/reactivate",
     {
       schema: { summary: "Reactivate a revoked service account", tags: ["Service Accounts"] },
     },
@@ -246,7 +246,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/viewer/service-accounts/:id/rotate-secret",
+    "/v1/service-accounts/:id/rotate-secret",
     {
       schema: {
         summary: "Rotate client secret (shown once)",
@@ -274,7 +274,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "delete",
-    "/v1/viewer/service-accounts/:id",
+    "/v1/service-accounts/:id",
     {
       schema: { summary: "Delete a service account permanently", tags: ["Service Accounts"] },
     },
@@ -301,7 +301,7 @@ export function registerAdminServiceAccountRoutes(app: FastifyInstance): void {
     {
       schema: {
         summary: "List service accounts (admin; optional ownerUserId filter)",
-        tags: ["Admin", "Service Accounts"],
+        tags: ["Admin"],
       },
     },
     async (request, reply) => {
@@ -324,7 +324,7 @@ export function registerAdminServiceAccountRoutes(app: FastifyInstance): void {
     {
       schema: {
         summary: "Create a service account for a user (admin)",
-        tags: ["Admin", "Service Accounts"],
+        tags: ["Admin"],
       },
     },
     async (request, reply) => {

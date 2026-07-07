@@ -124,7 +124,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "get",
-    "/v1/viewer/rest-api-keys",
+    "/v1/api-keys",
     {
       schema: {
         summary: "List REST API keys for the signed-in viewer account",
@@ -141,7 +141,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/viewer/rest-api-keys",
+    "/v1/api-keys",
     {
       schema: {
         summary: "Create a REST API key (plaintext shown once)",
@@ -182,7 +182,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "get",
-    "/v1/viewer/rest-api-keys/:id",
+    "/v1/api-keys/:id",
     {
       schema: {
         summary: "Get one REST API key (masked)",
@@ -206,7 +206,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "patch",
-    "/v1/viewer/rest-api-keys/:id",
+    "/v1/api-keys/:id",
     {
       schema: {
         summary: "Update REST API key label or status",
@@ -242,7 +242,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "delete",
-    "/v1/viewer/rest-api-keys/:id",
+    "/v1/api-keys/:id",
     {
       schema: {
         summary: "Permanently delete a REST API key",
@@ -268,7 +268,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/viewer/rest-api-keys/:id/reveal",
+    "/v1/api-keys/:id/reveal",
     {
       schema: {
         summary: "Reveal full REST API key value (rate-limited)",
@@ -314,7 +314,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
   registerViewerRoutes(
     app,
     "post",
-    "/v1/viewer/rest-api-keys/:id/set-primary",
+    "/v1/api-keys/:id/set-primary",
     {
       schema: {
         summary: "Set the primary REST API key for Command Center login",

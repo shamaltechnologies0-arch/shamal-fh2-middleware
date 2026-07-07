@@ -49,9 +49,9 @@ function requestPath(url: string): string {
 }
 
 function requiresOperatorRole(path: string, method: string): boolean {
-  const legacyPath = normalizeApiPath(path);
-  if (method === "POST" && legacyPath.startsWith("/v1/platform/ops/")) return true;
-  if (method === "POST" && /^\/v1\/viewer\/events\/[^/]+\/ack$/.test(legacyPath)) return true;
+  const canonicalPath = normalizeApiPath(path);
+  if (method === "POST" && canonicalPath.startsWith("/v1/platform/ops/")) return true;
+  if (method === "POST" && /^\/v1\/events\/[^/]+\/ack$/.test(canonicalPath)) return true;
   return false;
 }
 
@@ -86,24 +86,21 @@ function requestProjectCode(request: FastifyRequest): string | undefined {
 }
 
 function isProjectDataPath(path: string): boolean {
-  const legacyPath = normalizeApiPath(path);
+  const canonicalPath = normalizeApiPath(path);
   if (
-    legacyPath === "/v1/platform/integration/profile" ||
-    legacyPath === "/v1/platform/integration/access-key"
+    canonicalPath === "/v1/platform/integration/profile" ||
+    canonicalPath === "/v1/platform/integration/access-key"
   ) {
     return false;
   }
   return (
-    legacyPath.startsWith("/v1/viewer/devices") ||
-    legacyPath.startsWith("/v1/viewer/fleet") ||
-    legacyPath.startsWith("/v1/viewer/docks") ||
-    legacyPath.startsWith("/v1/viewer/tasks") ||
-    legacyPath.startsWith("/v1/viewer/mapping") ||
-    legacyPath.startsWith("/v1/viewer/media") ||
-    legacyPath.startsWith("/v1/viewer/gis") ||
-    legacyPath.startsWith("/v1/viewer/streams") ||
-    legacyPath.startsWith("/v1/viewer/telemetry") ||
-    legacyPath.startsWith("/v1/platform/integration/")
+    canonicalPath.startsWith("/v1/devices") ||
+    canonicalPath.startsWith("/v1/fleet") ||
+    canonicalPath.startsWith("/v1/docks") ||
+    canonicalPath.startsWith("/v1/tasks") ||
+    canonicalPath.startsWith("/v1/mapping") ||
+    canonicalPath.startsWith("/v1/media") ||
+    canonicalPath.startsWith("/v1/platform/integration/")
   );
 }
 
@@ -205,6 +202,7 @@ export async function registerPlatformAuth(app: FastifyInstance): Promise<void> 
     if (
       request.url.startsWith("/health") ||
       request.url.startsWith("/docs") ||
+      request.url.startsWith("/admin-docs") ||
       request.url.startsWith("/webhooks/fh2") ||
       requestPath(request.url) === "/" ||
       request.url.startsWith("/admin") ||
@@ -221,6 +219,8 @@ export async function registerPlatformAuth(app: FastifyInstance): Promise<void> 
     }
 
     if (
+      path === "/v1/auth/login" ||
+      path === "/v1/auth/token" ||
       path === "/v1/viewer/auth/login" ||
       path === "/v1/viewer/auth/token"
     ) {

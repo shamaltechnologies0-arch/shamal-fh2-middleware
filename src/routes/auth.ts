@@ -43,7 +43,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerPost(
     app,
-    "/v1/viewer/auth/token",
+    "/v1/auth/token",
     {
       schema: {
         summary: "OAuth 2.0 Client Credentials — service account M2M authentication",
@@ -87,7 +87,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerPost(
     app,
-    "/v1/viewer/auth/login",
+    "/v1/auth/login",
     {
       schema: {
         summary: "Shamal Platform login (human users)",
@@ -148,7 +148,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   registerViewerGet(
     app,
-    "/v1/viewer/auth/me",
+    "/v1/auth/me",
     {
       schema: {
         summary: "Current Shamal Platform session and effective permissions",

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { buildServer } from "./app.js";
 import { config } from "./config.js";
 import { initDatabase, insertWebhookEvent, listWebhookEvents } from "./db/index.js";
+import { initPlatformDataStore } from "./services/platformDataStore.js";
 import { ensureRestApiKeysMigrated } from "./services/restApiKeys.js";
 import { seedTelemetryFromEvents } from "./services/telemetryStore.js";
 
@@ -11,6 +12,7 @@ export async function getApp(): Promise<FastifyInstance> {
   if (!appPromise) {
     appPromise = (async () => {
       await initDatabase();
+      await initPlatformDataStore();
       const seeded = await seedTelemetryFromEvents();
       if (seeded > 0) {
         console.info(`[telemetry] Seeded ${seeded} cached snapshot(s) from event history`);
@@ -28,7 +30,7 @@ export async function getApp(): Promise<FastifyInstance> {
         }
       }
 
-      ensureRestApiKeysMigrated();
+      await ensureRestApiKeysMigrated();
 
       const app = await buildServer();
       await app.ready();

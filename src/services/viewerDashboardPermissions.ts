@@ -1,8 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { getCcUsers } from "./commandCenterAuth.js";
+import {
+  getPlatformData,
+  getPlatformStoreFilePath,
+  PLATFORM_STORE_KEYS,
+  putPlatformData,
+} from "./platformDataStore.js";
 
 const permissionsSchema = z.object({
   fleetOverview: z.boolean(),
@@ -36,33 +39,17 @@ export const DEFAULT_VIEWER_DASHBOARD_PERMISSIONS: ViewerDashboardPermissions = 
   getApiButtons: false,
 };
 
-const storePath = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../data/viewer-dashboard-permissions.json",
-);
-
 type PermissionStore = Record<string, Partial<ViewerDashboardPermissions>>;
 
-function ensureStoreDir(): void {
-  const dir = dirname(storePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
 function readStore(): PermissionStore {
-  ensureStoreDir();
-  if (!existsSync(storePath)) return {};
-  try {
-    const raw = readFileSync(storePath, "utf8");
-    const parsed = JSON.parse(raw) as PermissionStore;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+  return getPlatformData<PermissionStore>(
+    PLATFORM_STORE_KEYS.VIEWER_DASHBOARD_PERMISSIONS,
+    {},
+  );
 }
 
-function writeStore(store: PermissionStore): void {
-  ensureStoreDir();
-  writeFileSync(storePath, JSON.stringify(store, null, 2) + "\n", "utf8");
+async function writeStore(store: PermissionStore): Promise<void> {
+  await putPlatformData(PLATFORM_STORE_KEYS.VIEWER_DASHBOARD_PERMISSIONS, store);
 }
 
 export function mergeViewerPermissions(
@@ -92,10 +79,10 @@ export function listViewerDashboardPermissionUsers(): Array<{
   }));
 }
 
-export function updateViewerDashboardPermissions(
+export async function updateViewerDashboardPermissions(
   viewerId: string,
   patch: Partial<ViewerDashboardPermissions>,
-): ViewerDashboardPermissions {
+): Promise<ViewerDashboardPermissions> {
   const viewers = getCcUsers().filter((u) => u.role === "viewer");
   if (!viewers.some((u) => u.username === viewerId)) {
     throw new Error(`Unknown viewer account: ${viewerId}`);
@@ -112,17 +99,19 @@ export function updateViewerDashboardPermissions(
     ...parsed.data,
   });
   store[viewerId] = next;
-  writeStore(store);
+  await writeStore(store);
   return next;
 }
 
-export function deleteViewerDashboardPermissions(viewerId: string): void {
+export async function deleteViewerDashboardPermissions(
+  viewerId: string,
+): Promise<void> {
   const store = readStore();
   if (!(viewerId in store)) return;
   delete store[viewerId];
-  writeStore(store);
+  await writeStore(store);
 }
 
 export function getPermissionsStorePath(): string {
-  return storePath;
+  return getPlatformStoreFilePath(PLATFORM_STORE_KEYS.VIEWER_DASHBOARD_PERMISSIONS);
 }

@@ -6,9 +6,6 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
 import {
   type CredentialExpirationPreset,
@@ -18,6 +15,14 @@ import {
 } from "./credentialExpiration.js";
 import { getCcUsers } from "./commandCenterAuth.js";
 import { getPlatformSessionSecret } from "./platformSecret.js";
+import {
+  getPlatformData,
+  getPlatformStoreFilePath,
+  persistPlatformDataDeferred,
+  PLATFORM_STORE_KEYS,
+  putPlatformData,
+  setPlatformDataCache,
+} from "./platformDataStore.js";
 import {
   getViewerDashboardPermissions,
   type ViewerDashboardPermissions,
@@ -29,10 +34,6 @@ import {
 } from "./viewerScopes.js";
 
 const TOKEN_PREFIX = "shm_live_";
-const storePath = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../data/viewer-integrations.json",
-);
 
 export type IntegrationStatus = "active" | "revoked" | "expired" | "none";
 
@@ -51,26 +52,20 @@ export interface ViewerIntegrationRecord {
 
 type IntegrationStore = Record<string, Omit<ViewerIntegrationRecord, "viewerId">>;
 
-function ensureStoreDir(): void {
-  const dir = dirname(storePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
 function readStore(): IntegrationStore {
-  ensureStoreDir();
-  if (!existsSync(storePath)) return {};
-  try {
-    const raw = readFileSync(storePath, "utf8");
-    const parsed = JSON.parse(raw) as IntegrationStore;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+  return getPlatformData<IntegrationStore>(
+    PLATFORM_STORE_KEYS.VIEWER_INTEGRATIONS,
+    {},
+  );
 }
 
-function writeStore(store: IntegrationStore): void {
-  ensureStoreDir();
-  writeFileSync(storePath, JSON.stringify(store, null, 2) + "\n", "utf8");
+async function writeStore(store: IntegrationStore): Promise<void> {
+  await putPlatformData(PLATFORM_STORE_KEYS.VIEWER_INTEGRATIONS, store);
+}
+
+function writeStoreDeferred(store: IntegrationStore): void {
+  setPlatformDataCache(PLATFORM_STORE_KEYS.VIEWER_INTEGRATIONS, store);
+  persistPlatformDataDeferred(PLATFORM_STORE_KEYS.VIEWER_INTEGRATIONS);
 }
 
 function encryptionKey(): Buffer {
@@ -159,7 +154,7 @@ function markViewerIntegrationExpired(viewerId: string): void {
   const current = store[viewerId];
   if (!current || current.status !== "active") return;
   store[viewerId] = { ...current, status: "expired" };
-  writeStore(store);
+  writeStoreDeferred(store);
 }
 
 export function getEffectiveScopes(viewerId: string): ViewerApiScope[] {
@@ -233,12 +228,12 @@ export function revealViewerToken(viewerId: string): string | null {
   return decryptToken(record.tokenCiphertext);
 }
 
-function persistToken(
+async function persistToken(
   viewerId: string,
   token: string,
   expiration: CredentialExpirationPreset,
   enabled = true,
-): ViewerIntegrationRecord {
+): Promise<ViewerIntegrationRecord> {
   const store = readStore();
   const prefix = token.slice(0, TOKEN_PREFIX.length + 8);
   const now = new Date().toISOString();
@@ -253,14 +248,14 @@ function persistToken(
     expirationPreset: expiration,
     expiresAt: computeExpiresAt(expiration, new Date(now)),
   };
-  writeStore(store);
+  await writeStore(store);
   return getViewerIntegration(viewerId);
 }
 
-export function setViewerIntegrationEnabled(
+export async function setViewerIntegrationEnabled(
   viewerId: string,
   enabled: boolean,
-): ViewerIntegrationRecord {
+): Promise<ViewerIntegrationRecord> {
   assertViewerExists(viewerId);
   const store = readStore();
   const current = store[viewerId] ?? defaultRecord();
@@ -275,35 +270,37 @@ export function setViewerIntegrationEnabled(
         ? "active"
         : current.status,
   };
-  writeStore(store);
+  await writeStore(store);
   return getViewerIntegration(viewerId);
 }
 
-export function generateViewerIntegrationToken(
+export async function generateViewerIntegrationToken(
   viewerId: string,
   expiration: CredentialExpirationPreset,
-): {
+): Promise<{
   record: ViewerIntegrationRecord;
   token: string;
-} {
+}> {
   assertViewerExists(viewerId);
   parseCredentialExpiration(expiration);
   const token = generateRawToken();
-  const record = persistToken(viewerId, token, expiration, true);
+  const record = await persistToken(viewerId, token, expiration, true);
   return { record, token };
 }
 
-export function regenerateViewerIntegrationToken(
+export async function regenerateViewerIntegrationToken(
   viewerId: string,
   expiration: CredentialExpirationPreset,
-): {
+): Promise<{
   record: ViewerIntegrationRecord;
   token: string;
-} {
+}> {
   return generateViewerIntegrationToken(viewerId, expiration);
 }
 
-export function revokeViewerIntegrationToken(viewerId: string): ViewerIntegrationRecord {
+export async function revokeViewerIntegrationToken(
+  viewerId: string,
+): Promise<ViewerIntegrationRecord> {
   assertViewerExists(viewerId);
   const store = readStore();
   const current = store[viewerId] ?? defaultRecord();
@@ -318,14 +315,14 @@ export function revokeViewerIntegrationToken(viewerId: string): ViewerIntegratio
     expirationPreset: undefined,
     expiresAt: null,
   };
-  writeStore(store);
+  await writeStore(store);
   return getViewerIntegration(viewerId);
 }
 
-export function deleteViewerIntegration(viewerId: string): void {
+export async function deleteViewerIntegration(viewerId: string): Promise<void> {
   const store = readStore();
   delete store[viewerId];
-  writeStore(store);
+  await writeStore(store);
 }
 
 export function isViewerIntegrationToken(token: string): boolean {

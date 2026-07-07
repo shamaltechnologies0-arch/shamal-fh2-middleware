@@ -20,6 +20,13 @@ interface WebhookEventDoc {
 
 let client: MongoClient | null = null;
 let eventsCollection: Collection<WebhookEventDoc> | null = null;
+let platformDataCollection: Collection<PlatformDataDoc> | null = null;
+
+interface PlatformDataDoc {
+  _id: string;
+  data: unknown;
+  updated_at: Date;
+}
 
 function mapDoc(doc: WebhookEventDoc): WebhookEventRow {
   return {
@@ -40,14 +47,48 @@ function requireEventsCollection(): Collection<WebhookEventDoc> {
   return eventsCollection;
 }
 
+export function isDatabaseReady(): boolean {
+  return client !== null && platformDataCollection !== null;
+}
+
+export async function getPlatformStoreDocument(
+  key: string,
+): Promise<unknown | undefined> {
+  if (!platformDataCollection) return undefined;
+  const doc = await platformDataCollection.findOne({ _id: key });
+  return doc?.data;
+}
+
+export async function setPlatformStoreDocument(
+  key: string,
+  data: unknown,
+): Promise<void> {
+  const collection = requirePlatformDataCollection();
+  await collection.updateOne(
+    { _id: key },
+    { $set: { data, updated_at: new Date() } },
+    { upsert: true },
+  );
+}
+
+function requirePlatformDataCollection(): Collection<PlatformDataDoc> {
+  if (!platformDataCollection) {
+    throw new Error(
+      "MongoDB platform store is not initialized. Ensure MONGODB_URI is set.",
+    );
+  }
+  return platformDataCollection;
+}
+
 export async function initDatabase(): Promise<void> {
   client = new MongoClient(config.MONGODB_URI);
   await client.connect();
-  eventsCollection = client
-    .db(config.MONGODB_DB_NAME)
-    .collection<WebhookEventDoc>("webhook_events");
+  const db = client.db(config.MONGODB_DB_NAME);
+  eventsCollection = db.collection<WebhookEventDoc>("webhook_events");
+  platformDataCollection = db.collection<PlatformDataDoc>("platform_data");
   await eventsCollection.createIndex({ received_at: -1 });
   await eventsCollection.createIndex({ event_type: 1 });
+  await platformDataCollection.createIndex({ updated_at: -1 });
   console.info(
     `[db] MongoDB connected (database: ${config.MONGODB_DB_NAME})`,
   );
@@ -58,6 +99,7 @@ export async function closeDatabase(): Promise<void> {
     await client.close();
     client = null;
     eventsCollection = null;
+    platformDataCollection = null;
   }
 }
 

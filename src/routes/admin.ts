@@ -184,8 +184,8 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       try {
-        const created = createManagedViewer(parsed.data);
-        const { token } = generateViewerIntegrationToken(created.record.username, "1y");
+        const created = await createManagedViewer(parsed.data);
+        const { token } = await generateViewerIntegrationToken(created.record.username, "1y");
         return reply.status(201).send({
           data: {
             accountId: created.record.username,
@@ -238,10 +238,10 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       try {
-        deleteManagedViewer(accountId);
-        deleteViewerDashboardPermissions(accountId);
-        deleteViewerIntegration(accountId);
-        removeViewerFromAllProjects(accountId);
+        await deleteManagedViewer(accountId);
+        await deleteViewerDashboardPermissions(accountId);
+        await deleteViewerIntegration(accountId);
+        await removeViewerFromAllProjects(accountId);
         return reply.send({
           data: { accountId, deleted: true },
           meta: { source: "shamal-platform" },
@@ -316,7 +316,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       try {
-        const permissions = updateViewerDashboardPermissions(accountId, parsed.data);
+        const permissions = await updateViewerDashboardPermissions(accountId, parsed.data);
         const account = findAccount(accountId)!;
         return reply.send({
           data: {
@@ -391,7 +391,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       try {
-        setViewerIntegrationEnabled(accountId, parsed.data.enabled);
+        await setViewerIntegrationEnabled(accountId, parsed.data.enabled);
         return reply.send({
           data: getAdminIntegrationView(accountId, apiBaseFromRequest(request)),
           meta: { source: "shamal-platform" },
@@ -430,7 +430,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
         });
       }
       try {
-        const { token } = generateViewerIntegrationToken(accountId, parsed.data.expiration);
+        const { token } = await generateViewerIntegrationToken(accountId, parsed.data.expiration);
         return reply.send({
           data: {
             ...getAdminIntegrationView(accountId, apiBaseFromRequest(request)),
@@ -476,7 +476,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
         });
       }
       try {
-        const { token } = regenerateViewerIntegrationToken(accountId, parsed.data.expiration);
+        const { token } = await regenerateViewerIntegrationToken(accountId, parsed.data.expiration);
         return reply.send({
           data: {
             ...getAdminIntegrationView(accountId, apiBaseFromRequest(request)),
@@ -515,7 +515,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
 
       const { accountId } = request.params as { accountId: string };
       try {
-        revokeViewerIntegrationToken(accountId);
+        await revokeViewerIntegrationToken(accountId);
         return reply.send({
           data: getAdminIntegrationView(accountId, apiBaseFromRequest(request)),
           meta: { source: "shamal-platform" },
@@ -606,7 +606,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
             message: `Only viewer users can be assigned: ${viewerId}`,
           });
         }
-        assignViewerToProject(projectId, viewerId);
+        await assignViewerToProject(projectId, viewerId);
         return reply.send({ data: { projectId, viewerId }, meta: { source: "shamal-platform" } });
       } catch (err) {
         const message = (err as Error).message;
@@ -625,7 +625,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       const gate = requireAdmin(request.ccRole);
       if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
       const { projectId, viewerId } = request.params as { projectId: string; viewerId: string };
-      removeViewerFromProject(projectId, viewerId);
+      await removeViewerFromProject(projectId, viewerId);
       return reply.send({ data: { projectId, viewerId, removed: true }, meta: { source: "shamal-platform" } });
     },
   );
@@ -639,7 +639,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
       const { projectId } = request.params as { projectId: string };
       try {
-        const project = setFh2ProjectLocalStatus(projectId, false);
+        const project = await setFh2ProjectLocalStatus(projectId, false);
         return reply.send({ data: project, meta: { source: "shamal-platform" } });
       } catch (err) {
         const message = (err as Error).message;

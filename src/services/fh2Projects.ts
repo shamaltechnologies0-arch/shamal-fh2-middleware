@@ -1,14 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { createFh2Client } from "../fh2/client.js";
 import { config } from "../config.js";
-
-const storePath = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../data/fh2-projects.json",
-);
+import {
+  getPlatformData,
+  getPlatformStoreFilePath,
+  PLATFORM_STORE_KEYS,
+  putPlatformData,
+} from "./platformDataStore.js";
 
 const projectSchema = z.object({
   fh2ProjectId: z.string().min(1),
@@ -32,32 +30,22 @@ export type SyncedFh2Project = z.infer<typeof projectSchema>;
 
 type ProjectStore = z.infer<typeof storeSchema>;
 
-function ensureStoreDir(): void {
-  const dir = dirname(storePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
 function defaultStore(): ProjectStore {
   return { projects: [], assignments: {} };
 }
 
 function readStore(): ProjectStore {
-  ensureStoreDir();
-  if (!existsSync(storePath)) return defaultStore();
-  try {
-    const raw = readFileSync(storePath, "utf8");
-    const parsed = JSON.parse(raw);
-    const validated = storeSchema.safeParse(parsed);
-    if (!validated.success) return defaultStore();
-    return validated.data;
-  } catch {
-    return defaultStore();
-  }
+  const parsed = getPlatformData<ProjectStore>(
+    PLATFORM_STORE_KEYS.FH2_PROJECTS,
+    defaultStore(),
+  );
+  const validated = storeSchema.safeParse(parsed);
+  if (!validated.success) return defaultStore();
+  return validated.data;
 }
 
-function writeStore(store: ProjectStore): void {
-  ensureStoreDir();
-  writeFileSync(storePath, JSON.stringify(store, null, 2) + "\n", "utf8");
+async function writeStore(store: ProjectStore): Promise<void> {
+  await putPlatformData(PLATFORM_STORE_KEYS.FH2_PROJECTS, store);
 }
 
 function normalizeCode(value: string): string {
@@ -128,7 +116,7 @@ export async function syncFh2ProjectsFromSource(): Promise<{
     store.projects = [...dedupById.values()];
     store.lastSyncAt = now;
     store.lastSyncError = undefined;
-    writeStore(store);
+    await writeStore(store);
     return {
       syncedCount: list.length,
       projects: listFh2Projects(),
@@ -136,15 +124,15 @@ export async function syncFh2ProjectsFromSource(): Promise<{
   } catch (err) {
     store.lastSyncError = (err as Error).message;
     store.lastSyncAt = now;
-    writeStore(store);
+    await writeStore(store);
     throw err;
   }
 }
 
-export function setFh2ProjectLocalStatus(
+export async function setFh2ProjectLocalStatus(
   fh2ProjectId: string,
   active: boolean,
-): SyncedFh2Project {
+): Promise<SyncedFh2Project> {
   const store = readStore();
   const index = store.projects.findIndex((p) => p.fh2ProjectId === fh2ProjectId);
   if (index < 0) throw new Error(`Project "${fh2ProjectId}" not found`);
@@ -155,35 +143,41 @@ export function setFh2ProjectLocalStatus(
     lastSyncedAt: current.lastSyncedAt || nowIso(),
   };
   store.projects[index] = next;
-  writeStore(store);
+  await writeStore(store);
   return next;
 }
 
-export function assignViewerToProject(fh2ProjectId: string, viewerId: string): void {
+export async function assignViewerToProject(
+  fh2ProjectId: string,
+  viewerId: string,
+): Promise<void> {
   const store = readStore();
   const project = store.projects.find((p) => p.fh2ProjectId === fh2ProjectId);
   if (!project) throw new Error(`Project "${fh2ProjectId}" not found`);
   const list = new Set(store.assignments[viewerId] ?? []);
   list.add(fh2ProjectId);
   store.assignments[viewerId] = [...list];
-  writeStore(store);
+  await writeStore(store);
 }
 
-export function removeViewerFromProject(fh2ProjectId: string, viewerId: string): void {
+export async function removeViewerFromProject(
+  fh2ProjectId: string,
+  viewerId: string,
+): Promise<void> {
   const store = readStore();
   const current = store.assignments[viewerId] ?? [];
   store.assignments[viewerId] = current.filter((id) => id !== fh2ProjectId);
   if (store.assignments[viewerId].length === 0) {
     delete store.assignments[viewerId];
   }
-  writeStore(store);
+  await writeStore(store);
 }
 
-export function removeViewerFromAllProjects(viewerId: string): void {
+export async function removeViewerFromAllProjects(viewerId: string): Promise<void> {
   const store = readStore();
   if (!(viewerId in store.assignments)) return;
   delete store.assignments[viewerId];
-  writeStore(store);
+  await writeStore(store);
 }
 
 export function listAssignedViewerIds(fh2ProjectId: string): string[] {
@@ -237,5 +231,5 @@ export function resolveFallbackProjectCode(): string | undefined {
 }
 
 export function getFh2ProjectsStorePath(): string {
-  return storePath;
+  return getPlatformStoreFilePath(PLATFORM_STORE_KEYS.FH2_PROJECTS);
 }

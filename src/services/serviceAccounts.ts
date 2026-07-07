@@ -1,7 +1,4 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
   type CredentialExpirationPreset,
@@ -9,6 +6,14 @@ import {
   credentialExpirationPresetSchema,
   isCredentialExpired,
 } from "./credentialExpiration.js";
+import {
+  getPlatformData,
+  getPlatformStoreFilePath,
+  persistPlatformDataDeferred,
+  PLATFORM_STORE_KEYS,
+  putPlatformData,
+  setPlatformDataCache,
+} from "./platformDataStore.js";
 import {
   hashClientSecret,
   signServiceAccountJwt,
@@ -21,10 +26,6 @@ import type { ViewerApiScope } from "./viewerScopes.js";
 
 const CLIENT_ID_PREFIX = "sa_srv_";
 const CLIENT_SECRET_PREFIX = "sec_";
-const STORE_PATH = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../data/service-accounts.json",
-);
 export const SERVICE_ACCOUNTS_MAX_PER_USER = 10;
 const ACCESS_TOKEN_TTL_SECONDS = 3600;
 const SECRET_PREFIX_DISPLAY_LENGTH = 12;
@@ -115,27 +116,22 @@ export const updateServiceAccountSchema = z.object({
   scopes: z.array(viewerScopeSchema).min(1).optional(),
 });
 
-function ensureStoreDir(): void {
-  const dir = dirname(STORE_PATH);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
 function readStore(): ServiceAccountRecord[] {
-  ensureStoreDir();
-  if (!existsSync(STORE_PATH)) return [];
-  try {
-    const raw = readFileSync(STORE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as ServiceAccountRecord[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((row) => recordSchema.safeParse(row).success);
-  } catch {
-    return [];
-  }
+  const raw = getPlatformData<ServiceAccountRecord[]>(
+    PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS,
+    [],
+  );
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((row) => recordSchema.safeParse(row).success);
 }
 
-function writeStore(records: ServiceAccountRecord[]): void {
-  ensureStoreDir();
-  writeFileSync(STORE_PATH, JSON.stringify(records, null, 2) + "\n", "utf8");
+async function writeStore(records: ServiceAccountRecord[]): Promise<void> {
+  await putPlatformData(PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS, records);
+}
+
+function writeStoreDeferred(records: ServiceAccountRecord[]): void {
+  setPlatformDataCache(PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS, records);
+  persistPlatformDataDeferred(PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS);
 }
 
 function nowIso(): string {
@@ -198,7 +194,7 @@ function touchLastUsed(accountId: string): void {
   if (!record) return;
   record.lastUsedAt = nowIso();
   record.updatedAt = record.lastUsedAt;
-  writeStore(records);
+  writeStoreDeferred(records);
 }
 
 function isAccountUsable(record: ServiceAccountRecord): boolean {
@@ -246,11 +242,11 @@ export function getServiceAccountById(accountId: string): ServiceAccountPublic |
   return record ? toPublic(record) : null;
 }
 
-export function createServiceAccount(
+export async function createServiceAccount(
   ownerUserId: string,
   input: z.infer<typeof createServiceAccountSchema>,
   createdBy: string,
-): { record: ServiceAccountPublic; clientSecret: string } {
+): Promise<{ record: ServiceAccountPublic; clientSecret: string }> {
   const parsed = createServiceAccountSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("Invalid service account payload");
@@ -285,15 +281,15 @@ export function createServiceAccount(
   };
 
   records.push(record);
-  writeStore(records);
+  await writeStore(records);
   return { record: toPublic(record), clientSecret };
 }
 
-export function updateServiceAccount(
+export async function updateServiceAccount(
   ownerUserId: string,
   accountId: string,
   patch: z.infer<typeof updateServiceAccountSchema>,
-): ServiceAccountPublic {
+): Promise<ServiceAccountPublic> {
   const parsed = updateServiceAccountSchema.safeParse(patch);
   if (!parsed.success) {
     throw new Error("Invalid service account update payload");
@@ -315,22 +311,28 @@ export function updateServiceAccount(
     record.scopes = parsed.data.scopes;
   }
   record.updatedAt = nowIso();
-  writeStore(records);
+  await writeStore(records);
   return toPublic(record);
 }
 
-export function revokeServiceAccount(ownerUserId: string, accountId: string): ServiceAccountPublic {
+export async function revokeServiceAccount(
+  ownerUserId: string,
+  accountId: string,
+): Promise<ServiceAccountPublic> {
   const records = readStore();
   const record = accountsForOwner(records, ownerUserId).find((row) => row.id === accountId);
   if (!record) throw new Error("Service account not found");
   record.status = "revoked";
   record.revokedAt = nowIso();
   record.updatedAt = record.revokedAt;
-  writeStore(records);
+  await writeStore(records);
   return toPublic(record);
 }
 
-export function reactivateServiceAccount(ownerUserId: string, accountId: string): ServiceAccountPublic {
+export async function reactivateServiceAccount(
+  ownerUserId: string,
+  accountId: string,
+): Promise<ServiceAccountPublic> {
   const records = readStore();
   const record = accountsForOwner(records, ownerUserId).find((row) => row.id === accountId);
   if (!record) throw new Error("Service account not found");
@@ -340,21 +342,24 @@ export function reactivateServiceAccount(ownerUserId: string, accountId: string)
   record.status = "active";
   record.revokedAt = null;
   record.updatedAt = nowIso();
-  writeStore(records);
+  await writeStore(records);
   return toPublic(record);
 }
 
-export function deleteServiceAccount(ownerUserId: string, accountId: string): void {
+export async function deleteServiceAccount(
+  ownerUserId: string,
+  accountId: string,
+): Promise<void> {
   const records = readStore();
   const record = accountsForOwner(records, ownerUserId).find((row) => row.id === accountId);
   if (!record) throw new Error("Service account not found");
-  writeStore(records.filter((row) => row.id !== accountId));
+  await writeStore(records.filter((row) => row.id !== accountId));
 }
 
-export function rotateServiceAccountSecret(
+export async function rotateServiceAccountSecret(
   ownerUserId: string,
   accountId: string,
-): { record: ServiceAccountPublic; clientSecret: string } {
+): Promise<{ record: ServiceAccountPublic; clientSecret: string }> {
   const records = readStore();
   const record = accountsForOwner(records, ownerUserId).find((row) => row.id === accountId);
   if (!record) throw new Error("Service account not found");
@@ -366,7 +371,7 @@ export function rotateServiceAccountSecret(
   record.clientSecretHash = hashClientSecret(clientSecret);
   record.clientSecretPrefix = secretPrefixFromPlaintext(clientSecret);
   record.updatedAt = nowIso();
-  writeStore(records);
+  await writeStore(records);
   return { record: toPublic(record), clientSecret };
 }
 

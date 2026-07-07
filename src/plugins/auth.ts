@@ -28,7 +28,6 @@ import {
   verifyAccessToken,
 } from "../services/serviceAccounts.js";
 import {
-  ensureRestApiKeysMigrated,
   importLegacyViewerApiKey,
   touchRestApiKeyLastUsed,
   userHasRestApiKeys,
@@ -72,7 +71,6 @@ function resolveLegacyViewerApiKey(apiKey: string): boolean {
 
 function isValidApiKey(apiKey: string): boolean {
   if (config.viewerApiKeys.includes(apiKey)) return true;
-  ensureRestApiKeysMigrated();
   if (verifyRestApiKey(apiKey)) return true;
   return resolveLegacyViewerApiKey(apiKey);
 }

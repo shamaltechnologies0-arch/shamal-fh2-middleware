@@ -143,7 +143,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
         });
       }
       try {
-        const { record, clientSecret } = createServiceAccount(
+        const { record, clientSecret } = await createServiceAccount(
           request.ccUsername,
           parsed.data,
           request.ccUsername,
@@ -197,7 +197,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
         });
       }
       try {
-        const record = updateServiceAccount(request.ccUsername, id, parsed.data);
+        const record = await updateServiceAccount(request.ccUsername, id, parsed.data);
         return reply.send({ data: toApiRecord(record), meta: listMeta(request.ccUsername) });
       } catch (err) {
         return handleServiceError(err, reply);
@@ -216,7 +216,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
       if (!requireSignedInUser(request, reply)) return;
       const { id } = request.params as { id: string };
       try {
-        const record = revokeServiceAccount(request.ccUsername, id);
+        const record = await revokeServiceAccount(request.ccUsername, id);
         return reply.send({ data: toApiRecord(record), meta: listMeta(request.ccUsername) });
       } catch (err) {
         return handleServiceError(err, reply);
@@ -235,7 +235,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
       if (!requireSignedInUser(request, reply)) return;
       const { id } = request.params as { id: string };
       try {
-        const record = reactivateServiceAccount(request.ccUsername, id);
+        const record = await reactivateServiceAccount(request.ccUsername, id);
         return reply.send({ data: toApiRecord(record), meta: listMeta(request.ccUsername) });
       } catch (err) {
         return handleServiceError(err, reply);
@@ -257,7 +257,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
       if (!requireSignedInUser(request, reply)) return;
       const { id } = request.params as { id: string };
       try {
-        const { record, clientSecret } = rotateServiceAccountSecret(request.ccUsername, id);
+        const { record, clientSecret } = await rotateServiceAccountSecret(request.ccUsername, id);
         return reply.send({
           data: toApiRecord(record, clientSecret),
           meta: {
@@ -282,7 +282,7 @@ export const serviceAccountsRoutes: FastifyPluginAsync = async (app) => {
       if (!requireSignedInUser(request, reply)) return;
       const { id } = request.params as { id: string };
       try {
-        deleteServiceAccount(request.ccUsername, id);
+        await deleteServiceAccount(request.ccUsername, id);
         return reply.send({
           data: { id, deleted: true },
           meta: listMeta(request.ccUsername),
@@ -338,7 +338,7 @@ export function registerAdminServiceAccountRoutes(app: FastifyInstance): void {
         });
       }
       try {
-        const { record, clientSecret } = createServiceAccount(
+        const { record, clientSecret } = await createServiceAccount(
           parsed.data.ownerUserId,
           parsed.data,
           request.ccUsername ?? "admin",

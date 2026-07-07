@@ -2,7 +2,6 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { config, readCcCredentialEnv } from "../config.js";
 import { getPlatformSessionSecret } from "./platformSecret.js";
 import {
-  ensureRestApiKeysMigrated,
   getPrimaryApiKeyForUser,
   verifyRestApiKey,
 } from "./restApiKeys.js";
@@ -84,7 +83,6 @@ function buildPlatformUsersFromEnv(creds: ReturnType<typeof readCcCredentialEnv>
 
 /** Loads platform users: Shamal admin from .env; viewers from Admin Settings (data/viewer-users.json). */
 export function getCcUsers(): CcUser[] {
-  ensureRestApiKeysMigrated();
   const creds = readCcCredentialEnv();
   const users = buildPlatformUsersFromEnv(creds);
 

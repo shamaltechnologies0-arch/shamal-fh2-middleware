@@ -6,9 +6,6 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
   type CredentialExpirationPreset,
@@ -18,14 +15,18 @@ import {
   parseCredentialExpiration,
 } from "./credentialExpiration.js";
 import { getPlatformSessionSecret } from "./platformSecret.js";
+import {
+  getPlatformData,
+  getPlatformStoreFilePath,
+  persistPlatformDataDeferred,
+  PLATFORM_STORE_KEYS,
+  putPlatformData,
+  setPlatformDataCache,
+} from "./platformDataStore.js";
 import { isManagedViewer, listManagedViewerRecords } from "./viewerUsers.js";
 
 const KEY_PREFIX = "vwr_";
 const ID_PREFIX = "key_";
-const STORE_PATH = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../data/viewer-rest-api-keys.json",
-);
 const MAX_KEYS_PER_USER = 10;
 export const REST_API_KEYS_MAX_PER_USER = MAX_KEYS_PER_USER;
 const PREFIX_DISPLAY_LENGTH = 12;
@@ -105,27 +106,22 @@ const revealAttempts = new Map<string, number[]>();
 
 // TODO(2026-Q3): Remove legacy viewer-users.json apiKey migration after one release cycle.
 
-function ensureStoreDir(): void {
-  const dir = dirname(STORE_PATH);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
 function readStore(): RestApiKeyRecord[] {
-  ensureStoreDir();
-  if (!existsSync(STORE_PATH)) return [];
-  try {
-    const raw = readFileSync(STORE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as RestApiKeyRecord[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((row) => recordSchema.safeParse(row).success);
-  } catch {
-    return [];
-  }
+  const raw = getPlatformData<RestApiKeyRecord[]>(
+    PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS,
+    [],
+  );
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((row) => recordSchema.safeParse(row).success);
 }
 
-function writeStore(records: RestApiKeyRecord[]): void {
-  ensureStoreDir();
-  writeFileSync(STORE_PATH, JSON.stringify(records, null, 2) + "\n", "utf8");
+async function writeStore(records: RestApiKeyRecord[]): Promise<void> {
+  await putPlatformData(PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS, records);
+}
+
+function writeStoreDeferred(records: RestApiKeyRecord[]): void {
+  setPlatformDataCache(PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS, records);
+  persistPlatformDataDeferred(PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS);
 }
 
 function encryptionKey(): Buffer {
@@ -242,7 +238,17 @@ function assertLabelAvailable(
   }
 }
 
-function persistRecord(
+async function persistRecord(
+  records: RestApiKeyRecord[],
+  record: RestApiKeyRecord,
+  options?: { makePrimary?: boolean },
+): Promise<RestApiKeyRecord> {
+  persistRecordDeferred(records, record, options);
+  await writeStore(records);
+  return record;
+}
+
+function persistRecordDeferred(
   records: RestApiKeyRecord[],
   record: RestApiKeyRecord,
   options?: { makePrimary?: boolean },
@@ -261,7 +267,7 @@ function persistRecord(
   } else {
     records.push(record);
   }
-  writeStore(records);
+  writeStoreDeferred(records);
   return record;
 }
 
@@ -311,7 +317,6 @@ function legacyKeyHashExists(
 }
 
 export function userHasRestApiKeys(userId: string): boolean {
-  ensureRestApiKeysMigrated();
   return keysForUser(readStore(), userId).length > 0;
 }
 
@@ -319,8 +324,10 @@ export function getPrimaryRestApiKeyMasked(userId: string): string | null {
   return getPrimaryApiKeyRecord(userId)?.keyMasked ?? null;
 }
 
-export function importLegacyViewerApiKey(userId: string, plaintext: string): boolean {
-  ensureRestApiKeysMigrated();
+export function importLegacyViewerApiKey(
+  userId: string,
+  plaintext: string,
+): boolean {
   if (!isManagedViewer(userId) || !plaintext.startsWith(KEY_PREFIX)) return false;
 
   const records = readStore();
@@ -335,7 +342,7 @@ export function importLegacyViewerApiKey(userId: string, plaintext: string): boo
     isPrimary: true,
     expiration: "1y",
   });
-  persistRecord(records, record, { makePrimary: true });
+  persistRecordDeferred(records, record, { makePrimary: true });
   return true;
 }
 
@@ -344,7 +351,7 @@ export function __resetRestApiKeysMigrationForTests(): void {
   migrationDone = false;
 }
 
-export function ensureRestApiKeysMigrated(): void {
+export async function ensureRestApiKeysMigrated(): Promise<void> {
   if (migrationDone) return;
   migrationDone = true;
 
@@ -369,30 +376,28 @@ export function ensureRestApiKeysMigrated(): void {
     changed = true;
   }
 
-  if (changed) writeStore(records);
+  if (changed) await writeStore(records);
 }
 
 export function listRestApiKeys(userId: string): RestApiKeyPublic[] {
-  ensureRestApiKeysMigrated();
   return keysForUser(readStore(), userId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(toPublic);
 }
 
 export function getRestApiKey(userId: string, keyId: string): RestApiKeyPublic | null {
-  ensureRestApiKeysMigrated();
   const record = keysForUser(readStore(), userId).find((row) => row.id === keyId);
   return record ? toPublic(record) : null;
 }
 
-export function createRestApiKey(
+export async function createRestApiKey(
   userId: string,
   label: string,
   createdBy: string,
   expiration: CredentialExpirationPreset,
   options?: { plaintext?: string; isPrimary?: boolean },
-): { record: RestApiKeyPublic; plaintext: string } {
-  ensureRestApiKeysMigrated();
+): Promise<{ record: RestApiKeyPublic; plaintext: string }> {
+  await ensureRestApiKeysMigrated();
   assertViewerExists(userId);
 
   const parsed = createRestApiKeySchema.safeParse({ label, expiration });
@@ -432,30 +437,32 @@ export function createRestApiKey(
     isPrimary: makePrimary,
   });
 
-  persistRecord(records, record, { makePrimary });
+  await persistRecord(records, record, { makePrimary });
   return { record: toPublic(record), plaintext };
 }
 
-export function registerRestApiKeyFromPlaintext(
+export async function registerRestApiKeyFromPlaintext(
   userId: string,
   plaintext: string,
   label: string,
   createdBy: string,
   expiration: CredentialExpirationPreset,
   options?: { isPrimary?: boolean },
-): RestApiKeyPublic {
-  return createRestApiKey(userId, label, createdBy, expiration, {
-    plaintext,
-    isPrimary: options?.isPrimary,
-  }).record;
+): Promise<RestApiKeyPublic> {
+  return (
+    await createRestApiKey(userId, label, createdBy, expiration, {
+      plaintext,
+      isPrimary: options?.isPrimary,
+    })
+  ).record;
 }
 
-export function updateRestApiKey(
+export async function updateRestApiKey(
   userId: string,
   keyId: string,
   patch: z.infer<typeof updateRestApiKeySchema>,
-): RestApiKeyPublic {
-  ensureRestApiKeysMigrated();
+): Promise<RestApiKeyPublic> {
+  await ensureRestApiKeysMigrated();
   const parsed = updateRestApiKeySchema.safeParse(patch);
   if (!parsed.success) {
     throw new Error("Invalid API key update payload");
@@ -490,12 +497,12 @@ export function updateRestApiKey(
   }
 
   record.updatedAt = nowIso();
-  persistRecord(records, record);
+  await persistRecord(records, record);
   return toPublic(record);
 }
 
-export function deleteRestApiKey(userId: string, keyId: string): void {
-  ensureRestApiKeysMigrated();
+export async function deleteRestApiKey(userId: string, keyId: string): Promise<void> {
+  await ensureRestApiKeysMigrated();
   const records = readStore();
   const userKeys = keysForUser(records, userId);
   const record = userKeys.find((row) => row.id === keyId);
@@ -510,11 +517,14 @@ export function deleteRestApiKey(userId: string, keyId: string): void {
   if (record.isPrimary) {
     promoteNextPrimary(next, userId);
   }
-  writeStore(next);
+  await writeStore(next);
 }
 
-export function setPrimaryRestApiKey(userId: string, keyId: string): RestApiKeyPublic {
-  ensureRestApiKeysMigrated();
+export async function setPrimaryRestApiKey(
+  userId: string,
+  keyId: string,
+): Promise<RestApiKeyPublic> {
+  await ensureRestApiKeysMigrated();
   const records = readStore();
   const record = keysForUser(records, userId).find((row) => row.id === keyId);
   if (!record) {
@@ -526,12 +536,11 @@ export function setPrimaryRestApiKey(userId: string, keyId: string): RestApiKeyP
 
   record.isPrimary = true;
   record.updatedAt = nowIso();
-  persistRecord(records, record, { makePrimary: true });
+  await persistRecord(records, record, { makePrimary: true });
   return toPublic(record);
 }
 
 export function revealRestApiKey(userId: string, keyId: string): string | null {
-  ensureRestApiKeysMigrated();
   const record = keysForUser(readStore(), userId).find((row) => row.id === keyId);
   if (!record || record.status !== "active" || !record.keyCiphertext) {
     return null;
@@ -559,7 +568,6 @@ export function checkRevealRateLimit(
 }
 
 export function getPrimaryApiKeyForUser(userId: string): string | null {
-  ensureRestApiKeysMigrated();
   const userKeys = keysForUser(readStore(), userId);
   const primary = userKeys.find(
     (row) => row.isPrimary && row.status === "active" && !isCredentialExpired(row.expiresAt),
@@ -574,7 +582,6 @@ export function getPrimaryApiKeyForUser(userId: string): string | null {
 }
 
 export function getPrimaryApiKeyRecord(userId: string): RestApiKeyPublic | null {
-  ensureRestApiKeysMigrated();
   const userKeys = keysForUser(readStore(), userId);
   const primary = userKeys.find((row) => row.isPrimary && row.status === "active");
   const candidate = primary ?? userKeys.find((row) => row.status === "active");
@@ -591,13 +598,12 @@ function markRestApiKeyExpired(keyId: string): void {
   if (!record || record.status !== "active") return;
   record.status = "expired";
   record.updatedAt = nowIso();
-  writeStore(records);
+  writeStoreDeferred(records);
 }
 
 export function verifyRestApiKey(
   plaintext: string,
 ): { userId: string; keyId: string } | null {
-  ensureRestApiKeysMigrated();
   if (!plaintext.startsWith(KEY_PREFIX)) return null;
 
   const digest = hashKey(plaintext);
@@ -631,13 +637,13 @@ export function touchRestApiKeyLastUsed(keyId: string): void {
 
   record.lastUsedAt = new Date(now).toISOString();
   record.updatedAt = record.lastUsedAt;
-  writeStore(records);
+  writeStoreDeferred(records);
 }
 
-export function deleteRestApiKeysForUser(userId: string): void {
-  writeStore(readStore().filter((row) => row.userId !== userId));
+export async function deleteRestApiKeysForUser(userId: string): Promise<void> {
+  await writeStore(readStore().filter((row) => row.userId !== userId));
 }
 
 export function getRestApiKeysStorePath(): string {
-  return STORE_PATH;
+  return getPlatformStoreFilePath(PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS);
 }

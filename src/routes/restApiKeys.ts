@@ -160,7 +160,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
       }
 
       try {
-        const { record, plaintext } = createRestApiKey(
+        const { record, plaintext } = await createRestApiKey(
           request.ccUsername,
           parsed.data.label,
           request.ccUsername,
@@ -231,7 +231,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
       }
 
       try {
-        const record = updateRestApiKey(request.ccUsername, id, parsed.data);
+        const record = await updateRestApiKey(request.ccUsername, id, parsed.data);
         return reply.send({ data: toDetailItem(record), meta: listMeta() });
       } catch (err) {
         return handleServiceError(err, reply);
@@ -254,7 +254,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
       const { id } = request.params as { id: string };
 
       try {
-        deleteRestApiKey(request.ccUsername, id);
+        await deleteRestApiKey(request.ccUsername, id);
         return reply.send({
           data: { id, deleted: true },
           meta: { source: "shamal-platform" },
@@ -326,7 +326,7 @@ export const restApiKeysRoutes: FastifyPluginAsync = async (app) => {
       const { id } = request.params as { id: string };
 
       try {
-        const record = setPrimaryRestApiKey(request.ccUsername, id);
+        const record = await setPrimaryRestApiKey(request.ccUsername, id);
         return reply.send({ data: toDetailItem(record), meta: listMeta() });
       } catch (err) {
         return handleServiceError(err, reply);
@@ -396,7 +396,7 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
       }
 
       try {
-        const { record, plaintext } = createRestApiKey(
+        const { record, plaintext } = await createRestApiKey(
           accountId,
           parsed.data.label,
           request.ccUsername ?? "admin",
@@ -453,7 +453,7 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
       }
 
       try {
-        const record = updateRestApiKey(accountId, id, parsed.data);
+        const record = await updateRestApiKey(accountId, id, parsed.data);
         return reply.send({ data: toDetailItem(record), meta: listMeta() });
       } catch (err) {
         return handleServiceError(err, reply);
@@ -485,7 +485,7 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
       }
 
       try {
-        deleteRestApiKey(accountId, id);
+        await deleteRestApiKey(accountId, id);
         return reply.send({
           data: { id, deleted: true },
           meta: { source: "shamal-platform" },

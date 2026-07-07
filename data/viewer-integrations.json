@@ -1,35 +1,13 @@
 {
-  "viewerA": {
-    "enabled": true,
-    "tokenHash": "c3a5e5cb41a9e8d6d72bacd6ec6ac33597c68f7add90cb3a89359162339dee1e",
-    "tokenPrefix": "shm_live_8c3bbf67",
-    "tokenCiphertext": "tqSyrMU5tEf0WPyOsLOecIMxLHXo7TPVmw6uSkM_b-4d2LSQq5tY6lYVH9DFpDey9S0FL28o4l_dTMuG7nU5dZESRL_gXpuDshzQVD9w1ZP7xGwLIw",
-    "status": "active",
-    "generatedAt": "2026-07-07T06:33:24.064Z",
-    "revokedAt": null,
-    "expirationPreset": "1y",
-    "expiresAt": "2027-07-07T06:33:24.064Z"
-  },
-  "viewerB": {
-    "enabled": true,
-    "tokenHash": "7672c0b6249d0378030305c9a40b8c17b3dd1619a3cf00c700f9e90ae5f10f3a",
-    "tokenPrefix": "shm_live_0dfea205",
-    "tokenCiphertext": "OvrbSy3iluEd6jPbEVq_OTk2KI1ppnCuhrL_pSFCVVBbxqj_s0-7e4MS5QtJ0VSSe-SeTW7bjI3RDk6Hn68tp6oL-EMdS21cWBv2_AO5SpxB83_yqw",
-    "status": "active",
-    "generatedAt": "2026-07-07T06:33:24.067Z",
-    "revokedAt": null,
-    "expirationPreset": "1y",
-    "expiresAt": "2027-07-07T06:33:24.067Z"
-  },
   "clientuser": {
     "enabled": true,
-    "tokenHash": "b212b3af36ed8fce45af62a4f60a6f18d444a608a104df01ebd765fcd6296494",
-    "tokenPrefix": "shm_live_db9b489e",
-    "tokenCiphertext": "dXmompS8PIb-lCtJwcw8KwkAxjrSf-dMF8KoT4vZh2GeS4XMIzNg2GZ8tnYEiU2LFx3A3zSu6UR1ZKVfCKPIzwVrXPgH1HyQb8osN0GaTbRJ4PFOyA",
+    "tokenHash": "950c398776c1da78a6ccf199e2877d0b5a85885314ba643a06500798104c13b9",
+    "tokenPrefix": "shm_live_748f47c6",
+    "tokenCiphertext": "yQaobLFf9dLcj1Gq3S8Tb7Ji91t1XsqWrxIWCCSpaqg0gmW19KoaBoJCqh9ALZBYJ9q9bdUgb652pGVP2enkuHRHhkoDIfJWKl_eefzdFgtTBpfhEg",
     "status": "active",
-    "generatedAt": "2026-07-07T06:25:57.773Z",
+    "generatedAt": "2026-07-07T13:12:05.520Z",
     "revokedAt": null,
     "expirationPreset": "1y",
-    "expiresAt": "2027-07-07T06:25:57.773Z"
+    "expiresAt": "2027-07-07T13:12:05.520Z"
   }
 }

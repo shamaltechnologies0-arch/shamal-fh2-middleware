@@ -1,14 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import type { CcUser } from "./commandCenterAuth.js";
+import {
+  getPlatformData,
+  getPlatformStoreFilePath,
+  PLATFORM_STORE_KEYS,
+  putPlatformData,
+} from "./platformDataStore.js";
 import { createRestApiKey, deleteRestApiKeysForUser } from "./restApiKeys.js";
-
-const storePath = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../data/viewer-users.json",
-);
 
 const viewerRecordSchema = z.object({
   username: z.string().min(2).max(64).regex(/^[a-zA-Z0-9._-]+$/),
@@ -35,32 +33,19 @@ export type CreateManagedViewerResult = {
   primaryRestApiKeyMasked: string;
 };
 
-function ensureStoreDir(): void {
-  const dir = dirname(storePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
 function readStore(): StoredViewerUser[] {
-  ensureStoreDir();
-  if (!existsSync(storePath)) return [];
-  try {
-    const raw = readFileSync(storePath, "utf8");
-    const parsed = JSON.parse(raw) as StoredViewerUser[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((row) => {
-      const base = viewerRecordSchema
-        .omit({ apiKey: true })
-        .safeParse(row);
-      return base.success;
-    });
-  } catch {
-    return [];
-  }
+  const raw = getPlatformData<StoredViewerUser[]>(
+    PLATFORM_STORE_KEYS.VIEWER_USERS,
+    [],
+  );
+  return raw.filter((row) => {
+    const base = viewerRecordSchema.omit({ apiKey: true }).safeParse(row);
+    return base.success;
+  });
 }
 
-function writeStore(users: StoredViewerUser[]): void {
-  ensureStoreDir();
-  writeFileSync(storePath, JSON.stringify(users, null, 2) + "\n", "utf8");
+async function writeStore(users: StoredViewerUser[]): Promise<void> {
+  await putPlatformData(PLATFORM_STORE_KEYS.VIEWER_USERS, users);
 }
 
 /** Legacy apiKey from viewer-users.json — migration reads only. */
@@ -88,9 +73,9 @@ export function isManagedViewer(username: string): boolean {
   return readStore().some((u) => u.username === username);
 }
 
-export function createManagedViewer(
+export async function createManagedViewer(
   input: z.infer<typeof createViewerSchema>,
-): CreateManagedViewerResult {
+): Promise<CreateManagedViewerResult> {
   const parsed = createViewerSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("Invalid viewer account payload");
@@ -108,9 +93,9 @@ export function createManagedViewer(
   };
 
   store.push(record);
-  writeStore(store);
+  await writeStore(store);
 
-  const { record: keyRecord, plaintext } = createRestApiKey(
+  const { record: keyRecord, plaintext } = await createRestApiKey(
     record.username,
     "Default",
     "system",
@@ -125,16 +110,16 @@ export function createManagedViewer(
   };
 }
 
-export function deleteManagedViewer(username: string): void {
+export async function deleteManagedViewer(username: string): Promise<void> {
   const store = readStore();
   const next = store.filter((u) => u.username !== username);
   if (next.length === store.length) {
     throw new Error(`Managed viewer account "${username}" was not found`);
   }
-  writeStore(next);
-  deleteRestApiKeysForUser(username);
+  await writeStore(next);
+  await deleteRestApiKeysForUser(username);
 }
 
 export function getViewerUsersStorePath(): string {
-  return storePath;
+  return getPlatformStoreFilePath(PLATFORM_STORE_KEYS.VIEWER_USERS);
 }

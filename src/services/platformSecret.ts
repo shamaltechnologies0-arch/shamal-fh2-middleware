@@ -20,6 +20,10 @@ function isServerlessRuntime(): boolean {
   );
 }
 
+function isProductionRuntime(): boolean {
+  return String(process.env.NODE_ENV).toLowerCase() === "production";
+}
+
 function readEnvSecret(): string | undefined {
   return (
     process.env.PLATFORM_SESSION_SECRET?.trim() ||
@@ -30,7 +34,7 @@ function readEnvSecret(): string | undefined {
 
 function missingEnvSecretError(): Error {
   return new Error(
-    "PLATFORM_SESSION_SECRET or CC_SESSION_SECRET is required for Vercel production",
+    "PLATFORM_SESSION_SECRET or CC_SESSION_SECRET is required in production. Configure a shared secret across all app instances.",
   );
 }
 
@@ -53,7 +57,7 @@ export function getPlatformSessionSecret(): string {
     return fromEnv;
   }
 
-  if (isServerlessRuntime()) {
+  if (isServerlessRuntime() || isProductionRuntime()) {
     throw missingEnvSecretError();
   }
 

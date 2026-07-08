@@ -76,6 +76,15 @@ function requireWritableBackend(): void {
 }
 
 export function getPlatformData<T>(key: PlatformStoreKey, defaultValue: T): T {
+  // Keep JSON-backed deployments coherent across multiple Node workers/processes:
+  // always re-read the latest file snapshot before serving cached values.
+  if (!isDatabaseReady()) {
+    const fromFile = readJsonFile<T>(FILE_PATHS[key]);
+    if (fromFile !== undefined) {
+      cache.set(key, fromFile);
+      return fromFile;
+    }
+  }
   if (cache.has(key)) return cache.get(key) as T;
   return defaultValue;
 }

@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build:vercel",
-  "installCommand": "npm install --include=dev && cd apps/web && npm install",
+  "installCommand": "npm install --include=dev && cd apps/web && npm install --include=dev",
   "framework": null,
   "outputDirectory": "public",
   "rewrites": [

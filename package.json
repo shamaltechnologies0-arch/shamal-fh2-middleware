@@ -1,7 +1,7 @@
 {
   "name": "shamal-fh2-middleware",
   "version": "1.0.0",
-  "description": "Shamal FH2 External Viewer Middleware — restricted viewer access to Shamal FlightHub 2 data",
+  "description": "Shamal FH2 External Middleware — restricted user access to Shamal FlightHub 2 data",
   "type": "module",
   "scripts": {
     "dev": "tsx watch apps/api/src/main.ts",

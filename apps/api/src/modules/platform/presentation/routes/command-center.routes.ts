@@ -9,7 +9,6 @@ const webPublicRoot = join(routesDir, "../../../../../web/public");
 const spaIndexPath = join(uiRoot, "dist/index.html");
 const legacyHtmlPath = join(uiRoot, "command-center.html");
 const loginBgPath = join(routesDir, "../../../../assets/bg-image/bg-main.png");
-const logoPath = join(routesDir, "../../../../assets/logo/logo-white.svg");
 
 const MIME: Record<string, string> = {
   ".html": "text/html",
@@ -73,8 +72,11 @@ export const commandCenterRoutes: FastifyPluginAsync = async (app) => {
     reply.type("image/png").send(readFileSync(loginBgPath));
   });
 
-  app.get("/logo/logo-white.svg", { schema: { hide: true } }, async (_request, reply) => {
-    reply.type("image/svg+xml").send(readFileSync(logoPath));
+  app.get("/logo/*", { schema: { hide: true } }, async (request, reply) => {
+    const url = (request as { url: string }).url.split("?")[0] ?? "";
+    const filePath = resolveUiFile(url);
+    if (!filePath) return reply.status(404).send({ error: "Not found" });
+    reply.type(MIME[extname(filePath)] || "image/svg+xml").send(readFileSync(filePath));
   });
 
   app.get("/portal-legacy.js", { schema: { hide: true } }, async (_request, reply) => {

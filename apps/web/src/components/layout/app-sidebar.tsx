@@ -12,7 +12,7 @@ import {
 import { AppLogo } from "@/components/layout/app-logo";
 import { LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { UserMenu } from "@/components/shared/user-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -150,9 +150,35 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
             <span className="group-data-[collapsible=icon]:hidden">Sign out</span>
           </Button>
         ) : (
-          <div className="flex items-center justify-between gap-1 group-data-[collapsible=icon]:flex-col">
-            <ThemeToggle className="text-sidebar-foreground/70 hover:text-sidebar-foreground" />
-            <UserMenu variant="sidebar" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-1 group-data-[collapsible=icon]:flex-col">
+              <ThemeToggle className="text-sidebar-foreground/70 hover:text-sidebar-foreground" />
+              {session ? (
+                <div className="flex min-w-0 items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:px-0">
+                  <Avatar className="size-7 shrink-0">
+                    <AvatarFallback className="bg-[var(--cc-accent-primary)]/20 text-xs text-[var(--cc-accent-primary)]">
+                      {session.displayName
+                        .split(" ")
+                        .map((part) => part[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-sm font-medium text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                    {session.displayName}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+            <Button
+              variant="ghost"
+              className="h-9 w-full justify-start gap-2 px-2 text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={logout}
+            >
+              <LogOut className="size-4 shrink-0 opacity-90" />
+              <span className="group-data-[collapsible=icon]:hidden">Sign out</span>
+            </Button>
           </div>
         )}
         <SidebarSeparator className="group-data-[collapsible=icon]:hidden" />

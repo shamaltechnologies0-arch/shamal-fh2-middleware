@@ -1,6 +1,6 @@
 import type { AssignedProject } from "@/domains/auth/services/auth.service";
 import { Check, ChevronsUpDown, FolderKanban } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -52,11 +52,7 @@ export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
     if (!legacySession) return;
     const list = legacySession.assignedProjects ?? [];
     setProjects(list);
-    const code =
-      legacySession.selectedProjectCode ??
-      list[0]?.projectCode ??
-      legacySession.fallbackProjectCode ??
-      null;
+    const code = legacySession.selectedProjectCode ?? list[0]?.projectCode ?? null;
     setSelected(code);
   }, [session]);
 
@@ -70,23 +66,45 @@ export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
     };
   }, [refresh]);
 
-  const options = useMemo(() => {
-    const items = [...projects];
-    if (
-      session?.fallbackProjectCode &&
-      !items.some((p) => p.projectCode === session.fallbackProjectCode)
-    ) {
-      items.push({
-        projectCode: session.fallbackProjectCode,
-        projectName: `Default (${session.fallbackProjectCode})`,
-      });
-    }
-    return items;
-  }, [projects, session?.fallbackProjectCode]);
+  if (!session || session.role === "admin") return null;
 
-  if (!session || session.role === "admin" || options.length === 0) return null;
+  const hasAssignedProjects = projects.length > 0;
 
-  const current = options.find((p) => p.projectCode === selected);
+  if (!hasAssignedProjects) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="outline"
+              size="sm"
+              role="combobox"
+              aria-expanded={open}
+              className={cn(
+                "h-8 max-w-[220px] justify-between gap-1 border-border/60 bg-muted/20 px-2.5 text-xs font-medium text-muted-foreground",
+                className,
+              )}
+            >
+              <FolderKanban className="size-3.5 shrink-0 opacity-60" />
+              <span className="truncate">No projects assigned</span>
+              <ChevronsUpDown className="size-3 shrink-0 opacity-50" />
+            </Button>
+          }
+        />
+        <PopoverContent className="w-72 p-0" align="start">
+          <div className="space-y-1 p-4">
+            <p className="text-sm font-medium">No projects assigned</p>
+            <p className="text-xs text-muted-foreground">
+              Contact your administrator to
+              grant project access.
+            </p>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  const current = projects.find((p) => p.projectCode === selected);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -116,7 +134,7 @@ export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
           <CommandList>
             <CommandEmpty>No project found.</CommandEmpty>
             <CommandGroup heading="Assigned projects">
-              {options.map((project) => (
+              {projects.map((project) => (
                 <CommandItem
                   key={project.projectCode}
                   value={`${project.projectName} ${project.projectCode}`}

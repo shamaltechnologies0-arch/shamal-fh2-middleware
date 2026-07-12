@@ -295,20 +295,22 @@
         sel.appendChild(o);
       }
       const fallback = state.session.fallbackProjectCode;
-      if (!projects.length && fallback) {
-        const o = document.createElement("option");
-        o.value = fallback;
-        o.textContent = `Default (${fallback})`;
-        sel.appendChild(o);
-      }
-      const selected = state.session.selectedProjectCode || projects[0]?.projectCode || fallback || "";
-      if (selected) {
+      const selected =
+        state.session.selectedProjectCode || projects[0]?.projectCode || fallback || "";
+      if (selected && projects.some((p) => p.projectCode === selected)) {
         sel.value = selected;
         state.session.selectedProjectCode = selected;
         saveSession(state.session);
+      } else if (projects[0]?.projectCode) {
+        sel.value = projects[0].projectCode;
+        state.session.selectedProjectCode = projects[0].projectCode;
+        saveSession(state.session);
+      } else if (fallback) {
+        state.session.selectedProjectCode = fallback;
+        saveSession(state.session);
       }
       sel.style.display = projects.length > 1 ? "" : "none";
-      empty.style.display = projects.length === 0 && !fallback ? "" : "none";
+      empty.style.display = projects.length === 0 ? "" : "none";
     }
 
     async function syncSessionFromServer() {

@@ -10,11 +10,10 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true,
-    "baseUrl": ".",
     "paths": {
-      "@api/*": ["apps/api/src/*"],
-      "@shared/*": ["packages/shared/src/*"],
-      "@types/*": ["packages/types/src/*"]
+      "@api/*": ["./apps/api/src/*"],
+      "@shared/*": ["./packages/shared/src/*"],
+      "@types/*": ["./packages/types/src/*"]
     }
   },
   "include": ["apps/api/src/**/*"],

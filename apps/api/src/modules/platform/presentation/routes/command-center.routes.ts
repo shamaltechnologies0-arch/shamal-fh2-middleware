@@ -99,11 +99,22 @@ export const commandCenterRoutes: FastifyPluginAsync = async (app) => {
     reply.type(MIME[ext] || "application/octet-stream").send(readFileSync(filePath));
   });
 
-  for (const staticFile of ["favicon.svg", "icons.svg"]) {
-    app.get(`/${staticFile}`, { schema: { hide: true } }, async (_request, reply) => {
-      const filePath = resolveUiFile(staticFile);
-      if (!filePath) return reply.status(404).send({ error: "Not found" });
-      reply.type(MIME[extname(filePath)]).send(readFileSync(filePath));
-    });
+  const serveFavicon = async (
+    _request: unknown,
+    reply: { type: (t: string) => { send: (b: Buffer) => void }; status: (c: number) => { send: (b: unknown) => void } },
+  ) => {
+    const filePath = resolveUiFile("favicon.svg");
+    if (!filePath) return reply.status(404).send({ error: "Not found" });
+    reply.type(MIME[".svg"]).send(readFileSync(filePath));
+  };
+
+  for (const faviconPath of ["/favicon.svg", "/favicon.ico", "/favicon.png"]) {
+    app.get(faviconPath, { schema: { hide: true } }, serveFavicon);
   }
+
+  app.get("/icons.svg", { schema: { hide: true } }, async (_request, reply) => {
+    const filePath = resolveUiFile("icons.svg");
+    if (!filePath) return reply.status(404).send({ error: "Not found" });
+    reply.type(MIME[extname(filePath)]).send(readFileSync(filePath));
+  });
 };

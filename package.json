@@ -9,7 +9,7 @@
     "build": "npm run build:web && tsc && npm run build:copy-assets",
     "build:vercel": "npm run build && bash scripts/vercel-postbuild.sh",
     "build:web": "cd apps/web && npm run build",
-    "build:copy-assets": "rm -rf dist/apps/api/src/assets && cp -r apps/api/src/assets dist/apps/api/src/assets",
+    "build:copy-assets": "rm -rf dist/apps/api/src/assets dist/openapi && cp -r apps/api/src/assets dist/apps/api/src/assets && cp -r openapi dist/openapi",
     "start": "node dist/apps/api/src/main.js",
     "lint": "tsc --noEmit",
     "lint:web": "cd apps/web && npm run lint",

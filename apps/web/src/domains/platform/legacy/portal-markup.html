@@ -1,0 +1,605 @@
+<div id="confirmModal" class="modal-backdrop">
+    <div class="modal">
+      <h3 id="confirmTitle">Confirm operation</h3>
+      <p id="confirmBody"></p>
+      <div id="confirmStep1">
+        <p class="danger-text">This may send a real command to the aircraft via FlightHub when the device is connected.</p>
+        <div class="row">
+          <button id="confirmCancel">Cancel</button>
+          <button id="confirmNext">Continue to final confirmation</button>
+        </div>
+      </div>
+      <div id="confirmStep2" style="display:none">
+        <label>Type <strong>CONFIRM</strong> to authorize</label>
+        <input id="confirmText" placeholder="CONFIRM" style="width:100%" />
+        <label style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <input type="checkbox" id="confirmCheck" />
+          I understand this operation may affect the live aircraft.
+        </label>
+        <div class="row" style="margin-top:12px">
+          <button id="confirmBack">Back</button>
+          <button id="confirmExecute" style="background:#5a2030;border-color:#8a3040">Execute operation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <header class="legacy-hidden-chrome" aria-hidden="true">
+    <div>
+      <div class="brand">Shamal Platform</div>
+      <div class="small" id="headerSub">Fleet monitoring, live camera, operations, alerts, missions</div>
+      <div class="viewer-client-name" id="viewerClientName" style="display:none"></div>
+    </div>
+    <div class="auth">
+      <span id="liveBadge" class="pill bad" style="display:none">● Offline</span>
+      <span id="userBadge" class="pill role-viewer">Not signed in</span>
+      <button id="logoutBtn" style="display:none">Logout</button>
+      <button id="refreshAll">Refresh</button>
+    </div>
+  </header>
+  <main id="appMain">
+    <nav id="sideNav" class="legacy-hidden-chrome" aria-hidden="true">
+      <button data-tab="dashboard" data-nav-viewer style="display:none">Monitoring Dashboard</button>
+      <button data-tab="settings" data-nav-viewer style="display:none">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8m8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06M12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14"/></svg></span>
+        Settings
+      </button>
+      <button data-tab="fleet" data-nav-staff>1) Live Map + Fleet</button>
+      <button data-tab="camera" data-nav-staff>2) Live Camera Panel</button>
+      <button data-tab="ops" data-nav-staff>3) Operations Panel</button>
+      <button data-tab="alerts" data-nav-staff>4) Alerts &amp; Events</button>
+      <button data-tab="history" data-nav-staff>5) Mission &amp; Media History</button>
+      <button data-tab="admin" data-nav-admin style="display:none">Admin Settings</button>
+    </nav>
+    <div>
+      <section id="dashboard">
+        <h3>Monitoring Dashboard</h3>
+        <p class="viewer-note">Live fleet monitoring — map, telemetry, camera, and mission activity.</p>
+        <div class="row" id="viewerProjectPickerWrap" style="display:none; margin-bottom:10px">
+          <label for="viewerProjectPicker" class="small">Project</label>
+          <select id="viewerProjectPicker" style="min-width:220px"></select>
+          <span id="viewerProjectEmpty" class="small" style="display:none;color:#ffb0b0">
+            No project assigned. Please contact your admin.
+          </span>
+        </div>
+        <div class="dash-grid" id="dashGrid">
+          <div class="dash-card" data-card="fleet" data-permission="fleetOverview" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Fleet Overview</span>
+              <button type="button" class="get-api-btn" data-api-card="fleet">Get API</button>
+            </div>
+            <div class="dash-card-body">
+              <div class="dash-kpis">
+                <div class="dash-kpi"><div class="small">Devices</div><div class="v" id="dashKTotal">-</div></div>
+                <div class="dash-kpi"><div class="small">Online</div><div class="v" id="dashKOnline">-</div></div>
+              </div>
+              <div id="dashFleetMap"></div>
+            </div>
+          </div>
+          <div class="dash-card" data-card="drone-telemetry" data-permission="droneTelemetry" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Drone Telemetry</span>
+              <button type="button" class="get-api-btn" data-api-card="drone-telemetry">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashDroneTelem">Loading…</div>
+          </div>
+          <div class="dash-card" data-card="dock-telemetry" data-permission="dockTelemetry" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Dock Telemetry</span>
+              <button type="button" class="get-api-btn" data-api-card="dock-telemetry">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashDockTelem">Loading…</div>
+          </div>
+          <div class="dash-card" data-card="battery" data-permission="batteryStatus" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Battery Status</span>
+              <button type="button" class="get-api-btn" data-api-card="battery">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashBattery">Loading…</div>
+          </div>
+          <div class="dash-card" data-card="gps" data-permission="gpsLocation" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">GPS / Location</span>
+              <button type="button" class="get-api-btn" data-api-card="gps">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashGps">Loading…</div>
+          </div>
+          <div class="dash-card" data-card="online" data-permission="onlineOffline" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Online / Offline</span>
+              <button type="button" class="get-api-btn" data-api-card="online">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashOnline">Loading…</div>
+          </div>
+          <div class="dash-card" data-card="camera" data-permission="liveCamera" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Live Camera</span>
+              <button type="button" class="get-api-btn" data-api-card="camera">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashCamera">
+              <div class="camera-panel dash-cam-panel">
+                <div class="camera-panel-head"><span>Dock</span><span class="small" id="dashDockMeta">—</span></div>
+                <div class="player-wrap">
+                  <div class="player-placeholder" id="dashDockPlaceholder">Connecting…</div>
+                  <div id="dashDockVolcHost" class="volc-host" style="display:none"></div>
+                  <video id="dashDockPlayer" controls playsinline muted style="display:none"></video>
+                </div>
+              </div>
+              <p class="small" style="margin:6px 0 0">Click card for full-screen view.</p>
+            </div>
+          </div>
+          <div class="dash-card" data-card="drone-fpv" data-permission="droneFpv" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Drone FPV</span>
+              <button type="button" class="get-api-btn" data-api-card="drone-fpv">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashDroneFpv">
+              <div class="camera-panel dash-cam-panel">
+                <div class="camera-panel-head"><span>Drone FPV</span><span class="small" id="dashDroneMeta">—</span></div>
+                <div class="player-wrap">
+                  <div class="player-placeholder" id="dashDronePlaceholder">Connecting…</div>
+                  <div id="dashDroneVolcHost" class="volc-host" style="display:none"></div>
+                  <video id="dashDronePlayer" controls playsinline muted style="display:none"></video>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="dash-card" data-card="alerts" data-permission="alertsEvents" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Alerts &amp; Events</span>
+              <button type="button" class="get-api-btn" data-api-card="alerts">Get API</button>
+            </div>
+            <div class="dash-card-body">
+              <table class="dash-compact-table" id="dashAlertsTable"><thead><tr><th>Type</th><th>Source</th><th>Time</th></tr></thead><tbody></tbody></table>
+            </div>
+          </div>
+          <div class="dash-card" data-card="missions" data-permission="missionMediaHistory" data-zoomable>
+            <div class="dash-card-head">
+              <span class="dash-card-title">Mission &amp; Media History</span>
+              <button type="button" class="get-api-btn" data-api-card="missions">Get API</button>
+            </div>
+            <div class="dash-card-body" id="dashMissions">Loading…</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings">
+        <h3>Settings</h3>
+        <p class="viewer-note settings-subtitle">Manage workspace access, API credentials, and integration configuration.</p>
+        <div id="settingsContent">
+          <div class="settings-tabs ops-tabs" role="tablist" aria-label="Settings sections">
+            <button type="button" role="tab" data-settings-tab="service-accounts" class="active" aria-selected="true">Service Accounts</button>
+            <button type="button" role="tab" data-settings-tab="api-keys" aria-selected="false">API Keys</button>
+          </div>
+          <div id="settingsServiceAccountsPanel" class="settings-panel active" role="tabpanel">
+            <div class="admin-settings-card" id="dashServiceAccountsCard">
+              <div class="api-keys-toolbar">
+                <h4 style="margin:0">Service Accounts</h4>
+                <button type="button" id="serviceAccountsNewBtn">+ New Service Account</button>
+              </div>
+              <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). Exchange <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/viewer/auth/token</code> for a short-lived JWT.</p>
+              <div id="serviceAccountsTableWrap"></div>
+              <p id="serviceAccountsStatus" class="api-keys-error"></p>
+            </div>
+          </div>
+          <div id="settingsApiKeysPanel" class="settings-panel" role="tabpanel">
+            <div class="admin-settings-card" id="dashApiKeysCard">
+              <div class="api-keys-toolbar">
+                <h4 style="margin:0">API Keys</h4>
+                <button type="button" id="restApiKeysNewBtn">+ New Key</button>
+              </div>
+              <p class="small" style="margin:0 0 10px">Manage REST API keys for <code>X-Api-Key</code> authentication.</p>
+              <div id="restApiKeysTableWrap"></div>
+              <p id="restApiKeysStatus" class="api-keys-error"></p>
+            </div>
+          </div>
+        </div>
+        <p id="settingsAccessDenied" class="small" style="display:none">API credential management is not available for your account.</p>
+      </section>
+
+      <section id="fleet" class="active">
+        <h3>Live Map + Fleet</h3>
+        <div class="grid">
+          <div class="kpi"><div class="small">Total devices</div><div class="v" id="kTotal">-</div></div>
+          <div class="kpi"><div class="small">Drones</div><div class="v" id="kDrones">-</div></div>
+          <div class="kpi"><div class="small">Docks</div><div class="v" id="kDocks">-</div></div>
+          <div class="kpi"><div class="small">Online / Offline</div><div class="v" id="kStatus">-</div></div>
+        </div>
+        <div id="fleetTelemetryBanner" class="telemetry-banner warn" style="display:none"></div>
+        <div class="fleet-map-wrap">
+          <div>
+            <div id="fleetMap"></div>
+            <div class="map-legend">Green = drone · Blue = dock · Dashed = cached GPS · Pins refresh every 10s from FlightHub</div>
+          </div>
+          <div>
+            <div class="statusline" id="fleetStatus">Loading...</div>
+            <table id="fleetTable"><thead><tr><th>Serial</th><th>Role</th><th>Model</th><th>Online</th><th>Location</th><th>Battery</th><th>Alt</th><th>GPS</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="camera">
+        <h3 style="margin:0 0 6px">Live Camera Panel</h3>
+        <p class="statusline">Dual live view — dock indoor camera and drone FPV side by side, like FlightHub cockpit.</p>
+        <div class="row camera-toolbar">
+          <select id="camDevice"></select>
+          <button id="loadStream">Start / Refresh Streams</button>
+          <button id="snapshotBtn">Telemetry Snapshot</button>
+          <a id="openFh2Cockpit" href="#" target="_blank" rel="noopener" style="display:none;font-size:12px">Open FlightHub cockpit</a>
+        </div>
+        <div class="camera-split">
+          <div class="camera-panel" id="dockPanel">
+            <div class="camera-panel-head">
+              <span>Dock camera</span>
+              <span class="small" id="dockMeta">indoor</span>
+            </div>
+            <div class="player-wrap">
+              <div class="player-placeholder" id="dockPlaceholder">Waiting for dock stream…</div>
+              <div id="dockVolcHost" class="volc-host" style="display:none"></div>
+              <video id="dockPlayer" controls playsinline muted style="display:none"></video>
+            </div>
+            <div class="stream-statusline" id="dockStatus"></div>
+          </div>
+          <div class="camera-panel" id="dronePanel">
+            <div class="camera-panel-head">
+              <span>Drone FPV</span>
+              <span class="small" id="droneMeta">wide camera</span>
+            </div>
+            <div class="player-wrap">
+              <div class="player-placeholder" id="dronePlaceholder">Waiting for drone stream…</div>
+              <div id="droneVolcHost" class="volc-host" style="display:none"></div>
+              <video id="dronePlayer" controls playsinline muted style="display:none"></video>
+            </div>
+            <div class="stream-statusline" id="droneStatus"></div>
+          </div>
+        </div>
+        <details class="advanced-panel">
+          <summary>Manual fallback (only if automatic stream fails)</summary>
+          <div class="row">
+            <input id="fh2ShareUrl" placeholder="FH2 Livestream Sharing URL" style="flex:1;min-width:200px" />
+            <a id="openFh2Share" href="#" target="_blank" rel="noopener" style="display:none;font-size:12px">Open share link</a>
+          </div>
+        </details>
+        <details class="debug-panel">
+          <summary>Technical details</summary>
+          <div class="pre" id="streamInfo">Stream metadata will appear here.</div>
+        </details>
+      </section>
+
+      <section id="ops">
+        <h3>Operations Panel</h3>
+        <p class="statusline" id="opsRoleNote">Operator or admin role required for flight commands.</p>
+        <div class="ops-layout">
+          <aside>
+            <div class="ops-card">
+              <h4>Target asset</h4>
+              <select id="opsDevice" style="width:100%"></select>
+              <input id="missionId" placeholder="Mission / task UUID (required for start)" style="width:100%;margin-top:8px;box-sizing:border-box" />
+              <div class="readiness">
+                <span class="readiness-dot" id="opsReadyDot"></span>
+                <span id="opsReadyText" class="small">Select device to check readiness</span>
+              </div>
+              <p class="statusline" id="opsMetaNote" style="margin:6px 0"></p>
+              <button id="opsRefreshReady" style="width:100%">Refresh readiness</button>
+            </div>
+            <div class="ops-card" style="margin-top:10px">
+              <h4>Live telemetry</h4>
+              <div class="ops-hud">
+                <div class="m"><div class="lbl">Battery</div><div class="val" id="opsHudBattery">—</div></div>
+                <div class="m"><div class="lbl">Altitude</div><div class="val" id="opsHudAlt">—</div></div>
+                <div class="m"><div class="lbl">Speed</div><div class="val" id="opsHudSpeed">—</div></div>
+                <div class="m"><div class="lbl">GPS sats</div><div class="val" id="opsHudGps">—</div></div>
+                <div class="m"><div class="lbl">Mode</div><div class="val" id="opsHudMode">—</div></div>
+                <div class="m"><div class="lbl">RTK</div><div class="val" id="opsHudRtk">—</div></div>
+              </div>
+            </div>
+            <p class="ops-note">Aligned with DJI FlightHub 2 remote control, dock, mission, and camera APIs. Commands are gated by connectivity and role; double confirmation required.</p>
+          </aside>
+          <div>
+            <div class="ops-tabs" id="opsCategoryTabs"></div>
+            <div class="ops-grid" id="opsActionGrid"></div>
+            <div class="pre" id="opsResult" style="margin-top:12px">No operation yet.</div>
+          </div>
+        </div>
+        <h4 style="margin-top:16px">Operation Log</h4>
+        <table id="opsTable"><thead><tr><th>ID</th><th>Action</th><th>Risk</th><th>Status</th><th>Reason</th><th>Time</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <section id="alerts">
+        <h3>Alerts & Events</h3>
+        <div class="row"><button id="refreshEvents">Refresh Events</button></div>
+        <table id="eventsTable"><thead><tr><th>Type</th><th>Source</th><th>Payload</th><th>Time</th><th>Ack</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <section id="history">
+        <h3>Mission & Media History</h3>
+        <div class="row"><button id="loadTasks">Load Tasks</button><select id="taskSelect"></select><button id="loadMedia">Load Media</button><button id="loadTrack">Load Trajectory</button></div>
+        <div class="pre" id="taskInfo">Task list not loaded.</div>
+        <div class="pre" id="mediaInfo">Media not loaded.</div>
+        <div class="pre" id="trackInfo">Trajectory not loaded.</div>
+      </section>
+
+      <section id="admin">
+        <h3>Admin Settings</h3>
+
+        <div class="admin-settings">
+          <div class="admin-settings-card">
+            <h4>Integration Accounts</h4>
+            <p class="statusline">Create viewer logins for external companies. All accounts are stored here — not in <code>.env</code>.</p>
+            <table class="admin-viewer-table">
+              <thead>
+                <tr><th>Client</th><th>Username</th><th>Source</th><th></th></tr>
+              </thead>
+              <tbody id="adminViewerListBody">
+                <tr><td colspan="4" class="small">Loading…</td></tr>
+              </tbody>
+            </table>
+            <div class="admin-create-grid">
+              <div>
+                <label for="adminNewViewerUser">Username</label>
+                <input id="adminNewViewerUser" placeholder="client-account" autocomplete="off" />
+              </div>
+              <div>
+                <label for="adminNewViewerPass">Password</label>
+                <input id="adminNewViewerPass" type="password" placeholder="Minimum 4 characters" autocomplete="new-password" />
+              </div>
+              <div class="full">
+                <label for="adminNewViewerName">Client / display name</label>
+                <input id="adminNewViewerName" placeholder="e.g. Acme Corp" autocomplete="off" />
+              </div>
+            </div>
+            <div class="row" style="margin-top:10px">
+              <button id="adminCreateViewer">Create Integration Account</button>
+            </div>
+            <p id="adminViewerStatus" class="admin-status"></p>
+          </div>
+
+          <div class="admin-section-title">FH2 Projects</div>
+          <p class="statusline">Projects are created in DJI FlightHub 2. Click Sync to import the latest FH2 project list.</p>
+          <div class="admin-settings-card">
+            <div class="row" style="margin-bottom:10px">
+              <button id="adminSyncProjects">Sync from FlightHub 2</button>
+              <span id="adminProjectSyncMeta" class="small"></span>
+            </div>
+            <table class="admin-viewer-table">
+              <thead>
+                <tr><th>Project</th><th>FH2 ID / Code</th><th>FH2 Status</th><th>Assigned Viewers</th><th>Last Synced</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="adminProjectListBody">
+                <tr><td colspan="6" class="small">Loading…</td></tr>
+              </tbody>
+            </table>
+            <p id="adminProjectStatus" class="admin-status"></p>
+          </div>
+
+          <div class="admin-settings-card">
+            <h4>Assign Viewers to Project</h4>
+            <div class="admin-create-grid">
+              <div>
+                <label for="adminAssignProject">Project</label>
+                <select id="adminAssignProject"></select>
+              </div>
+              <div>
+                <label for="adminAssignViewer">Viewer Account</label>
+                <select id="adminAssignViewer"></select>
+              </div>
+            </div>
+            <div class="row" style="margin-top:10px">
+              <button id="adminAssignViewerBtn">Assign Viewer</button>
+              <button id="adminRemoveViewerBtn" class="admin-delete-btn">Remove Viewer</button>
+            </div>
+            <p id="adminAssignmentStatus" class="admin-status"></p>
+          </div>
+
+          <div class="admin-section-title">Dashboard Access Settings</div>
+          <p class="statusline">Control which dashboard cards each integration account can see.</p>
+          <div class="admin-settings-card">
+            <h4>Integration account</h4>
+            <select id="adminViewerSelect" style="width:100%"></select>
+          </div>
+          <div class="admin-settings-card">
+            <h4>Core Monitoring</h4>
+            <div id="adminPermCore"></div>
+          </div>
+          <div class="admin-settings-card">
+            <h4>Media</h4>
+            <div id="adminPermMedia"></div>
+          </div>
+          <div class="admin-settings-card">
+            <h4>Operations</h4>
+            <div id="adminPermOps"></div>
+          </div>
+          <div class="admin-settings-card">
+            <h4>Actions</h4>
+            <div id="adminPermActions"></div>
+          </div>
+          <div class="row">
+            <button id="adminSaveViewerSettings">Save settings</button>
+          </div>
+          <p id="adminSettingsStatus" class="admin-status"></p>
+
+          <div class="admin-section-title">Integration Key Settings</div>
+          <p class="statusline">Enable API access and manage access keys for the selected integration account.</p>
+          <div class="admin-settings-card" id="adminIntegrationPanel">
+            <div class="integration-field">
+              <div class="lbl">API Integration</div>
+              <label class="perm-toggle-row" style="border:0;padding:0">
+                <span>Enabled for this account</span>
+                <span class="perm-switch">
+                  <input type="checkbox" id="adminIntegrationEnabled" />
+                  <span class="slider"></span>
+                </span>
+              </label>
+            </div>
+            <div class="integration-field">
+              <div class="lbl">Key status</div>
+              <div class="val" id="adminIntegrationStatus">—</div>
+            </div>
+            <div class="integration-field">
+              <div class="lbl">Enabled Data Access</div>
+              <div class="integration-scopes" id="adminIntegrationScopes"></div>
+            </div>
+            <div class="integration-field">
+              <div class="lbl">Last generated</div>
+              <div class="val" id="adminIntegrationGenerated">—</div>
+            </div>
+            <div class="integration-field">
+              <div class="lbl">Expires</div>
+              <div class="val" id="adminIntegrationExpires">—</div>
+            </div>
+            <div class="integration-field">
+              <label for="adminIntegrationExpiration">Key expiration (required when generating)</label>
+              <select id="adminIntegrationExpiration" required>
+                <option value="">Select expiration…</option>
+                <option value="1h">1 hour</option>
+                <option value="1d">1 day</option>
+                <option value="1mo">1 month</option>
+                <option value="3mo">3 months</option>
+                <option value="6mo">6 months</option>
+                <option value="1y">1 year</option>
+              </select>
+            </div>
+            <div class="integration-field" id="adminIntegrationKeyWrap" style="display:none">
+              <div class="lbl">Access key (shown once — copy now)</div>
+              <div class="val" id="adminIntegrationKeyReveal"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="adminIntegrationGenerate">Generate Key</button>
+              <button id="adminIntegrationRegenerate">Regenerate Key</button>
+              <button id="adminIntegrationRevoke" class="admin-delete-btn">Revoke Key</button>
+              <button id="adminIntegrationCopyKey" style="display:none">Copy Access Key</button>
+            </div>
+            <p id="adminIntegrationStatusMsg" class="admin-status"></p>
+          </div>
+
+          <div class="admin-section-title">REST API Keys</div>
+          <p class="statusline">Manage <code>X-Api-Key</code> credentials for the selected integration account.</p>
+          <div class="admin-settings-card" id="adminRestApiKeysPanel">
+            <div class="api-keys-toolbar">
+              <span class="small" id="adminRestApiKeysMeta"></span>
+              <button type="button" id="adminRestApiKeysNewBtn">+ New Key</button>
+            </div>
+            <div id="adminRestApiKeysTableWrap"></div>
+            <p id="adminRestApiKeysStatus" class="api-keys-error"></p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="cardZoomBackdrop" class="card-zoom-backdrop" aria-hidden="true">
+    <div class="card-zoom" role="dialog" aria-modal="true">
+      <div class="card-zoom-head">
+        <h3 id="cardZoomTitle">Details</h3>
+        <div class="card-zoom-actions">
+          <button type="button" class="get-api-btn" id="cardZoomGetApi">Get API</button>
+          <button type="button" class="card-zoom-close" id="cardZoomClose" title="Close">×</button>
+        </div>
+      </div>
+      <div id="cardZoomBody" class="card-zoom-body"></div>
+    </div>
+  </div>
+  <div id="apiKeyModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
+      <h3 id="apiKeyModalTitle">API Key</h3>
+      <p id="apiKeyModalDesc" class="small"></p>
+      <div id="apiKeyModalWarning" class="api-key-warning" style="display:none">
+        Store this key securely. It is shown in full only once.
+      </div>
+      <div id="apiKeyModalLabelWrap">
+        <label for="apiKeyModalLabel">Name</label>
+        <input id="apiKeyModalLabel" type="text" maxlength="128" placeholder="e.g. CAFM Production" autocomplete="off" />
+      </div>
+      <div id="apiKeyModalExpirationWrap">
+        <label for="apiKeyModalExpiration">Expiration</label>
+        <select id="apiKeyModalExpiration" required>
+          <option value="">Select expiration…</option>
+          <option value="1h">1 hour</option>
+          <option value="1d">1 day</option>
+          <option value="1mo">1 month</option>
+          <option value="3mo">3 months</option>
+          <option value="6mo">6 months</option>
+          <option value="1y">1 year</option>
+        </select>
+      </div>
+      <div id="apiKeyModalPlainWrap" style="display:none">
+        <label>API key</label>
+        <div class="api-key-plain" id="apiKeyModalPlain"></div>
+        <div class="integration-actions">
+          <button type="button" id="apiKeyModalCopyBtn">Copy</button>
+        </div>
+      </div>
+      <p id="apiKeyModalError" class="api-keys-error"></p>
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button type="button" id="apiKeyModalCancel">Cancel</button>
+        <button type="button" id="apiKeyModalConfirm">Create Key</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="serviceAccountModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="serviceAccountModalTitle">
+      <h3 id="serviceAccountModalTitle">Service Account</h3>
+      <p id="serviceAccountModalDesc" class="small"></p>
+      <div id="serviceAccountModalWarning" class="api-key-warning" style="display:none">
+        Store the client secret securely. It is shown in full only once.
+      </div>
+      <div id="serviceAccountModalFormWrap">
+        <label for="serviceAccountModalName">Name</label>
+        <input id="serviceAccountModalName" type="text" maxlength="128" placeholder="e.g. Production ERP" autocomplete="off" />
+        <label for="serviceAccountModalDescription">Description (optional)</label>
+        <input id="serviceAccountModalDescription" type="text" maxlength="512" placeholder="What application uses this account?" autocomplete="off" />
+        <label>Scopes (least privilege)</label>
+        <div id="serviceAccountModalScopes" class="integration-scopes"></div>
+        <label for="serviceAccountModalExpiration">Expiration</label>
+        <select id="serviceAccountModalExpiration" required>
+          <option value="">Select expiration…</option>
+          <option value="1h">1 hour</option>
+          <option value="1d">1 day</option>
+          <option value="1mo">1 month</option>
+          <option value="3mo">3 months</option>
+          <option value="6mo">6 months</option>
+          <option value="1y">1 year</option>
+        </select>
+      </div>
+      <div id="serviceAccountModalPlainWrap" style="display:none">
+        <label>Client ID</label>
+        <div class="api-key-plain" id="serviceAccountModalClientId"></div>
+        <label>Client secret</label>
+        <div class="api-key-plain" id="serviceAccountModalClientSecret"></div>
+        <div class="integration-actions">
+          <button type="button" id="serviceAccountModalCopyBtn">Copy secret</button>
+        </div>
+      </div>
+      <p id="serviceAccountModalError" class="api-keys-error"></p>
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button type="button" id="serviceAccountModalCancel">Cancel</button>
+        <button type="button" id="serviceAccountModalConfirm">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="apiToast" class="api-toast">API value copied</div>
+  <template id="zoomCameraTemplate">
+    <p class="statusline">Live camera view — dock camera and drone FPV.</p>
+    <div class="camera-split">
+      <div class="camera-panel">
+        <div class="camera-panel-head"><span>Dock camera</span><span class="small" id="zoomDockMeta">—</span></div>
+        <div class="player-wrap">
+          <div class="player-placeholder" id="zoomDockPlaceholder">Connecting…</div>
+          <div id="zoomDockVolcHost" class="volc-host" style="display:none"></div>
+          <video id="zoomDockPlayer" controls playsinline muted style="display:none"></video>
+        </div>
+        <div class="stream-statusline" id="zoomDockStatus"></div>
+      </div>
+      <div class="camera-panel">
+        <div class="camera-panel-head"><span>Drone FPV</span><span class="small" id="zoomDroneMeta">—</span></div>
+        <div class="player-wrap">
+          <div class="player-placeholder" id="zoomDronePlaceholder">Connecting…</div>
+          <div id="zoomDroneVolcHost" class="volc-host" style="display:none"></div>
+          <video id="zoomDronePlayer" controls playsinline muted style="display:none"></video>
+        </div>
+        <div class="stream-statusline" id="zoomDroneStatus"></div>
+      </div>
+    </div>
+  </template>

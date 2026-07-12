@@ -38,13 +38,13 @@ async function main(): Promise<void> {
     if (existsSync(usersPath)) rmSync(usersPath);
     if (existsSync(keysPath)) rmSync(keysPath);
 
-    const { buildServer } = await import("../src/app.js");
+    const { buildServer } = await import("../apps/api/src/app.js");
     const {
       __resetRestApiKeysMigrationForTests,
       ensureRestApiKeysMigrated,
       verifyRestApiKey,
       userHasRestApiKeys,
-    } = await import("../src/services/restApiKeys.js");
+    } = await import("../apps/api/src/modules/api-keys/application/rest-api-keys.service.js");
 
     const app = await buildServer();
     await app.ready();

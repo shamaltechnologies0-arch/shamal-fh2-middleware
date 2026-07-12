@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run build && mkdir -p public/admin public/bg-image && cp dist/ui/command-center.html public/index.html && cp dist/ui/command-center.html public/admin/index.html && cp src/bg-image/bg-main.png public/bg-image/bg-main.png",
-  "installCommand": "npm install --include=dev",
+  "buildCommand": "npm run build && mkdir -p public/admin public/bg-image && cp dist/apps/api/src/assets/ui/command-center.html public/index.html 2>/dev/null || cp apps/api/src/assets/ui/command-center.html public/index.html && cp public/index.html public/admin/index.html && cp apps/api/src/assets/bg-image/bg-main.png public/bg-image/bg-main.png",
+  "installCommand": "npm install --include=dev && cd apps/web && npm install",
   "framework": null,
   "outputDirectory": "public",
   "rewrites": [
@@ -13,7 +13,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 60,
-      "includeFiles": "{data/**,openapi/**,dist/**,public/**}"
+      "includeFiles": "{data/**,openapi/**,dist/**,public/**,apps/api/src/assets/**}"
     }
   }
 }

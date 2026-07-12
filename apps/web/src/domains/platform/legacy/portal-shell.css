@@ -1,0 +1,614 @@
+/**
+ * Legacy portal — command center overrides (scoped under .legacy-portal-host)
+ */
+
+.legacy-portal-host {
+  color-scheme: dark;
+  --lp-bg: var(--cc-background, #07111f);
+  --lp-surface: var(--cc-surface-primary, #0b1626);
+  --lp-surface-2: var(--cc-surface-secondary, #101d2e);
+  --lp-border: var(--cc-border-subtle, rgba(148, 163, 184, 0.14));
+  --lp-text: var(--cc-text-primary, #f8fafc);
+  --lp-muted: var(--cc-text-muted, #64748b);
+  --lp-accent: var(--cc-accent-primary, #38bdf8);
+  --lp-live: var(--cc-accent-live, #22d3ee);
+  --lp-ok: var(--cc-status-success, #22c55e);
+  --lp-warn: var(--cc-status-warning, #f59e0b);
+  --lp-danger: var(--cc-status-danger, #ef4444);
+
+  font-family: var(--font-sans), system-ui, sans-serif;
+  color: var(--lp-text);
+  background: var(--lp-bg);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.legacy-portal-host .legacy-hidden-chrome {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.legacy-portal-host #appMain {
+  display: block !important;
+  grid-template-columns: 1fr !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  flex: unset !important;
+  gap: 0 !important;
+  height: 100%;
+}
+
+.legacy-portal-host #appMain > div {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide duplicate page titles — React header shows these */
+.legacy-portal-host section.active > h3:first-child,
+.legacy-portal-host #settings > h3,
+.legacy-portal-host #admin > h3,
+.legacy-portal-host #dashboard > h3,
+.legacy-portal-host #settings > .viewer-note.settings-subtitle,
+.legacy-portal-host #dashboard > .viewer-note,
+.legacy-portal-host #admin > .viewer-note,
+.legacy-portal-host #fleet > h3,
+.legacy-portal-host #camera > h3:first-child,
+.legacy-portal-host #camera > .statusline:first-of-type,
+.legacy-portal-host #ops > h3,
+.legacy-portal-host #alerts > h3,
+.legacy-portal-host #history > h3 {
+  display: none !important;
+}
+
+.legacy-portal-host section {
+  display: none;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: var(--cc-page-gap, 0.875rem) 1rem 1.25rem !important;
+  min-height: 0;
+  box-shadow: none !important;
+}
+
+.legacy-portal-host section.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: var(--cc-page-gap, 0.875rem);
+  min-height: 0;
+}
+
+/* ─── Admin / Settings — stable opaque surfaces ─── */
+.legacy-portal-host #settings.active,
+.legacy-portal-host #admin.active,
+.legacy-portal-host #dashboard.active,
+.legacy-portal-host #alerts.active,
+.legacy-portal-host #history.active {
+  overflow: auto;
+}
+
+.legacy-portal-host .settings-tabs.ops-tabs,
+.legacy-portal-host .ops-tabs {
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+}
+
+.legacy-portal-host .ops-tabs button {
+  font-size: 0.75rem;
+  padding: 0.3125rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--lp-border);
+  background: var(--lp-surface);
+  color: var(--cc-text-secondary, #94a3b8);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.legacy-portal-host .ops-tabs button:hover {
+  background: var(--lp-surface-2);
+  border-color: color-mix(in srgb, var(--lp-accent) 35%, var(--lp-border));
+}
+
+.legacy-portal-host .ops-tabs button.active {
+  background: color-mix(in srgb, var(--lp-accent) 14%, var(--lp-surface));
+  border-color: var(--cc-border-active, rgba(56, 189, 248, 0.45));
+  color: var(--lp-accent);
+}
+
+.legacy-portal-host .dash-card,
+.legacy-portal-host .admin-settings-card,
+.legacy-portal-host .ops-card,
+.legacy-portal-host .kpi,
+.legacy-portal-host .dash-kpi {
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: var(--cc-radius-card, 0.625rem) !important;
+  box-shadow: none !important;
+}
+
+.legacy-portal-host .dash-card:hover {
+  border-color: color-mix(in srgb, var(--lp-accent) 40%, var(--lp-border)) !important;
+}
+
+.legacy-portal-host .dash-card-head,
+.legacy-portal-host .camera-panel-head {
+  border-bottom: 1px solid var(--lp-border) !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+.legacy-portal-host .dash-card-title,
+.legacy-portal-host .camera-panel-head,
+.legacy-portal-host .admin-settings-card h4,
+.legacy-portal-host .ops-card h4 {
+  color: var(--lp-accent) !important;
+  font-weight: 600;
+  font-size: 0.8125rem !important;
+}
+
+.legacy-portal-host .dash-grid {
+  gap: 0.75rem;
+}
+
+.legacy-portal-host .dash-card {
+  min-height: 110px !important;
+}
+
+.legacy-portal-host input,
+.legacy-portal-host select,
+.legacy-portal-host textarea {
+  background: var(--lp-bg) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: 0.375rem !important;
+  color: var(--lp-text) !important;
+  font-size: 0.8125rem;
+  padding: 0.4375rem 0.6875rem;
+  min-height: 2.125rem;
+}
+
+.legacy-portal-host input:focus,
+.legacy-portal-host select:focus,
+.legacy-portal-host textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--lp-accent) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.legacy-portal-host button {
+  border-radius: 0.375rem !important;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.legacy-portal-host button:not(.get-api-btn):not(.admin-delete-btn):not([class*="op-btn"]) {
+  background: color-mix(in srgb, var(--lp-accent) 18%, var(--lp-surface-2)) !important;
+  border: 1px solid color-mix(in srgb, var(--lp-accent) 30%, var(--lp-border)) !important;
+  color: var(--lp-text) !important;
+}
+
+.legacy-portal-host button:not(.get-api-btn):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lp-accent) 28%, var(--lp-surface-2)) !important;
+}
+
+.legacy-portal-host table th {
+  color: var(--cc-text-secondary, #94a3b8);
+  font-weight: 500;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.legacy-portal-host table td {
+  font-size: 0.8125rem;
+}
+
+.legacy-portal-host th,
+.legacy-portal-host td {
+  border-bottom: 1px solid var(--lp-border) !important;
+  padding: 0.5rem 0.4375rem !important;
+  height: 2.5rem;
+}
+
+.legacy-portal-host .admin-section-title {
+  margin: 1.25rem 0 0.625rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--lp-text);
+}
+
+.legacy-portal-host .admin-settings {
+  max-width: 960px;
+  gap: 0.875rem;
+}
+
+.legacy-portal-host .statusline,
+.legacy-portal-host .small {
+  color: var(--lp-muted) !important;
+  line-height: 1.45;
+  font-size: 0.75rem;
+}
+
+/* Status pills — operational colors only */
+.legacy-portal-host .pill.ok {
+  background: color-mix(in srgb, var(--lp-ok) 18%, transparent) !important;
+  color: var(--lp-ok) !important;
+}
+
+.legacy-portal-host .pill.bad {
+  background: color-mix(in srgb, var(--lp-danger) 18%, transparent) !important;
+  color: var(--lp-danger) !important;
+}
+
+.legacy-portal-host .pill.warn {
+  background: color-mix(in srgb, var(--lp-warn) 18%, transparent) !important;
+  color: var(--lp-warn) !important;
+}
+
+/* ─── FLEET: map-centric immersive canvas ─── */
+.legacy-portal-host #fleet.active {
+  position: relative;
+  padding: 0 !important;
+  overflow: hidden !important;
+  display: block !important;
+}
+
+.legacy-portal-host #fleet .grid {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 25;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0 !important;
+  grid-template-columns: unset !important;
+  max-width: min(520px, calc(100% - 1.5rem));
+  pointer-events: none;
+}
+
+.legacy-portal-host #fleet .grid .kpi {
+  pointer-events: auto;
+  padding: 0.375rem 0.625rem !important;
+  min-width: 5.5rem;
+  background: rgba(11, 22, 38, 0.82) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--lp-border) !important;
+  border-radius: 0.5rem !important;
+}
+
+.legacy-portal-host #fleet .grid .kpi .small {
+  font-size: 0.625rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.legacy-portal-host #fleet .grid .kpi .v {
+  font-size: 1rem !important;
+  font-weight: 700;
+  font-family: var(--cc-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.legacy-portal-host #fleet #fleetTelemetryBanner {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  max-width: min(480px, 90%);
+  margin: 0 !important;
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  background: rgba(11, 22, 38, 0.88) !important;
+  backdrop-filter: blur(12px);
+}
+
+.legacy-portal-host #fleet .fleet-map-wrap {
+  position: absolute;
+  inset: 0;
+  display: block !important;
+  margin: 0 !important;
+  min-height: unset !important;
+  gap: 0 !important;
+}
+
+.legacy-portal-host #fleet .fleet-map-wrap > div:first-child {
+  position: absolute;
+  inset: 0;
+}
+
+.legacy-portal-host #fleet #fleetMap {
+  position: absolute !important;
+  inset: 0 !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  border: none !important;
+  border-radius: 0 !important;
+  z-index: 1;
+}
+
+.legacy-portal-host #fleet .map-legend {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  z-index: 20;
+  margin: 0 !important;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.625rem;
+  background: rgba(7, 17, 31, 0.72);
+  border-radius: 0.25rem;
+  border: 1px solid var(--lp-border);
+}
+
+.legacy-portal-host #fleet .fleet-map-wrap > div:last-child {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: min(400px, 36vw);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow: hidden;
+  background: rgba(11, 22, 38, 0.82) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--lp-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+}
+
+.legacy-portal-host #fleet .fleet-map-wrap > div:last-child .statusline {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+}
+
+.legacy-portal-host #fleet #fleetTable {
+  flex: 1;
+  min-height: 0;
+  display: block;
+  overflow: auto;
+}
+
+.legacy-portal-host #fleet #fleetTable thead {
+  position: sticky;
+  top: 0;
+  background: rgba(11, 22, 38, 0.95);
+  z-index: 1;
+}
+
+/* ─── CAMERA: full-viewport live monitoring ─── */
+.legacy-portal-host #camera.active {
+  padding: 0 !important;
+  overflow: hidden !important;
+  position: relative;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.legacy-portal-host #camera .camera-toolbar {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  flex-shrink: 0;
+  margin: 0 !important;
+  padding: 0.375rem 0.5rem;
+  gap: 0.375rem !important;
+  background: rgba(11, 22, 38, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--lp-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-width: calc(100% - 1.5rem);
+}
+
+.legacy-portal-host #camera .camera-toolbar select,
+.legacy-portal-host #camera .camera-toolbar button {
+  min-height: 2rem;
+  font-size: 0.75rem;
+}
+
+.legacy-portal-host #camera .camera-split {
+  flex: 1;
+  min-height: 0;
+  gap: 2px !important;
+  margin: 0;
+  grid-template-columns: 1fr 1fr;
+}
+
+.legacy-portal-host #camera .camera-panel {
+  background: #040a12 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  min-height: 0;
+}
+
+.legacy-portal-host #camera .camera-panel-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: linear-gradient(to bottom, rgba(7, 17, 31, 0.85), transparent) !important;
+  border: none !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.6875rem !important;
+}
+
+.legacy-portal-host #camera .camera-panel {
+  position: relative;
+}
+
+.legacy-portal-host #camera .camera-panel .player-wrap {
+  flex: 1;
+  min-height: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: #020608 !important;
+}
+
+.legacy-portal-host #camera .camera-panel .stream-statusline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: linear-gradient(to top, rgba(7, 17, 31, 0.85), transparent) !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.6875rem;
+  margin: 0;
+}
+
+.legacy-portal-host #camera .advanced-panel,
+.legacy-portal-host #camera .debug-panel {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  z-index: 25;
+  max-width: 320px;
+  background: rgba(11, 22, 38, 0.88);
+  border: 1px solid var(--lp-border);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* ─── OPS: compact telemetry HUD ─── */
+.legacy-portal-host #ops .ops-hud {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.375rem;
+}
+
+.legacy-portal-host #ops .ops-hud .m {
+  padding: 0.4375rem 0.5rem !important;
+  border-radius: 0.375rem !important;
+}
+
+.legacy-portal-host #ops .ops-hud .m .lbl {
+  font-size: 0.625rem !important;
+  letter-spacing: 0.06em;
+}
+
+.legacy-portal-host #ops .ops-hud .m .val {
+  font-size: 0.9375rem !important;
+  font-family: var(--cc-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--lp-live) !important;
+}
+
+.legacy-portal-host #ops .ops-layout {
+  gap: 0.875rem;
+}
+
+.legacy-portal-host #ops .ops-card {
+  padding: 0.75rem !important;
+}
+
+.legacy-portal-host #dashFleetMap,
+.legacy-portal-host #fleetMap {
+  border-radius: 0.375rem !important;
+}
+
+.legacy-portal-host .player-wrap {
+  background: #020608 !important;
+}
+
+.legacy-portal-host .modal-backdrop {
+  z-index: 50;
+}
+
+.legacy-portal-host .card-zoom-backdrop {
+  z-index: 60;
+}
+
+.legacy-portal-host .api-toast {
+  z-index: 70;
+}
+
+.legacy-portal-host .get-api-btn {
+  background: color-mix(in srgb, var(--lp-accent) 12%, var(--lp-surface)) !important;
+  border: 1px solid color-mix(in srgb, var(--lp-accent) 25%, var(--lp-border)) !important;
+  font-size: 0.625rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.legacy-portal-host .pre,
+.legacy-portal-host .integration-field .val,
+.legacy-portal-host .api-key-plain {
+  font-family: var(--cc-font-mono) !important;
+  font-size: 0.75rem;
+}
+
+/* Viewer dashboard — denser grid */
+.legacy-portal-host.viewer-layout #dashboard {
+  padding: 0.875rem 1rem !important;
+}
+
+.legacy-portal-host.viewer-layout #dashFleetMap {
+  height: 220px !important;
+}
+
+@media (max-width: 960px) {
+  .legacy-portal-host #fleet .fleet-map-wrap > div:last-child {
+    width: auto;
+    left: 0.75rem;
+    top: auto;
+    height: 38vh;
+    max-height: 280px;
+  }
+
+  .legacy-portal-host #fleet .grid {
+    max-width: calc(100% - 1.5rem);
+  }
+
+  .legacy-portal-host #camera .camera-split {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .legacy-portal-host section.active {
+    padding: 0.75rem !important;
+  }
+
+  .legacy-portal-host #fleet.active,
+  .legacy-portal-host #camera.active {
+    padding: 0 !important;
+  }
+
+  .legacy-portal-host #fleet .fleet-map-wrap > div:last-child {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    max-height: 240px;
+    margin: 0.75rem;
+    width: calc(100% - 1.5rem);
+  }
+
+  .legacy-portal-host #fleet .fleet-map-wrap {
+    position: relative;
+    display: flex !important;
+    flex-direction: column;
+    min-height: 50vh;
+  }
+
+  .legacy-portal-host #fleet #fleetMap {
+    position: relative !important;
+    min-height: 45vh !important;
+    height: 45vh !important;
+  }
+}

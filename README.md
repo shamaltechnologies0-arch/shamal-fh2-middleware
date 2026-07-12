@@ -1,13 +1,98 @@
-# Shamal FH2 External Viewer Middleware
+# Shamal Platform (FH2 Middleware)
 
-This middleware layer serves as the bridge between DJI FlightHub 2 data and external viewing platforms. It provides secure, restricted access to approved flight data for third-party integrators (such as CAFM platforms and custom dashboards), ensuring that external users connect only to Shamal’s platform, not directly to DJI FH2.
+Shamal Platform is a full-stack middleware between **DJI FlightHub 2** and external viewers/integrators. It provides restricted API access, a web command center, admin tooling, and integration endpoints for third-party systems.
 
-## Key Features
+## Repository layout
 
-- **Data Abstraction:** Reads and sanitizes approved data from DJI FlightHub 2.
-- **Restricted Access:** Exposes specific, controlled endpoints for authorized viewers.
-- **Clear Integration:** Provides standardized handoff documentation for external integrators.
+| Area | Location | Description |
+|------|----------|-------------|
+| **Frontend** | `apps/web/` | React 19 + Vite SPA (command center shell) |
+| **Backend API** | `apps/api/src/` | Fastify 5 REST API with DDD modules |
+| **Shared packages** | `packages/` | Cross-cutting types and constants |
+| **Infrastructure** | `infrastructure/` | Docker, Vercel deployment configs |
+| **Scripts / tests** | `scripts/` | Integration smoke tests and tooling |
+| **Documentation** | `docs/` | Architecture, setup, deployment guides |
+| **OpenAPI** | `openapi/` | API specifications |
+| **Local data** | `data/` | JSON persistence (local dev fallback) |
 
-## Quick Start Guide
+## Quick start
 
-1.  **Setup Environment:**
+### Prerequisites
+
+- Node.js 20+
+- MongoDB (optional for local dev — JSON files in `data/` work as fallback)
+
+### Install
+
+```bash
+npm install
+cd apps/web && npm install && cd ../..
+```
+
+### Environment
+
+```bash
+cp .env.example .env
+# Edit .env with your FH2 credentials and secrets
+```
+
+### Run backend only
+
+```bash
+npm run dev
+# API: http://localhost:8080
+```
+
+### Run frontend only (proxies API)
+
+```bash
+npm run dev:web
+# UI: http://localhost:5173
+```
+
+### Run both
+
+```bash
+npm run dev:web   # terminal 1
+npm run dev       # terminal 2
+```
+
+### Build for production
+
+```bash
+npm run build
+npm start
+```
+
+### Database
+
+```bash
+npm run db:setup    # Docker MongoDB
+npm run db:migrate  # Create indexes
+```
+
+### Tests
+
+```bash
+npm run test:viewer-routes
+npm run test:rest-api-keys
+npm run test:service-accounts
+npm run test:readonly
+```
+
+## Import aliases
+
+| Alias | Resolves to |
+|-------|-------------|
+| `@web/*` | `apps/web/src/*` |
+| `@ui/*` | `apps/web/src/components/ui/*` |
+| `@api/*` | `apps/api/src/*` (TypeScript paths) |
+
+## Further reading
+
+- [Architecture](docs/architecture.md)
+- [Folder structure](docs/folder-structure.md)
+- [Domain boundaries](docs/domain-boundaries.md)
+- [Development setup](docs/development-setup.md)
+- [Environment variables](docs/environment-variables.md)
+- [Deployment](docs/deployment.md)

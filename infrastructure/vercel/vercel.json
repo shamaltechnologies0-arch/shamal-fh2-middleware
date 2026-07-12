@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build && mkdir -p public/admin public/bg-image && cp dist/ui/command-center.html public/index.html && cp dist/ui/command-center.html public/admin/index.html && cp src/bg-image/bg-main.png public/bg-image/bg-main.png",
+  "installCommand": "npm install --include=dev",
+  "framework": null,
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{data/**,openapi/**,dist/**,public/**}"
+    }
+  }
+}

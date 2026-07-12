@@ -3,14 +3,20 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "outDir": "dist",
-    "rootDir": "src",
+    "outDir": "dist/apps/api/src",
+    "rootDir": "apps/api/src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@api/*": ["apps/api/src/*"],
+      "@shared/*": ["packages/shared/src/*"],
+      "@types/*": ["packages/types/src/*"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["apps/api/src/**/*"],
+  "exclude": ["node_modules", "dist", "apps/web", "packages"]
 }

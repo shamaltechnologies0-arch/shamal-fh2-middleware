@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getApp } from "../dist/bootstrap.js";
+import { getApp } from "../dist/apps/api/src/bootstrap.js";
 
 /** Map /api and /api/* to Fastify root routes (e.g. /api/health → /health). */
 function normalizeRequestUrl(req: VercelRequest): void {

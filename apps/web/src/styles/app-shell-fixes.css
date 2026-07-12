@@ -1,0 +1,78 @@
+/**
+ * Undo global leaks from legacy portal-legacy.css (unscoped rules).
+ */
+
+body {
+  display: block !important;
+  overflow: hidden !important;
+  font-family: var(--font-sans) !important;
+  background: var(--cc-background) !important;
+  color: var(--cc-text-primary) !important;
+}
+
+main[data-slot="sidebar-inset"] {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: unset !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+  gap: 0 !important;
+  background: var(--cc-background) !important;
+}
+
+.app-shell-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  z-index: 30 !important;
+  gap: 0.5rem !important;
+  padding: 0 0.75rem !important;
+  height: var(--cc-header-h, 3.5rem) !important;
+  min-height: var(--cc-header-h, 3.5rem) !important;
+  border-bottom: 1px solid var(--cc-border-subtle) !important;
+  background: color-mix(in srgb, var(--cc-background) 92%, transparent) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+button[data-slot="button"],
+button[data-slot="sidebar-trigger"],
+button[data-sidebar="trigger"],
+button[data-sidebar="rail"],
+[data-slot="dropdown-menu-trigger"] button,
+.app-shell-header button {
+  background: unset;
+  border: unset;
+  color: unset;
+  padding: unset;
+  font-size: unset;
+  border-radius: unset;
+  font-weight: unset;
+}
+
+.app-shell-header input {
+  background: unset;
+  border: unset;
+  color: unset;
+  padding: unset;
+  font-size: unset;
+  border-radius: unset;
+}
+
+button[data-sidebar="rail"] {
+  display: none !important;
+}
+
+.legacy-portal-host {
+  background: var(--cc-background) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell-header {
+    backdrop-filter: none;
+  }
+}

@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   if (existsSync(keysPath)) rmSync(keysPath);
   if (existsSync(projectsPath)) rmSync(projectsPath);
 
-  const { buildServer } = await import("../src/app.js");
+  const { buildServer } = await import("../apps/api/src/app.js");
   const app = await buildServer();
   await app.ready();
 

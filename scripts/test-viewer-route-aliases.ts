@@ -11,12 +11,12 @@ async function main(): Promise<void> {
   process.env.CC_ADMIN_ID = "admin";
   process.env.CC_ADMIN_PASSWORD = "admin1234";
 
-  const { buildServer } = await import("../src/app.js");
+  const { buildServer } = await import("../apps/api/src/app.js");
   const { createSessionToken, roleFromApiKey } = await import(
-    "../src/services/commandCenterAuth.js"
+    "../apps/api/src/modules/auth/infrastructure/command-center-auth.service.js"
   );
-  const { findSecretLeaks } = await import("../src/services/openApiDocuments.js");
-  const { SESSION_COOKIE_NAME } = await import("../src/utils/sessionCookie.js");
+  const { findSecretLeaks } = await import("../apps/api/src/shared/openapi/openapi-documents.service.js");
+  const { SESSION_COOKIE_NAME } = await import("../apps/api/src/modules/auth/shared/session-cookie.js");
 
   const API_KEY = "alias-test-operator";
   const VIEWER_KEY = "alias-test-viewer";

@@ -48,7 +48,7 @@ async function main(): Promise<void> {
     console.error(`FAIL ${message}`);
   };
 
-  const { buildServer } = await import("../src/app.js");
+  const { buildServer } = await import("../apps/api/src/app.js");
   const app = await buildServer();
   await app.ready();
 

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { closeDatabase, initDatabase, insertWebhookEvent } from "../src/db/index.js";
+import { closeDatabase, initDatabase, insertWebhookEvent } from "../apps/api/src/infrastructure/database/index.js";
 
 async function main() {
   await initDatabase();

@@ -36,6 +36,7 @@ import {
   getFh2ProjectSyncStatus,
   listAssignedViewerIds,
   listFh2Projects,
+  refreshFh2ProjectsStore,
   removeViewerFromAllProjects,
   removeViewerFromProject,
   setFh2ProjectLocalStatus,
@@ -543,6 +544,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const gate = requireAdmin(request.ccRole);
       if (!gate.ok) return reply.status(403).send({ error: "forbidden", message: gate.message });
+      await refreshFh2ProjectsStore();
       return reply.send({
         data: {
           projects: listProjectsWithAssignments(),

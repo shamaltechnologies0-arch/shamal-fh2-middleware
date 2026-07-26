@@ -6,6 +6,7 @@ import {
   getPlatformStoreFilePath,
   PLATFORM_STORE_KEYS,
   putPlatformData,
+  refreshPlatformDataFromDb,
 } from "../../../infrastructure/persistence/platform-data-store.js";
 
 const projectSchema = z.object({
@@ -22,16 +23,32 @@ const projectSchema = z.object({
 const storeSchema = z.object({
   projects: z.array(projectSchema),
   assignments: z.record(z.array(z.string())),
-  lastSyncAt: z.string().optional(),
-  lastSyncError: z.string().optional(),
+  lastSyncAt: z.string().nullish(),
+  // Mongo may persist omitted fields as null; accept and normalize.
+  lastSyncError: z.string().nullish(),
 });
 
 export type SyncedFh2Project = z.infer<typeof projectSchema>;
 
-type ProjectStore = z.infer<typeof storeSchema>;
+type ProjectStore = {
+  projects: SyncedFh2Project[];
+  assignments: Record<string, string[]>;
+  lastSyncAt?: string;
+  lastSyncError?: string;
+};
 
 function defaultStore(): ProjectStore {
   return { projects: [], assignments: {} };
+}
+
+function normalizeStore(store: ProjectStore): ProjectStore {
+  const next: ProjectStore = {
+    projects: store.projects,
+    assignments: store.assignments,
+  };
+  if (store.lastSyncAt) next.lastSyncAt = store.lastSyncAt;
+  if (store.lastSyncError) next.lastSyncError = store.lastSyncError;
+  return next;
 }
 
 function readStore(): ProjectStore {
@@ -41,11 +58,26 @@ function readStore(): ProjectStore {
   );
   const validated = storeSchema.safeParse(parsed);
   if (!validated.success) return defaultStore();
-  return validated.data;
+  return normalizeStore({
+    projects: validated.data.projects,
+    assignments: validated.data.assignments,
+    lastSyncAt: validated.data.lastSyncAt ?? undefined,
+    lastSyncError: validated.data.lastSyncError ?? undefined,
+  });
 }
 
 async function writeStore(store: ProjectStore): Promise<void> {
-  await putPlatformData(PLATFORM_STORE_KEYS.FH2_PROJECTS, store);
+  await putPlatformData(PLATFORM_STORE_KEYS.FH2_PROJECTS, normalizeStore(store));
+}
+
+/** Ensure this instance has the latest FH2 project store from MongoDB. */
+export async function refreshFh2ProjectsStore(): Promise<void> {
+  await refreshPlatformDataFromDb(PLATFORM_STORE_KEYS.FH2_PROJECTS);
+}
+
+async function loadStore(): Promise<ProjectStore> {
+  await refreshFh2ProjectsStore();
+  return readStore();
 }
 
 function normalizeCode(value: string): string {
@@ -72,7 +104,7 @@ export async function syncFh2ProjectsFromSource(): Promise<{
   syncedCount: number;
   projects: SyncedFh2Project[];
 }> {
-  const store = readStore();
+  const store = await loadStore();
   const now = nowIso();
   try {
     const fh2 = createFh2Client();
@@ -115,7 +147,7 @@ export async function syncFh2ProjectsFromSource(): Promise<{
 
     store.projects = [...dedupById.values()];
     store.lastSyncAt = now;
-    store.lastSyncError = undefined;
+    delete store.lastSyncError;
     await writeStore(store);
     return {
       syncedCount: list.length,
@@ -133,7 +165,7 @@ export async function setFh2ProjectLocalStatus(
   fh2ProjectId: string,
   active: boolean,
 ): Promise<SyncedFh2Project> {
-  const store = readStore();
+  const store = await loadStore();
   const index = store.projects.findIndex((p) => p.fh2ProjectId === fh2ProjectId);
   if (index < 0) throw new Error(`Project "${fh2ProjectId}" not found`);
   const current = store.projects[index]!;
@@ -151,7 +183,7 @@ export async function assignViewerToProject(
   fh2ProjectId: string,
   viewerId: string,
 ): Promise<void> {
-  const store = readStore();
+  const store = await loadStore();
   const project = store.projects.find((p) => p.fh2ProjectId === fh2ProjectId);
   if (!project) throw new Error(`Project "${fh2ProjectId}" not found`);
   const list = new Set(store.assignments[viewerId] ?? []);
@@ -164,7 +196,7 @@ export async function removeViewerFromProject(
   fh2ProjectId: string,
   viewerId: string,
 ): Promise<void> {
-  const store = readStore();
+  const store = await loadStore();
   const current = store.assignments[viewerId] ?? [];
   store.assignments[viewerId] = current.filter((id) => id !== fh2ProjectId);
   if (store.assignments[viewerId].length === 0) {
@@ -174,7 +206,7 @@ export async function removeViewerFromProject(
 }
 
 export async function removeViewerFromAllProjects(viewerId: string): Promise<void> {
-  const store = readStore();
+  const store = await loadStore();
   if (!(viewerId in store.assignments)) return;
   delete store.assignments[viewerId];
   await writeStore(store);

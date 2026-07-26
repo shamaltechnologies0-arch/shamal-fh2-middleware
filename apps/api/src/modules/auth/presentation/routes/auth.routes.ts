@@ -10,6 +10,7 @@ import { issueClientCredentialsToken } from "../../../service-accounts/applicati
 import { getViewerDashboardPermissions } from "../../../users/application/viewer-dashboard-permissions.service.js";
 import {
   listViewerProjectOptions,
+  refreshFh2ProjectsStore,
   resolveFallbackProjectCode,
 } from "../../../projects/application/fh2-projects.service.js";
 import { registerViewerGet, registerViewerPost } from "../../../../shared/http/viewer-paths.js";
@@ -118,6 +119,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           });
         }
 
+        const username = parsed.data.username.trim();
+        if (session.role === "viewer") {
+          await refreshFh2ProjectsStore();
+        }
         const secureCookie = isSecureCookieEnvironment();
         return reply
           .header(
@@ -130,7 +135,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
               role: session.role,
               displayName: session.displayName,
               sessionToken: session.sessionToken,
-              username: parsed.data.username.trim(),
+              username,
               permissions: {
                 canView: true,
                 canOperate: session.role === "operator" || session.role === "admin",
@@ -138,11 +143,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
               },
               viewerDashboardPermissions:
                 session.role === "viewer"
-                  ? getViewerDashboardPermissions(parsed.data.username.trim())
+                  ? getViewerDashboardPermissions(username)
                   : undefined,
               assignedProjects:
                 session.role === "viewer"
-                  ? listViewerProjectOptions(parsed.data.username.trim())
+                  ? listViewerProjectOptions(username)
                   : undefined,
               fallbackProjectCode: resolveFallbackProjectCode(),
             },

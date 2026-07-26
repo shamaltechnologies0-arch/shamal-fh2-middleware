@@ -89,6 +89,17 @@ export function getPlatformData<T>(key: PlatformStoreKey, defaultValue: T): T {
   return defaultValue;
 }
 
+/** Reload one store key from Mongo so serverless instances see cross-instance writes. */
+export async function refreshPlatformDataFromDb(
+  key: PlatformStoreKey,
+): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const data = await getPlatformStoreDocument(key);
+  if (data !== undefined) {
+    cache.set(key, data);
+  }
+}
+
 export function setPlatformDataCache<T>(key: PlatformStoreKey, data: T): void {
   cache.set(key, data);
 }

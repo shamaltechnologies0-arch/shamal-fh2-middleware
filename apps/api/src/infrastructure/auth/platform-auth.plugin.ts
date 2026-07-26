@@ -16,6 +16,7 @@ import { assertRoleAccess } from "../../shared/security/api-access.js";
 import {
   hasConfiguredFh2Projects,
   listViewerAssignedProjectCodes,
+  refreshFh2ProjectsStore,
   resolveFallbackProjectCode,
 } from "../../modules/projects/application/fh2-projects.service.js";
 import { setFh2RequestContext } from "../../modules/projects/application/fh2-project-context.js";
@@ -102,16 +103,17 @@ function isProjectDataPath(path: string): boolean {
   );
 }
 
-function applyViewerProjectScope(
+async function applyViewerProjectScope(
   request: FastifyRequest,
   reply: FastifyReply,
   path: string,
   role: CcRole,
   username: string,
-): void {
+): Promise<void> {
   let selectedProjectCode = requestProjectCode(request);
   let allowedProjectCodes: string[] = [];
   if (role === "viewer") {
+    await refreshFh2ProjectsStore();
     allowedProjectCodes = listViewerAssignedProjectCodes(username);
     const fallback = resolveFallbackProjectCode();
     if (allowedProjectCodes.length === 0 && !hasConfiguredFh2Projects() && fallback) {
@@ -251,7 +253,8 @@ export async function registerPlatformAuth(app: FastifyInstance): Promise<void> 
       };
       request.ccRole = "viewer";
       request.ccUsername = verified.ownerUserId;
-      return applyViewerProjectScope(request, reply, path, "viewer", verified.ownerUserId);
+      await applyViewerProjectScope(request, reply, path, "viewer", verified.ownerUserId);
+      return;
     }
 
     const isIntegrationSessionRoute =
@@ -335,7 +338,7 @@ export async function registerPlatformAuth(app: FastifyInstance): Promise<void> 
 
     request.ccRole = role;
     request.ccUsername = username;
-    applyViewerProjectScope(request, reply, path, role, username ?? "");
+    await applyViewerProjectScope(request, reply, path, role, username ?? "");
   });
 }
 

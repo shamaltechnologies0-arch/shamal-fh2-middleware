@@ -33,6 +33,10 @@ export type CreateManagedViewerResult = {
   primaryRestApiKeyMasked: string;
 };
 
+export function usernamesMatch(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 function readStore(): StoredViewerUser[] {
   const raw = getPlatformData<StoredViewerUser[]>(
     PLATFORM_STORE_KEYS.VIEWER_USERS,
@@ -44,13 +48,17 @@ function readStore(): StoredViewerUser[] {
   });
 }
 
+export function findManagedViewerRecord(username: string): StoredViewerUser | undefined {
+  return readStore().find((u) => usernamesMatch(u.username, username));
+}
+
 async function writeStore(users: StoredViewerUser[]): Promise<void> {
   await putPlatformData(PLATFORM_STORE_KEYS.VIEWER_USERS, users);
 }
 
 /** Legacy apiKey from viewer-users.json — migration reads only. */
 export function getLegacyViewerApiKey(username: string): string | null {
-  const record = readStore().find((u) => u.username === username);
+  const record = findManagedViewerRecord(username);
   const legacy = record?.apiKey?.trim();
   return legacy || null;
 }
@@ -70,7 +78,7 @@ export function listManagedViewerRecords(): StoredViewerUser[] {
 }
 
 export function isManagedViewer(username: string): boolean {
-  return readStore().some((u) => u.username === username);
+  return Boolean(findManagedViewerRecord(username));
 }
 
 export async function createManagedViewer(
@@ -82,7 +90,7 @@ export async function createManagedViewer(
   }
 
   const store = readStore();
-  if (store.some((u) => u.username === parsed.data.username)) {
+  if (store.some((u) => usernamesMatch(u.username, parsed.data.username))) {
     throw new Error(`Viewer account "${parsed.data.username}" already exists`);
   }
 
@@ -110,14 +118,14 @@ export async function createManagedViewer(
   };
 }
 
-export async function deleteManagedViewer(username: string): Promise<void> {
+export async function deleteManagedViewer(username: string): Promise<boolean> {
   const store = readStore();
-  const next = store.filter((u) => u.username !== username);
-  if (next.length === store.length) {
-    throw new Error(`Managed viewer account "${username}" was not found`);
-  }
+  const record = store.find((u) => usernamesMatch(u.username, username));
+  if (!record) return false;
+  const next = store.filter((u) => !usernamesMatch(u.username, username));
   await writeStore(next);
-  await deleteRestApiKeysForUser(username);
+  await deleteRestApiKeysForUser(record.username);
+  return true;
 }
 
 export function getViewerUsersStorePath(): string {

@@ -29,7 +29,9 @@ import {
   createManagedViewer,
   createViewerSchema,
   deleteManagedViewer,
+  findManagedViewerRecord,
   isManagedViewer,
+  usernamesMatch,
 } from "../../../users/application/viewer-users.service.js";
 import {
   assignViewerToProject,
@@ -104,7 +106,7 @@ function listIntegrationAccounts() {
 }
 
 function findAccount(accountId: string) {
-  return listIntegrationAccounts().find((a) => a.accountId === accountId);
+  return listIntegrationAccounts().find((a) => usernamesMatch(a.accountId, accountId));
 }
 
 function apiBaseFromRequest(request: { headers: { host?: string } }): string {
@@ -176,7 +178,7 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
         });
       }
 
-      const taken = getCcUsers().some((u) => u.username === parsed.data.username);
+      const taken = getCcUsers().some((u) => usernamesMatch(u.username, parsed.data.username));
       if (taken) {
         return reply.status(409).send({
           error: "conflict",
@@ -229,8 +231,8 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
       }
 
       const { accountId } = request.params as { accountId: string };
-
-      if (!isManagedViewer(accountId)) {
+      const envNames = getEnvViewerUsernames();
+      if ([...envNames].some((name) => usernamesMatch(name, accountId))) {
         return reply.status(400).send({
           error: "not_deletable",
           message:
@@ -238,22 +240,19 @@ function registerIntegrationAccountRoutes(app: FastifyInstance): void {
         });
       }
 
-      try {
-        await deleteManagedViewer(accountId);
-        await deleteViewerDashboardPermissions(accountId);
-        await deleteViewerIntegration(accountId);
-        await removeViewerFromAllProjects(accountId);
-        return reply.send({
-          data: { accountId, deleted: true },
-          meta: { source: "shamal-platform" },
-        });
-      } catch (err) {
-        const message = (err as Error).message;
-        if (message.includes("not found")) {
-          return reply.status(404).send({ error: "not_found", message });
-        }
-        return reply.status(400).send({ error: "validation_error", message });
+      const record = findManagedViewerRecord(accountId);
+      const canonicalId = record?.username ?? accountId;
+      const deleted = await deleteManagedViewer(canonicalId);
+      if (deleted) {
+        await deleteViewerDashboardPermissions(canonicalId);
+        await deleteViewerIntegration(canonicalId);
+        await removeViewerFromAllProjects(canonicalId);
       }
+
+      return reply.send({
+        data: { accountId: canonicalId, deleted: true },
+        meta: { source: "shamal-platform" },
+      });
     },
   );
 
@@ -597,18 +596,16 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(400).send({ error: "validation_error", message: "viewerId is required" });
       }
       try {
-        const viewerSet = new Set(
-          getCcUsers()
-            .filter((u) => u.role === "viewer")
-            .map((u) => u.username),
+        const viewer = getCcUsers().find(
+          (u) => u.role === "viewer" && usernamesMatch(u.username, viewerId),
         );
-        if (!viewerSet.has(viewerId)) {
+        if (!viewer) {
           return reply.status(400).send({
             error: "validation_error",
             message: `Only viewer users can be assigned: ${viewerId}`,
           });
         }
-        await assignViewerToProject(projectId, viewerId);
+        await assignViewerToProject(projectId, viewer.username);
         return reply.send({ data: { projectId, viewerId }, meta: { source: "shamal-platform" } });
       } catch (err) {
         const message = (err as Error).message;

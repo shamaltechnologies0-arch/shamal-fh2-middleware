@@ -14,6 +14,7 @@ import {
   parseCredentialExpiration,
 } from "../../api-keys/application/credential-expiration.service.js";
 import { getCcUsers } from "../../auth/infrastructure/command-center-auth.service.js";
+import { usernamesMatch } from "../../users/application/viewer-users.service.js";
 import { getPlatformSessionSecret } from "../../auth/infrastructure/platform-secret.service.js";
 import {
   getPlatformData,
@@ -127,7 +128,7 @@ function defaultRecord(): Omit<ViewerIntegrationRecord, "viewerId"> {
 
 function assertViewerExists(viewerId: string): void {
   const exists = getCcUsers().some(
-    (u) => u.username === viewerId && u.role === "viewer",
+    (u) => usernamesMatch(u.username, viewerId) && u.role === "viewer",
   );
   if (!exists) {
     throw new Error(`Unknown viewer account: ${viewerId}`);
@@ -321,8 +322,14 @@ export async function revokeViewerIntegrationToken(
 
 export async function deleteViewerIntegration(viewerId: string): Promise<void> {
   const store = readStore();
-  delete store[viewerId];
-  await writeStore(store);
+  let changed = false;
+  for (const key of Object.keys(store)) {
+    if (usernamesMatch(key, viewerId)) {
+      delete store[key];
+      changed = true;
+    }
+  }
+  if (changed) await writeStore(store);
 }
 
 export function isViewerIntegrationToken(token: string): boolean {

@@ -6,6 +6,7 @@ import type {
   RouteHandlerMethod,
 } from "fastify";
 import { getCcUsers, hasMinRole } from "../../../auth/infrastructure/command-center-auth.service.js";
+import { usernamesMatch } from "../../../users/application/viewer-users.service.js";
 import {
   CREDENTIAL_EXPIRATION_OPTIONS,
   REST_API_KEYS_MAX_PER_USER,
@@ -498,5 +499,5 @@ export function registerAdminRestApiKeyRoutes(app: FastifyInstance): void {
 }
 
 function findIntegrationAccount(accountId: string): boolean {
-  return getCcUsers().some((u) => u.role === "viewer" && u.username === accountId);
+  return getCcUsers().some((u) => u.role === "viewer" && usernamesMatch(u.username, accountId));
 }

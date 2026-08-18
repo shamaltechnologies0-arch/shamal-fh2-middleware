@@ -23,7 +23,7 @@ import {
   putPlatformData,
   setPlatformDataCache,
 } from "../../../infrastructure/persistence/platform-data-store.js";
-import { isManagedViewer, listManagedViewerRecords } from "../../users/application/viewer-users.service.js";
+import { isManagedViewer, listManagedViewerRecords, usernamesMatch } from "../../users/application/viewer-users.service.js";
 
 const KEY_PREFIX = "vwr_";
 const ID_PREFIX = "key_";
@@ -641,7 +641,7 @@ export function touchRestApiKeyLastUsed(keyId: string): void {
 }
 
 export async function deleteRestApiKeysForUser(userId: string): Promise<void> {
-  await writeStore(readStore().filter((row) => row.userId !== userId));
+  await writeStore(readStore().filter((row) => !usernamesMatch(row.userId, userId)));
 }
 
 export function getRestApiKeysStorePath(): string {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createFh2Client } from "../../../infrastructure/fh2/client.js";
 import { config } from "../../../config/env.js";
+import { usernamesMatch } from "../../users/application/viewer-users.service.js";
 import {
   getPlatformData,
   getPlatformStoreFilePath,
@@ -146,8 +147,13 @@ export async function syncFh2ProjectsFromSource(): Promise<{
     }
 
     store.projects = [...dedupById.values()];
+    if (store.projects.length === 0 && existingById.size > 0) {
+      store.projects = [...existingById.values()];
+      store.lastSyncError = "FlightHub 2 returned no projects; kept the last synced list.";
+    } else {
+      delete store.lastSyncError;
+    }
     store.lastSyncAt = now;
-    delete store.lastSyncError;
     await writeStore(store);
     return {
       syncedCount: list.length,
@@ -207,9 +213,14 @@ export async function removeViewerFromProject(
 
 export async function removeViewerFromAllProjects(viewerId: string): Promise<void> {
   const store = await loadStore();
-  if (!(viewerId in store.assignments)) return;
-  delete store.assignments[viewerId];
-  await writeStore(store);
+  let changed = false;
+  for (const key of Object.keys(store.assignments)) {
+    if (usernamesMatch(key, viewerId)) {
+      delete store.assignments[key];
+      changed = true;
+    }
+  }
+  if (changed) await writeStore(store);
 }
 
 export function listAssignedViewerIds(fh2ProjectId: string): string[] {
@@ -221,7 +232,9 @@ export function listAssignedViewerIds(fh2ProjectId: string): string[] {
 
 export function listViewerAssignedProjectIds(viewerId: string): string[] {
   const store = readStore();
-  const projectIds = store.assignments[viewerId] ?? [];
+  const projectIds = Object.entries(store.assignments)
+    .filter(([id]) => usernamesMatch(id, viewerId))
+    .flatMap(([, ids]) => ids);
   const activeProjectIds = new Set(
     store.projects
       .filter((p) => p.localStatus === "active")

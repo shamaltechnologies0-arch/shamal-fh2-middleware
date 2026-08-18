@@ -97,7 +97,9 @@ export async function refreshPlatformDataFromDb(
   const data = await getPlatformStoreDocument(key);
   if (data !== undefined) {
     cache.set(key, data);
+    return;
   }
+  cache.delete(key);
 }
 
 const AUTH_STORE_KEYS: PlatformStoreKey[] = [
@@ -130,49 +132,6 @@ export async function refreshAuthStoresFromDb(
       await Promise.all(
         AUTH_STORE_KEYS.map((key) => refreshPlatformDataFromDb(key)),
       );
-    } finally {
-      authRefreshInFlight = null;
-    }
-  })();
-
-  return authRefreshInFlight;
-}
-
-const AUTH_STORE_KEYS: PlatformStoreKey[] = [
-  PLATFORM_STORE_KEYS.VIEWER_USERS,
-  PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS,
-  PLATFORM_STORE_KEYS.VIEWER_DASHBOARD_PERMISSIONS,
-  PLATFORM_STORE_KEYS.FH2_PROJECTS,
-  PLATFORM_STORE_KEYS.VIEWER_INTEGRATIONS,
-  PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS,
-];
-
-const AUTH_REFRESH_TTL_MS = 1000;
-let lastAuthRefreshAt = 0;
-let authRefreshInFlight: Promise<void> | null = null;
-
-/**
- * Reload auth-sensitive Mongo stores before login/API-key checks.
- * Vercel instances keep an in-memory cache from cold start; a user created on
- * instance A is otherwise missing on instance B, so login succeeds then /auth/me 401s.
- */
-export async function refreshAuthStoresFromDb(
-  options: { force?: boolean } = {},
-): Promise<void> {
-  if (!isDatabaseReady()) return;
-  if (authRefreshInFlight) return authRefreshInFlight;
-
-  const now = Date.now();
-  if (!options.force && now - lastAuthRefreshAt < AUTH_REFRESH_TTL_MS) {
-    return;
-  }
-
-  authRefreshInFlight = (async () => {
-    try {
-      await Promise.all(
-        AUTH_STORE_KEYS.map((key) => refreshPlatformDataFromDb(key)),
-      );
-      lastAuthRefreshAt = Date.now();
     } finally {
       authRefreshInFlight = null;
     }
@@ -220,6 +179,19 @@ export async function initPlatformDataStore(): Promise<void> {
           data = fromFile;
           await setPlatformStoreDocument(key, data);
           console.info(`[store] Migrated ${key} from JSON to MongoDB`);
+        }
+      } else if (key === PLATFORM_STORE_KEYS.FH2_PROJECTS) {
+        const mongoProjects = (data as { projects?: unknown[] }).projects;
+        if (Array.isArray(mongoProjects) && mongoProjects.length === 0) {
+          const fromFile = readJsonFile<{ projects?: unknown[] }>(FILE_PATHS[key]);
+          if (Array.isArray(fromFile?.projects) && fromFile.projects.length > 0) {
+            data = {
+              ...(data as object),
+              projects: fromFile.projects,
+            };
+            await setPlatformStoreDocument(key, data);
+            console.info("[store] Restored FH2 projects from bundled JSON (Mongo list was empty)");
+          }
         }
       }
     } else {

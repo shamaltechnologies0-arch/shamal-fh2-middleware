@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getCcUsers } from "../../auth/infrastructure/command-center-auth.service.js";
+import { usernamesMatch } from "./viewer-users.service.js";
 import {
   getPlatformData,
   getPlatformStoreFilePath,
@@ -84,7 +85,7 @@ export async function updateViewerDashboardPermissions(
   patch: Partial<ViewerDashboardPermissions>,
 ): Promise<ViewerDashboardPermissions> {
   const viewers = getCcUsers().filter((u) => u.role === "viewer");
-  if (!viewers.some((u) => u.username === viewerId)) {
+  if (!viewers.some((u) => usernamesMatch(u.username, viewerId))) {
     throw new Error(`Unknown viewer account: ${viewerId}`);
   }
 
@@ -107,9 +108,14 @@ export async function deleteViewerDashboardPermissions(
   viewerId: string,
 ): Promise<void> {
   const store = readStore();
-  if (!(viewerId in store)) return;
-  delete store[viewerId];
-  await writeStore(store);
+  let changed = false;
+  for (const key of Object.keys(store)) {
+    if (usernamesMatch(key, viewerId)) {
+      delete store[key];
+      changed = true;
+    }
+  }
+  if (changed) await writeStore(store);
 }
 
 export function getPermissionsStorePath(): string {

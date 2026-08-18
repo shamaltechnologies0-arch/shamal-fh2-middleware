@@ -455,6 +455,11 @@
 
     const SESSION_EXPIRED_SILENT = "SESSION_EXPIRED_SILENT";
 
+    function isNotFoundError(err) {
+      const raw = err?.message || String(err);
+      return /not_found|was not found/i.test(raw);
+    }
+
     function notifyApiError(err, prefix) {
       const message = err?.message || String(err);
       if (!message || message === SESSION_EXPIRED_SILENT) return;
@@ -1164,11 +1169,20 @@
     }
 
     async function loadAdminViewerSettingsFor(accountId) {
-      const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
-      fillAdminPermissionForm(res.data.permissions);
-      setAdminSettingsStatus("");
-      await loadAdminIntegrationSettings(accountId);
-      await loadAdminRestApiKeys(accountId);
+      if (!accountId) return;
+      try {
+        const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
+        fillAdminPermissionForm(res.data.permissions);
+        setAdminSettingsStatus("");
+        await loadAdminIntegrationSettings(accountId);
+        await loadAdminRestApiKeys(accountId);
+      } catch (e) {
+        if (isNotFoundError(e)) {
+          setAdminSettingsStatus("That account is no longer available. Refreshing the list…", "err");
+          return;
+        }
+        throw e;
+      }
     }
 
     function setAdminIntegrationStatusMsg(message, type = "") {
@@ -1322,10 +1336,14 @@
           method: "DELETE",
         });
         setAdminViewerStatus(`Account "${accountId}" deleted.`, "ok");
-        await loadAdminViewerSettings();
       } catch (e) {
-        setAdminViewerStatus(e.message, "err");
+        if (!isNotFoundError(e)) {
+          setAdminViewerStatus(e.message, "err");
+          return;
+        }
+        setAdminViewerStatus(`Account "${accountId}" deleted.`, "ok");
       }
+      await loadAdminViewerSettings();
     }
 
     function setAdminProjectStatus(message, type = "") {

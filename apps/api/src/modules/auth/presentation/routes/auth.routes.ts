@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { getCcUsers, login, verifySessionToken } from "../../infrastructure/command-center-auth.service.js";
+import { usernamesMatch } from "../../../users/application/viewer-users.service.js";
 import {
   buildClearSessionCookieHeader,
   buildSessionCookieHeader,
@@ -247,7 +248,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const user = getCcUsers().find((u) => u.username === username);
+      const user = getCcUsers().find((u) => usernamesMatch(u.username, username));
       return reply.send({
         data: {
           username,

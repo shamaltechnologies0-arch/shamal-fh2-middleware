@@ -5,7 +5,10 @@ import {
   getPrimaryApiKeyForUser,
   verifyRestApiKey,
 } from "../../api-keys/application/rest-api-keys.service.js";
-import { getManagedViewerUsers } from "../../users/application/viewer-users.service.js";
+import {
+  getManagedViewerUsers,
+  usernamesMatch,
+} from "../../users/application/viewer-users.service.js";
 
 export type CcRole = "viewer" | "operator" | "admin";
 
@@ -176,7 +179,7 @@ export function login(username: string, password: string): {
   const normalizedUsername = username.trim();
   const users = getCcUsers();
   const user = users.find(
-    (u) => u.username === normalizedUsername && safeEqual(u.password, password),
+    (u) => usernamesMatch(u.username, normalizedUsername) && safeEqual(u.password, password),
   );
   if (!user) return null;
 

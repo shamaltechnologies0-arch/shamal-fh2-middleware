@@ -94,5 +94,9 @@ export async function refreshBrowserSessionCookie(session: ShamalSession): Promi
       "X-CC-Session": session.sessionToken,
     },
   });
+  if (res.status === 401) {
+    clearSession();
+    window.dispatchEvent(new CustomEvent("shamal-session-cleared"));
+  }
   return res.ok;
 }

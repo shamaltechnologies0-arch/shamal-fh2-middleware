@@ -33,6 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdminRoute = isAdminPortal();
 
   useEffect(() => {
+    const onCleared = () => setSession(null);
+    window.addEventListener("shamal-session-cleared", onCleared);
+    return () => window.removeEventListener("shamal-session-cleared", onCleared);
+  }, []);
+
+  useEffect(() => {
     const existing = loadSession();
     if (!existing) {
       setIsLoading(false);

@@ -13,6 +13,7 @@ import {
 } from "../../modules/auth/infrastructure/command-center-auth.service.js";
 import { normalizeApiPath, isPlatformApiPath } from "../../shared/http/viewer-paths.js";
 import { assertRoleAccess } from "../../shared/security/api-access.js";
+import { refreshAuthStoresFromDb } from "../persistence/platform-data-store.js";
 import {
   hasConfiguredFh2Projects,
   listViewerAssignedProjectCodes,
@@ -218,16 +219,22 @@ export async function registerPlatformAuth(app: FastifyInstance): Promise<void> 
       return;
     }
 
-    if (
-      path === "/v1/auth/login" ||
-      path === "/v1/auth/logout" ||
+    const isLoginPath =
+      path === "/v1/auth/login" || path === "/v1/viewer/auth/login";
+    const isSessionCookiePath =
       path === "/v1/auth/session-cookie" ||
+      path === "/v1/viewer/auth/session-cookie";
+    const isPublicAuthPath =
+      isLoginPath ||
+      isSessionCookiePath ||
+      path === "/v1/auth/logout" ||
       path === "/v1/auth/token" ||
-      path === "/v1/viewer/auth/login" ||
       path === "/v1/viewer/auth/logout" ||
-      path === "/v1/viewer/auth/session-cookie" ||
-      path === "/v1/viewer/auth/token"
-    ) {
+      path === "/v1/viewer/auth/token";
+
+    await refreshAuthStoresFromDb({ force: isLoginPath || isSessionCookiePath });
+
+    if (isPublicAuthPath) {
       return;
     }
 

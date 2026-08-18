@@ -100,6 +100,87 @@ export async function refreshPlatformDataFromDb(
   }
 }
 
+const AUTH_STORE_KEYS: PlatformStoreKey[] = [
+  PLATFORM_STORE_KEYS.VIEWER_USERS,
+  PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS,
+  PLATFORM_STORE_KEYS.VIEWER_DASHBOARD_PERMISSIONS,
+  PLATFORM_STORE_KEYS.FH2_PROJECTS,
+  PLATFORM_STORE_KEYS.VIEWER_INTEGRATIONS,
+  PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS,
+];
+
+let authRefreshInFlight: Promise<void> | null = null;
+
+/**
+ * Reload auth-sensitive stores from Mongo before login/API auth.
+ * Vercel keeps a per-instance memory cache; without this, a user created on
+ * instance A logs in, then the next request hits instance B and gets 401.
+ */
+export async function refreshAuthStoresFromDb(
+  options: { force?: boolean } = {},
+): Promise<void> {
+  if (!isDatabaseReady()) return;
+  if (authRefreshInFlight) {
+    await authRefreshInFlight;
+    if (!options.force) return;
+  }
+
+  authRefreshInFlight = (async () => {
+    try {
+      await Promise.all(
+        AUTH_STORE_KEYS.map((key) => refreshPlatformDataFromDb(key)),
+      );
+    } finally {
+      authRefreshInFlight = null;
+    }
+  })();
+
+  return authRefreshInFlight;
+}
+
+const AUTH_STORE_KEYS: PlatformStoreKey[] = [
+  PLATFORM_STORE_KEYS.VIEWER_USERS,
+  PLATFORM_STORE_KEYS.VIEWER_REST_API_KEYS,
+  PLATFORM_STORE_KEYS.VIEWER_DASHBOARD_PERMISSIONS,
+  PLATFORM_STORE_KEYS.FH2_PROJECTS,
+  PLATFORM_STORE_KEYS.VIEWER_INTEGRATIONS,
+  PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS,
+];
+
+const AUTH_REFRESH_TTL_MS = 1000;
+let lastAuthRefreshAt = 0;
+let authRefreshInFlight: Promise<void> | null = null;
+
+/**
+ * Reload auth-sensitive Mongo stores before login/API-key checks.
+ * Vercel instances keep an in-memory cache from cold start; a user created on
+ * instance A is otherwise missing on instance B, so login succeeds then /auth/me 401s.
+ */
+export async function refreshAuthStoresFromDb(
+  options: { force?: boolean } = {},
+): Promise<void> {
+  if (!isDatabaseReady()) return;
+  if (authRefreshInFlight) return authRefreshInFlight;
+
+  const now = Date.now();
+  if (!options.force && now - lastAuthRefreshAt < AUTH_REFRESH_TTL_MS) {
+    return;
+  }
+
+  authRefreshInFlight = (async () => {
+    try {
+      await Promise.all(
+        AUTH_STORE_KEYS.map((key) => refreshPlatformDataFromDb(key)),
+      );
+      lastAuthRefreshAt = Date.now();
+    } finally {
+      authRefreshInFlight = null;
+    }
+  })();
+
+  return authRefreshInFlight;
+}
+
 export function setPlatformDataCache<T>(key: PlatformStoreKey, data: T): void {
   cache.set(key, data);
 }

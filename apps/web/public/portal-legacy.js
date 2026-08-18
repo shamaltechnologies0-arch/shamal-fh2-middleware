@@ -138,6 +138,7 @@
     function clearSession() {
       state.session = null;
       localStorage.removeItem("shamalCcSession");
+      window.dispatchEvent(new CustomEvent("shamal-session-cleared"));
     }
 
     function canOperate() {
@@ -404,7 +405,7 @@
       state.activeTab = tabId;
       updateNavActiveState();
       if (tabId === "admin" && isAdmin()) {
-        loadAdminViewerSettings().catch((e) => alert(e.message));
+        loadAdminViewerSettings().catch((e) => notifyApiError(e));
       }
       if (tabId === "settings") {
         history.replaceState(null, "", "/?tab=settings");
@@ -450,6 +451,14 @@
       if (status === "disabled") return '<span class="pill warn">DISABLED</span>';
       if (status === "expired") return '<span class="pill bad">EXPIRED</span>';
       return `<span class="pill bad">${escapeHtml((status || "unknown").toUpperCase())}</span>`;
+    }
+
+    const SESSION_EXPIRED_SILENT = "SESSION_EXPIRED_SILENT";
+
+    function notifyApiError(err, prefix) {
+      const message = err?.message || String(err);
+      if (!message || message === SESSION_EXPIRED_SILENT) return;
+      alert(prefix ? `${prefix}${message}` : message);
     }
 
     function parseApiErrorMessage(err) {
@@ -1706,10 +1715,10 @@
         setTimeout(() => state.dashFleetMap.invalidateSize(), 120);
       }
       if (btn.dataset.tab === "admin" && isAdmin()) {
-        loadAdminViewerSettings().catch((e) => alert(e.message));
+        loadAdminViewerSettings().catch((e) => notifyApiError(e));
       }
       if (btn.dataset.tab === "settings" && canManageWorkspaceApi()) {
-        loadSettingsPage().catch((e) => alert(e.message));
+        loadSettingsPage().catch((e) => notifyApiError(e));
       }
       if (btn.dataset.tab === "camera" && $("camDevice").value && state.session) {
         loadAllStreams();
@@ -1825,11 +1834,12 @@
       if (opts.body != null && opts.body !== "") {
         headers["Content-Type"] = headers["Content-Type"] || "application/json";
       }
-      const res = await fetch(requestPath, { ...opts, headers });
+      const res = await fetch(requestPath, { ...opts, headers, credentials: "include" });
       if (res.status === 401) {
+        const shouldNotify = Boolean(state.session);
         clearSession();
         updateRoleUi();
-        throw new Error("Session expired — sign in again");
+        throw new Error(shouldNotify ? "Session expired — sign in again" : SESSION_EXPIRED_SILENT);
       }
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       return res.json();
@@ -3089,7 +3099,7 @@
       try {
         await refreshDashboard();
       } catch (e) {
-        alert("Refresh failed: " + e.message);
+        notifyApiError(e, "Refresh failed: ");
       }
     };
 
@@ -3138,7 +3148,7 @@
       if (!state.session) return;
       state.session.selectedProjectCode = $("viewerProjectPicker").value;
       saveSession(state.session);
-      refreshDashboard().catch((e) => alert(e.message));
+      refreshDashboard().catch((e) => notifyApiError(e));
     };
     $("adminIntegrationEnabled").onchange = () => {
       saveAdminIntegrationEnabled().catch((e) => setAdminIntegrationStatusMsg(e.message, "err"));
@@ -3188,8 +3198,8 @@
       isViewer,
       isAdmin,
       canOperate,
-      loadAdminViewerSettings: () => loadAdminViewerSettings().catch((e) => alert(e.message)),
-      refreshDashboard: () => refreshDashboard().catch((e) => alert(e.message)),
+      loadAdminViewerSettings: () => loadAdminViewerSettings().catch((e) => notifyApiError(e)),
+      refreshDashboard: () => refreshDashboard().catch((e) => notifyApiError(e)),
       logout: () => {
         const btn = $("logoutBtn");
         if (btn) btn.click();
@@ -3215,7 +3225,7 @@
         const initialTab = resolveInitialTab();
         if (initialTab !== state.activeTab) activateTab(initialTab);
         else if (initialTab === "admin" && isAdmin()) {
-          loadAdminViewerSettings().catch((e) => alert(e.message));
+          loadAdminViewerSettings().catch((e) => notifyApiError(e));
         }
         activateSettingsTab(state.activeSettingsTab || "service-accounts");
         startLiveUpdates();
@@ -3227,9 +3237,9 @@
               }
               await refreshDashboard();
             })
-            .catch((e) => alert(e.message));
+            .catch((e) => notifyApiError(e));
         } else {
-          refreshDashboard().catch((e) => alert(e.message));
+          refreshDashboard().catch((e) => notifyApiError(e));
         }
       }
     });

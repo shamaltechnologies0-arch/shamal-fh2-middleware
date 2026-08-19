@@ -4,6 +4,7 @@
  */
 
 :root {
+  color-scheme: light;
   --cc-background: #f1f5f9;
   --cc-surface-primary: #ffffff;
   --cc-surface-secondary: #f8fafc;
@@ -20,6 +21,14 @@
   --cc-accent-primary: #0284c7;
   --cc-accent-secondary: #2563eb;
   --cc-accent-live: #0891b2;
+
+  --cc-btn-bg: #ffffff;
+  --cc-btn-fg: #0f172a;
+  --cc-btn-border: rgba(15, 23, 42, 0.18);
+  --cc-btn-hover: #e2e8f0;
+  --cc-btn-primary-bg: #1d4ed8;
+  --cc-btn-primary-fg: #ffffff;
+  --cc-btn-primary-hover: #1e40af;
 
   --cc-status-success: #16a34a;
   --cc-status-warning: #d97706;
@@ -45,11 +54,20 @@
 }
 
 .dark {
+  color-scheme: dark;
   --cc-background: #07111f;
   --cc-surface-primary: #0b1626;
   --cc-surface-secondary: #101d2e;
   --cc-surface-elevated: rgba(16, 29, 46, 0.88);
   --cc-surface-overlay: rgba(7, 17, 31, 0.72);
+
+  --cc-btn-bg: #1e3a5f;
+  --cc-btn-fg: #f8fafc;
+  --cc-btn-border: rgba(186, 230, 253, 0.28);
+  --cc-btn-hover: #274b73;
+  --cc-btn-primary-bg: #2563eb;
+  --cc-btn-primary-fg: #ffffff;
+  --cc-btn-primary-hover: #3b82f6;
 
   --cc-border-subtle: rgba(148, 163, 184, 0.14);
   --cc-border-active: rgba(56, 189, 248, 0.45);

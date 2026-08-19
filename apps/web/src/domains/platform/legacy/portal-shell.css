@@ -3,7 +3,7 @@
  */
 
 .legacy-portal-host {
-  color-scheme: light;
+  color-scheme: inherit;
   --lp-bg: var(--cc-background, #07111f);
   --lp-surface: var(--cc-surface-primary, #0b1626);
   --lp-surface-2: var(--cc-surface-secondary, #101d2e);
@@ -15,6 +15,13 @@
   --lp-ok: var(--cc-status-success, #22c55e);
   --lp-warn: var(--cc-status-warning, #f59e0b);
   --lp-danger: var(--cc-status-danger, #ef4444);
+  --lp-btn-bg: var(--cc-btn-bg, #1e3a5f);
+  --lp-btn-fg: var(--cc-btn-fg, #f8fafc);
+  --lp-btn-border: var(--cc-btn-border, rgba(186, 230, 253, 0.28));
+  --lp-btn-hover: var(--cc-btn-hover, #274b73);
+  --lp-btn-primary-bg: var(--cc-btn-primary-bg, #2563eb);
+  --lp-btn-primary-fg: var(--cc-btn-primary-fg, #ffffff);
+  --lp-btn-primary-hover: var(--cc-btn-primary-hover, #3b82f6);
 
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--lp-text);
@@ -22,10 +29,6 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-}
-
-.dark .legacy-portal-host {
-  color-scheme: dark;
 }
 
 .legacy-portal-host .legacy-hidden-chrome {
@@ -111,21 +114,26 @@
   font-size: 0.75rem;
   padding: 0.3125rem 0.75rem;
   border-radius: 0.375rem;
-  border: 1px solid var(--lp-border);
-  background: var(--lp-surface);
-  color: var(--cc-text-secondary, #94a3b8);
+  border: 1px solid var(--lp-border) !important;
+  background: var(--lp-surface) !important;
+  color: var(--cc-text-secondary, #475569) !important;
+  -webkit-text-fill-color: var(--cc-text-secondary, #475569);
+  font-weight: 600;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .legacy-portal-host .ops-tabs button:hover {
-  background: var(--lp-surface-2);
-  border-color: color-mix(in srgb, var(--lp-accent) 35%, var(--lp-border));
+  background: var(--lp-surface-2) !important;
+  border-color: color-mix(in srgb, var(--lp-accent) 35%, var(--lp-border)) !important;
+  color: var(--lp-text) !important;
+  -webkit-text-fill-color: var(--lp-text);
 }
 
 .legacy-portal-host .ops-tabs button.active {
-  background: color-mix(in srgb, var(--lp-accent) 14%, var(--lp-surface));
-  border-color: var(--cc-border-active, rgba(56, 189, 248, 0.45));
-  color: var(--lp-accent);
+  background: color-mix(in srgb, var(--lp-accent) 14%, var(--lp-surface)) !important;
+  border-color: var(--cc-border-active, rgba(37, 99, 235, 0.4)) !important;
+  color: var(--lp-accent) !important;
+  -webkit-text-fill-color: var(--lp-accent);
 }
 
 .legacy-portal-host .dash-card,
@@ -186,20 +194,66 @@
 }
 
 .legacy-portal-host button {
+  appearance: none;
+  -webkit-appearance: none;
   border-radius: 0.375rem !important;
   font-size: 0.8125rem;
-  font-weight: 500;
-  transition: background 0.15s, border-color 0.15s;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.legacy-portal-host button:not(.get-api-btn):not(.admin-delete-btn):not([class*="op-btn"]) {
-  background: color-mix(in srgb, var(--lp-accent) 18%, var(--lp-surface-2)) !important;
-  border: 1px solid color-mix(in srgb, var(--lp-accent) 30%, var(--lp-border)) !important;
-  color: var(--lp-text) !important;
+.legacy-portal-host *:not(.ops-tabs) > button:not(.admin-delete-btn):not([class*="op-btn"]) {
+  background: var(--lp-btn-bg) !important;
+  border: 1px solid var(--lp-btn-border) !important;
+  color: var(--lp-btn-fg) !important;
+  -webkit-text-fill-color: var(--lp-btn-fg);
 }
 
-.legacy-portal-host button:not(.get-api-btn):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--lp-accent) 28%, var(--lp-surface-2)) !important;
+.legacy-portal-host *:not(.ops-tabs) > button:not(.admin-delete-btn):not([class*="op-btn"]):hover:not(:disabled) {
+  background: var(--lp-btn-hover) !important;
+  color: var(--lp-btn-fg) !important;
+  -webkit-text-fill-color: var(--lp-btn-fg);
+}
+
+.legacy-portal-host .admin-delete-btn {
+  background: color-mix(in srgb, var(--lp-danger) 88%, #000) !important;
+  border: 1px solid color-mix(in srgb, var(--lp-danger) 70%, #7f1d1d) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
+}
+
+.legacy-portal-host .admin-delete-btn:hover:not(:disabled) {
+  background: var(--lp-danger) !important;
+}
+
+.legacy-portal-host #restApiKeysNewBtn,
+.legacy-portal-host #adminRestApiKeysNewBtn,
+.legacy-portal-host #restApiKeysEmptyCreate,
+.legacy-portal-host #serviceAccountsNewBtn,
+.legacy-portal-host #serviceAccountsEmptyCreate,
+.legacy-portal-host #apiKeyModalConfirm,
+.legacy-portal-host #apiKeyModalCopyBtn,
+.legacy-portal-host #serviceAccountModalConfirm,
+.legacy-portal-host #serviceAccountModalCopyBtn {
+  background: var(--lp-btn-primary-bg) !important;
+  border-color: transparent !important;
+  color: var(--lp-btn-primary-fg) !important;
+  -webkit-text-fill-color: var(--lp-btn-primary-fg);
+}
+
+.legacy-portal-host #restApiKeysNewBtn:hover:not(:disabled),
+.legacy-portal-host #adminRestApiKeysNewBtn:hover:not(:disabled),
+.legacy-portal-host #restApiKeysEmptyCreate:hover:not(:disabled),
+.legacy-portal-host #serviceAccountsNewBtn:hover:not(:disabled),
+.legacy-portal-host #serviceAccountsEmptyCreate:hover:not(:disabled),
+.legacy-portal-host #apiKeyModalConfirm:hover:not(:disabled),
+.legacy-portal-host #apiKeyModalCopyBtn:hover:not(:disabled),
+.legacy-portal-host #serviceAccountModalConfirm:hover:not(:disabled),
+.legacy-portal-host #serviceAccountModalCopyBtn:hover:not(:disabled) {
+  background: var(--lp-btn-primary-hover) !important;
+  color: var(--lp-btn-primary-fg) !important;
+  -webkit-text-fill-color: var(--lp-btn-primary-fg);
 }
 
 .legacy-portal-host table th {
@@ -532,6 +586,69 @@
 
 .legacy-portal-host .modal-backdrop {
   z-index: 50;
+  background: rgba(15, 23, 42, 0.52) !important;
+}
+
+.dark .legacy-portal-host .modal-backdrop {
+  background: rgba(2, 6, 12, 0.72) !important;
+}
+
+.legacy-portal-host .modal {
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  color: var(--lp-text) !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28);
+}
+
+.legacy-portal-host .modal h3 {
+  color: var(--lp-text) !important;
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem;
+}
+
+.legacy-portal-host .modal label {
+  display: block;
+  color: var(--lp-text) !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.375rem;
+}
+
+.legacy-portal-host .modal p:not(.danger-text):not(.api-keys-error),
+.legacy-portal-host .modal .small {
+  color: var(--lp-muted) !important;
+}
+
+.legacy-portal-host .api-keys-error,
+.legacy-portal-host .danger-text {
+  color: var(--lp-danger) !important;
+}
+
+.legacy-portal-host .api-key-warning {
+  background: color-mix(in srgb, var(--lp-warn) 14%, var(--lp-surface)) !important;
+  border: 1px solid color-mix(in srgb, var(--lp-warn) 48%, var(--lp-border)) !important;
+  color: var(--lp-warn) !important;
+}
+
+.legacy-portal-host .api-key-plain,
+.legacy-portal-host .api-keys-table .key-mono {
+  background: var(--lp-bg) !important;
+  border: 1px solid var(--lp-border) !important;
+  color: var(--lp-text) !important;
+  -webkit-text-fill-color: var(--lp-text);
+}
+
+.legacy-portal-host .api-keys-table .key-mono {
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.legacy-portal-host .api-keys-table .actions button {
+  font-size: 0.6875rem !important;
+  padding: 0.3125rem 0.5rem !important;
+  min-height: 1.75rem;
 }
 
 .legacy-portal-host #serviceAccountModalScopes.integration-scopes {
@@ -558,17 +675,15 @@
 }
 
 .legacy-portal-host .get-api-btn {
-  background: color-mix(in srgb, var(--lp-accent) 14%, var(--lp-surface)) !important;
-  border: 1px solid color-mix(in srgb, var(--lp-accent) 35%, var(--lp-border)) !important;
-  color: var(--lp-text) !important;
-  font-size: 0.6875rem;
+  font-size: 0.6875rem !important;
   font-weight: 600;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.5rem !important;
 }
 
-.legacy-portal-host .get-api-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--lp-accent) 24%, var(--lp-surface)) !important;
-  color: var(--lp-text) !important;
+.legacy-portal-host input::placeholder,
+.legacy-portal-host textarea::placeholder {
+  color: var(--lp-muted) !important;
+  opacity: 1;
 }
 
 .legacy-portal-host .pre,

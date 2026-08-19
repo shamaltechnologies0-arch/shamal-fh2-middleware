@@ -3,7 +3,7 @@
  */
 
 .legacy-portal-host {
-  color-scheme: dark;
+  color-scheme: light;
   --lp-bg: var(--cc-background, #07111f);
   --lp-surface: var(--cc-surface-primary, #0b1626);
   --lp-surface-2: var(--cc-surface-secondary, #101d2e);
@@ -22,6 +22,10 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+.dark .legacy-portal-host {
+  color-scheme: dark;
 }
 
 .legacy-portal-host .legacy-hidden-chrome {
@@ -554,10 +558,17 @@
 }
 
 .legacy-portal-host .get-api-btn {
-  background: color-mix(in srgb, var(--lp-accent) 12%, var(--lp-surface)) !important;
-  border: 1px solid color-mix(in srgb, var(--lp-accent) 25%, var(--lp-border)) !important;
-  font-size: 0.625rem;
+  background: color-mix(in srgb, var(--lp-accent) 14%, var(--lp-surface)) !important;
+  border: 1px solid color-mix(in srgb, var(--lp-accent) 35%, var(--lp-border)) !important;
+  color: var(--lp-text) !important;
+  font-size: 0.6875rem;
+  font-weight: 600;
   padding: 0.25rem 0.5rem;
+}
+
+.legacy-portal-host .get-api-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lp-accent) 24%, var(--lp-surface)) !important;
+  color: var(--lp-text) !important;
 }
 
 .legacy-portal-host .pre,

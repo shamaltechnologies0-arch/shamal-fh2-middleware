@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ConnectionStatus } from "@/components/shared/connection-status";
-import { NotificationMenu } from "@/components/shared/notification-menu";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { ProjectSwitcher } from "@/components/layout/project-switcher";
 import type { PortalTab } from "@/components/layout/app-sidebar";
@@ -82,7 +81,6 @@ export function AppHeader({ activeTab }: AppHeaderProps) {
           </Button>
         ) : null}
         <ThemeToggle />
-        {!isAdminPanel ? <NotificationMenu /> : null}
       </div>
     </header>
   );

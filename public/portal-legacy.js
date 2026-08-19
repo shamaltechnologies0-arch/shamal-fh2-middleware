@@ -167,6 +167,32 @@
       getApiButtons: false,
     };
 
+    const PERMISSION_SCOPE_MAP = {
+      fleetOverview: "fleet:read",
+      droneTelemetry: "drone:read",
+      dockTelemetry: "dock:read",
+      batteryStatus: "battery:read",
+      gpsLocation: "gps:read",
+      onlineOffline: "status:read",
+      liveCamera: "camera:read",
+      droneFpv: "fpv:read",
+      alertsEvents: "events:read",
+      missionMediaHistory: "media:read",
+    };
+
+    const SERVICE_ACCOUNT_SCOPE_LABELS = {
+      "fleet:read": "Fleet Overview",
+      "drone:read": "Drone Telemetry",
+      "dock:read": "Dock Telemetry",
+      "battery:read": "Battery Status",
+      "gps:read": "GPS / Location",
+      "status:read": "Online Status",
+      "camera:read": "Live Camera",
+      "fpv:read": "Drone FPV",
+      "events:read": "Alerts & Events",
+      "media:read": "Mission & Media History",
+    };
+
     const ADMIN_PERMISSION_GROUPS = [
       {
         containerId: "adminPermCore",
@@ -403,6 +429,9 @@
       updateNavActiveState();
       if (tabId === "admin" && isAdmin()) {
         loadAdminViewerSettings().catch((e) => alert(e.message));
+      }
+      if (tabId === "settings" && canManageWorkspaceApi()) {
+        loadSettingsPage().catch((e) => alert(e.message));
       }
       if (tabId === "settings") {
         history.replaceState(null, "", "/?tab=settings");
@@ -911,19 +940,35 @@
       $("serviceAccountModalError").textContent = "";
     }
 
+    function scopesFromViewerPermissions() {
+      const perms = viewerPermissions() || {
+        ...DEFAULT_VIEWER_DASHBOARD_PERMISSIONS,
+        ...(state.session?.viewerDashboardPermissions || {}),
+      };
+      return Object.entries(PERMISSION_SCOPE_MAP)
+        .filter(([key]) => perms[key] === true)
+        .map(([, scope]) => scope);
+    }
+
+    function resolveAvailableServiceAccountScopes() {
+      const fromApi = state.serviceAccountAvailableScopes || [];
+      if (fromApi.length) return fromApi;
+      return scopesFromViewerPermissions();
+    }
+
     function renderServiceAccountScopeOptions() {
       const wrap = $("serviceAccountModalScopes");
       if (!wrap) return;
-      const scopes = state.serviceAccountAvailableScopes || [];
+      const scopes = resolveAvailableServiceAccountScopes();
       if (!scopes.length) {
-        wrap.innerHTML = '<span class="small">No API scopes available for your account.</span>';
+        wrap.innerHTML = '<span class="small">No API scopes available for your account. Ask an admin to enable dashboard data access.</span>';
         return;
       }
       wrap.innerHTML = scopes
-        .map(
-          (scope) =>
-            `<label class="perm-toggle-row"><span>${escapeHtml(scope)}</span><span class="perm-switch"><input type="checkbox" data-sa-scope="${escapeHtml(scope)}" /><span class="slider"></span></span></label>`,
-        )
+        .map((scope) => {
+          const label = SERVICE_ACCOUNT_SCOPE_LABELS[scope] || scope;
+          return `<label class="perm-toggle-row"><span>${escapeHtml(label)}</span><span class="perm-switch"><input type="checkbox" data-sa-scope="${escapeHtml(scope)}" /><span class="slider"></span></span></label>`;
+        })
         .join("");
     }
 
@@ -933,7 +978,7 @@
         .map((el) => el.dataset.saScope);
     }
 
-    function openServiceAccountCreateModal() {
+    async function openServiceAccountCreateModal() {
       $("serviceAccountModalTitle").textContent = "Create Service Account";
       $("serviceAccountModalDesc").textContent =
         "Service accounts are for applications, not people. They use a client ID and secret instead of a username and password.";
@@ -945,6 +990,9 @@
       $("serviceAccountModalName").value = "";
       $("serviceAccountModalDescription").value = "";
       $("serviceAccountModalExpiration").value = "";
+      if (!(state.serviceAccountAvailableScopes || []).length) {
+        await loadServiceAccounts();
+      }
       renderServiceAccountScopeOptions();
       $("serviceAccountModal").classList.add("open");
       $("serviceAccountModal").setAttribute("aria-hidden", "false");
@@ -1810,7 +1858,9 @@
         path.startsWith("/v1/viewer/") &&
         !path.startsWith("/v1/viewer/auth/") &&
         !path.startsWith("/v1/platform/admin/") &&
-        !path.startsWith("/v1/viewer/rest-api-keys")
+        !path.startsWith("/v1/viewer/rest-api-keys") &&
+        !path.startsWith("/v1/viewer/service-accounts") &&
+        !path.startsWith("/v1/service-accounts")
       ) {
         const sep = path.includes("?") ? "&" : "?";
         requestPath = `${path}${sep}projectCode=${encodeURIComponent(projectCode)}`;
@@ -3187,6 +3237,7 @@
       isAdmin,
       canOperate,
       loadAdminViewerSettings: () => loadAdminViewerSettings().catch((e) => alert(e.message)),
+      loadSettingsPage: () => loadSettingsPage().catch((e) => alert(e.message)),
       refreshDashboard: () => refreshDashboard().catch((e) => alert(e.message)),
       logout: () => {
         const btn = $("logoutBtn");

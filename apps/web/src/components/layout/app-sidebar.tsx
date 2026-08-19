@@ -237,6 +237,9 @@ export function useLegacyTabSync(activeTab: PortalTab, onTabChange: (tab: Portal
     if (activeTab === "admin") {
       window.shamalLegacy.loadAdminViewerSettings?.();
     }
+    if (activeTab === "settings") {
+      window.shamalLegacy.loadSettingsPage?.();
+    }
   }, [activeTab, legacyReady]);
 
   useEffect(() => {

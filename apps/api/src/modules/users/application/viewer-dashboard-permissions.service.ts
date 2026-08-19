@@ -63,7 +63,11 @@ export function getViewerDashboardPermissions(
   viewerId: string,
 ): ViewerDashboardPermissions {
   const store = readStore();
-  return mergeViewerPermissions(store[viewerId]);
+  if (store[viewerId]) {
+    return mergeViewerPermissions(store[viewerId]);
+  }
+  const matchKey = Object.keys(store).find((key) => usernamesMatch(key, viewerId));
+  return mergeViewerPermissions(matchKey ? store[matchKey] : undefined);
 }
 
 export function listViewerDashboardPermissionUsers(): Array<{

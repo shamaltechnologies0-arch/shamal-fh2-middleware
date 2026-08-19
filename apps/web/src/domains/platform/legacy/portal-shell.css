@@ -530,6 +530,21 @@
   z-index: 50;
 }
 
+.legacy-portal-host #serviceAccountModalScopes.integration-scopes {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.legacy-portal-host #serviceAccountModalScopes .perm-toggle-row {
+  width: 100%;
+}
+
 .legacy-portal-host .card-zoom-backdrop {
   z-index: 60;
 }

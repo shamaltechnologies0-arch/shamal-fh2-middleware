@@ -129,6 +129,7 @@ declare global {
       isAdmin: () => boolean;
       canOperate: () => boolean;
       loadAdminViewerSettings?: () => void;
+      loadSettingsPage?: () => void;
       refreshDashboard: () => void;
       logout: () => void;
     };

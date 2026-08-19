@@ -479,7 +479,7 @@
                 <h4 style="margin:0">Service Accounts</h4>
                 <button type="button" id="serviceAccountsNewBtn">+ New Service Account</button>
               </div>
-              <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). Exchange <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/viewer/auth/token</code> for a short-lived JWT.</p>
+              <p class="small" style="margin:0 0 10px">Machine identities for your applications (non-interactive, no MFA). After you create one, your app exchanges <code>client_id</code> + <code>client_secret</code> at <code>POST /v1/auth/token</code> for a short-lived JWT.</p>
               <div id="serviceAccountsTableWrap"></div>
               <p id="serviceAccountsStatus" class="api-keys-error"></p>
             </div>
@@ -1840,7 +1840,7 @@
     function openServiceAccountCreateModal() {
       $("serviceAccountModalTitle").textContent = "Create Service Account";
       $("serviceAccountModalDesc").textContent =
-        "Service accounts authenticate machines, not humans. Your application exchanges client credentials at POST /v1/viewer/auth/token.";
+        "Service accounts are for applications, not people. They use a client ID and secret instead of a username and password.";
       $("serviceAccountModalWarning").style.display = "none";
       $("serviceAccountModalFormWrap").style.display = "";
       $("serviceAccountModalPlainWrap").style.display = "none";

@@ -936,7 +936,7 @@
     function openServiceAccountCreateModal() {
       $("serviceAccountModalTitle").textContent = "Create Service Account";
       $("serviceAccountModalDesc").textContent =
-        "Service accounts authenticate machines, not humans. Your application exchanges client credentials at POST /v1/viewer/auth/token.";
+        "Service accounts are for applications, not people. They use a client ID and secret instead of a username and password.";
       $("serviceAccountModalWarning").style.display = "none";
       $("serviceAccountModalFormWrap").style.display = "";
       $("serviceAccountModalPlainWrap").style.display = "none";

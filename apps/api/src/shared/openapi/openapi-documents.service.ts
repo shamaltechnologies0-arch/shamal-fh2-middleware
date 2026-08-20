@@ -1,3 +1,11 @@
+import {
+  applyCatalogToOperation,
+  isPublicDocsOperation,
+  PUBLIC_DOCS_GROUPS,
+  PUBLIC_DOCS_OPERATIONS,
+  sanitizeClientCopy,
+} from "./public-docs-catalog.js";
+
 export type OpenApiOperation = {
   tags?: string[];
   summary?: string;
@@ -30,6 +38,8 @@ const INTERNAL_EXACT_PATHS = new Set([
   "/",
   "/openapi.json",
   "/openapi.yaml",
+  "/docs",
+  "/docs/",
   "/docs/json",
   "/admin-docs/json",
 ]);
@@ -119,7 +129,7 @@ export function isPublicIntegrationOpenApiPath(
   if (path.startsWith(LEGACY_VIEWER_PREFIX)) return false;
   if (isAdminOnlyOpenApiPath(path, pathItem)) return false;
 
-  if (path === "/health" || path === "/webhooks/fh2") return true;
+  if (path === "/health") return true;
   if (path.startsWith("/v1/platform/integration/")) return true;
   if (isCanonicalIntegrationPath(path)) return true;
 
@@ -134,20 +144,32 @@ export function isPublicIntegrationOpenApiPath(
   return false;
 }
 
+const HTTP_METHODS = new Set([
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "head",
+  "options",
+]);
+
 function shouldIncludeInPublicDoc(
   path: string,
   pathItem: OpenApiPathItem,
 ): boolean {
   if (!isPublicIntegrationOpenApiPath(path, pathItem)) return false;
 
-  for (const operation of Object.values(pathItem)) {
+  for (const [method, operation] of Object.entries(pathItem)) {
+    if (!HTTP_METHODS.has(method.toLowerCase())) continue;
     if (!operation || typeof operation !== "object") continue;
     const flags = operationFlags(operation);
-    if (flags.hide && !flags.publicDocs) return false;
-    if (flags.internal) return false;
+    if (flags.hide && !flags.publicDocs) continue;
+    if (flags.internal) continue;
+    if (isPublicDocsOperation(method, path)) return true;
   }
 
-  return true;
+  return false;
 }
 
 function shouldIncludeInAdminDoc(path: string, pathItem: OpenApiPathItem): boolean {
@@ -184,14 +206,45 @@ function clonePathItem(pathItem: OpenApiPathItem): OpenApiPathItem {
   return cloned;
 }
 
+function clonePublicPathItem(
+  path: string,
+  pathItem: OpenApiPathItem,
+): OpenApiPathItem {
+  const cloned: OpenApiPathItem = {};
+  for (const [method, operation] of Object.entries(pathItem)) {
+    if (!HTTP_METHODS.has(method.toLowerCase())) continue;
+    if (!operation || typeof operation !== "object") continue;
+    if (!isPublicDocsOperation(method, path)) continue;
+    const cleaned = stripDocMetadata({ ...operation });
+    cloned[method] = applyCatalogToOperation(
+      method,
+      path,
+      cleaned,
+    ) as OpenApiOperation;
+  }
+  return cloned;
+}
+
+function sanitizeInfo(
+  info: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const next = { ...(info ?? {}) };
+  for (const key of ["title", "description", "summary"] as const) {
+    if (typeof next[key] === "string") {
+      next[key] = sanitizeClientCopy(next[key] as string);
+    }
+  }
+  return next;
+}
+
 export const PUBLIC_OPENAPI_INFO = {
   title: "Shamal Platform Integration API",
   version: "2.3.0",
   description:
-    "External API documentation for client developers and integration partners. " +
-    "Authenticate with `X-Api-Key` for REST integration routes, " +
+    "REST API for Command Center integrations — fleet, live view, telemetry, events, and media. " +
+    "Authenticate with `X-Api-Key` for resource routes, " +
     "OAuth 2.0 Client Credentials (`POST /v1/auth/token`) for service accounts, " +
-    "or Bearer integration tokens for `/v1/platform/integration/*` data routes.",
+    "or a Bearer integration token for `/v1/platform/integration/*` overview routes.",
 };
 
 export const ADMIN_OPENAPI_INFO = {
@@ -247,14 +300,24 @@ export function buildPublicOpenApiDocument<T extends OpenApiDocument>(doc: T): T
   for (const [path, pathItem] of Object.entries(doc.paths)) {
     if (!pathItem || typeof pathItem !== "object") continue;
     if (!shouldIncludeInPublicDoc(path, pathItem)) continue;
-    filteredPaths[path] = clonePathItem(pathItem);
+    const cloned = clonePublicPathItem(path, pathItem);
+    if (Object.keys(cloned).length === 0) continue;
+    filteredPaths[path] = cloned;
   }
 
   return {
     ...doc,
     info: {
-      ...(doc.info ?? {}),
+      ...sanitizeInfo(doc.info),
       ...PUBLIC_OPENAPI_INFO,
+    },
+    tags: PUBLIC_DOCS_GROUPS.map((group) => ({
+      name: group.label,
+      description: group.description,
+    })),
+    "x-docsCatalog": {
+      groups: PUBLIC_DOCS_GROUPS,
+      operations: PUBLIC_DOCS_OPERATIONS,
     },
     components: {
       ...(doc.components ?? {}),

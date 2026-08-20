@@ -12,9 +12,9 @@ export const fleetRoutes: FastifyPluginAsync = async (app) => {
     "/v1/fleet/summary",
     {
       schema: {
-        summary: "Fleet summary for CAFM dashboards",
+        summary: "Fleet summary for dashboards",
         description:
-          "Counts Shamal drones and docks with online/offline status from FlightHub 2.",
+          "Counts Shamal drones and docks with online/offline status.",
         tags: ["Fleet"],
       },
     },

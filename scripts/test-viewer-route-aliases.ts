@@ -196,8 +196,24 @@ async function main(): Promise<void> {
   if (docsPageRes.statusCode !== 200) {
     failed += 1;
     console.error(`FAIL docs-page: expected 200 got ${docsPageRes.statusCode}`);
+  } else if (!docsPageRes.payload.includes("Shamal Platform API") || !docsPageRes.payload.includes("/docs/assets/docs.js")) {
+    failed += 1;
+    console.error("FAIL docs-page: expected custom docs portal HTML");
+  } else if (docsPageRes.payload.includes("Swagger UI")) {
+    failed += 1;
+    console.error("FAIL docs-page: public docs still serve Swagger UI");
   } else {
-    console.log("OK   docs-page: /docs loads");
+    console.log("OK   docs-page: /docs loads custom portal");
+  }
+
+  const apiRedirectRes = await app.inject({ method: "GET", url: "/api" });
+  if (apiRedirectRes.statusCode !== 302 || !String(apiRedirectRes.headers.location).includes("/docs")) {
+    failed += 1;
+    console.error(
+      `FAIL api-docs-redirect: expected 302 /docs got ${apiRedirectRes.statusCode} ${apiRedirectRes.headers.location}`,
+    );
+  } else {
+    console.log("OK   api-docs-redirect: /api redirects to /docs");
   }
 
   const docsJsonRes = await app.inject({ method: "GET", url: "/docs/json" });
@@ -252,6 +268,21 @@ async function main(): Promise<void> {
       console.error("FAIL docs-json: missing /v1/platform/integration/fleet");
     } else {
       console.log("OK   docs-json: includes integration routes");
+    }
+
+    if (docsPaths.includes("/webhooks/fh2")) {
+      failed += 1;
+      console.error("FAIL docs-json: public docs expose webhook ingress");
+    } else {
+      console.log("OK   docs-json: excludes webhook ingress");
+    }
+
+    const publicSpecText = JSON.stringify(docsSpec);
+    if (/FlightHub|\bDJI\b|\bFH2\b/i.test(publicSpecText)) {
+      failed += 1;
+      console.error("FAIL docs-json: public docs still mention FlightHub/DJI/FH2");
+    } else {
+      console.log("OK   docs-json: vendor names stripped from public catalog");
     }
 
     const publicSecretLeaks = findSecretLeaks(docsSpec);

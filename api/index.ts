@@ -8,10 +8,6 @@ function normalizeRequestUrl(req: VercelRequest): void {
   const path = q === -1 ? url : url.slice(0, q);
   const query = q === -1 ? "" : url.slice(q);
 
-  if (path === "/api" || path === "/api/") {
-    req.url = `/${query}`;
-    return;
-  }
   if (path.startsWith("/api/")) {
     req.url = `${path.slice("/api".length)}${query}`;
     return;

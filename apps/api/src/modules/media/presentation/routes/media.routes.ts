@@ -30,9 +30,9 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
     "/v1/media/recent",
     {
       schema: {
-        summary: "Recent flight tasks with FH2 media file names",
+        summary: "Recent flight tasks with media file names",
         description:
-          "Lists recent FlightHub tasks and photo/video file names from each task's media library folder. Requires Task Management permission on the Organization Key.",
+          "Lists recent flight tasks and photo/video file names from each task's media library folder.",
         tags: ["Tasks"],
       },
     },

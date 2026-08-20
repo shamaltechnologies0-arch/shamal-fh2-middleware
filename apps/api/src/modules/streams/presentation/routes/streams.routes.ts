@@ -12,7 +12,7 @@ export const streamRoutes: FastifyPluginAsync = async (app) => {
       schema: {
         summary: "Live video stream info (RTMP/WebRTC capacity)",
         description:
-          "Returns FlightHub live_capacity for the device. Clients use this to know if live video is available before embedding a player.",
+          "Returns live stream capacity for the device. Use this to know if live video is available before embedding a player.",
         tags: ["Streams"],
         params: {
           type: "object",
@@ -34,7 +34,7 @@ export const streamRoutes: FastifyPluginAsync = async (app) => {
             },
             share_url: {
               type: "string",
-              description: "Optional FH2 Livestream Sharing URL fallback when OpenAPI returns 403",
+              description: "Optional livestream sharing URL fallback when live capacity is unavailable",
             },
           },
         },

@@ -16,7 +16,7 @@ export const dockRoutes: FastifyPluginAsync = async (app) => {
     "/v1/docks",
     {
       schema: {
-        summary: "List Shamal DJI docks (gateways)",
+        summary: "List Shamal docks (gateways)",
         tags: ["Docks"],
       },
     },

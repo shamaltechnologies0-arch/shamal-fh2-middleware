@@ -11,7 +11,7 @@ export const mappingRoutes: FastifyPluginAsync = async (app) => {
     {
       schema: {
         summary: "Cloud mapping / 2D-3D reconstruction jobs",
-        description: "Lists orthomosaic and reconstruction models from FlightHub 2 open modeling.",
+        description: "Lists orthomosaic and reconstruction models from completed mapping jobs.",
         tags: ["Mapping"],
       },
     },

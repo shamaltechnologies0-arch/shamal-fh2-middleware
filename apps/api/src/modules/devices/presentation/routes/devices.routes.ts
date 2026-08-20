@@ -95,7 +95,7 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
           note:
             result.note ??
             (result.freshness === "live"
-              ? "Live telemetry from FlightHub device state."
+              ? "Live telemetry from the current device state."
               : "Snapshot telemetry via REST polling."),
         },
       });

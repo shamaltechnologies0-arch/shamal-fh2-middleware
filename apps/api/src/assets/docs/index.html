@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shamal Platform API</title>
+    <meta
+      name="description"
+      content="Shamal Platform Integration API — fleet, live view, telemetry, events, and media."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/docs/assets/docs.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn nav-toggle" type="button" aria-label="Open endpoint navigation" data-nav-toggle>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <a class="brand" href="/docs">
+          <img class="brand-logo brand-logo-dark" src="/logo/logo-white.svg" alt="" />
+          <img class="brand-logo brand-logo-light" src="/logo/logo-shamal.svg" alt="" />
+          <span class="brand-name">Shamal Platform</span>
+          <span class="brand-badge">API</span>
+        </a>
+      </div>
+      <div class="topbar-center" aria-hidden="false">
+        <label class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input
+            id="docs-search"
+            type="search"
+            placeholder="Search endpoints — authenticate, live camera, fleet…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <kbd>/</kbd>
+        </label>
+      </div>
+      <div class="topbar-right">
+        <div class="segmented" role="group" aria-label="Documentation density">
+          <button type="button" data-density="guide" class="is-active">Guide</button>
+          <button type="button" data-density="reference">Reference</button>
+        </div>
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch to light mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2M12 19v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M3 12h2M19 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 12a6 6 0 1 1-6-8 7 7 0 0 0 8 8 6 6 0 0 1-2 0z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </button>
+        <a class="text-link" href="/">Command Center</a>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="nav-col" id="nav-col" aria-label="API endpoints">
+        <div class="server-card">
+          <span class="server-label">Servers</span>
+          <code>/ · Same origin</code>
+        </div>
+        <nav id="endpoint-nav"></nav>
+      </aside>
+      <main class="core-col" id="main" tabindex="-1"></main>
+      <aside class="replay-col" id="replay" aria-label="Code examples and request playground"></aside>
+    </div>
+    <div class="nav-backdrop" data-nav-close hidden></div>
+    <script src="/docs/assets/docs.js" defer></script>
+  </body>
+</html>

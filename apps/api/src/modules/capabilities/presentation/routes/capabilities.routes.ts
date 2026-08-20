@@ -8,7 +8,7 @@ export const capabilitiesRoutes: FastifyPluginAsync = async (app) => {
     "/v1/capabilities",
     {
       schema: {
-        summary: "API capabilities (phase 1 + phase 2)",
+        summary: "API capabilities",
         tags: ["Meta"],
       },
     },

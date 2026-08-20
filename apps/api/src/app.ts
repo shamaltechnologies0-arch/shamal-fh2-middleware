@@ -33,6 +33,7 @@ import {
   buildAdminOpenApiDocument,
   buildPublicOpenApiDocument,
 } from "./shared/openapi/openapi-documents.service.js";
+import { registerPublicDocs } from "./shared/openapi/public-docs.routes.js";
 
 const openapiPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -94,7 +95,7 @@ export async function buildServer() {
         title: "Shamal Platform Integration API",
         version: "2.3.0",
         description:
-          "External API documentation for client developers and integration partners.",
+          "REST API for Command Center integrations — fleet, live view, telemetry, events, and media.",
       },
       servers: [{ url: "/", description: "Same origin" }],
       components: {
@@ -110,13 +111,7 @@ export async function buildServer() {
     },
   });
 
-  await app.register(swaggerUi, {
-    routePrefix: "/docs",
-    uiConfig: { docExpansion: "list" },
-    transformSpecification: (swaggerObject: Record<string, unknown>) =>
-      buildPublicOpenApiDocument(swaggerObject),
-    transformSpecificationClone: true,
-  });
+  await registerPublicDocs(app);
 
   await registerAdminDocsAuth(app);
 

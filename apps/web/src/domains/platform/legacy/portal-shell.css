@@ -23,8 +23,17 @@
   --lp-btn-primary-fg: var(--cc-btn-primary-fg, #ffffff);
   --lp-btn-primary-hover: var(--cc-btn-primary-hover, #3b82f6);
 
+  /* Remap leftover legacy tokens so hardcoded var(--card)/var(--muted) follow the theme */
+  --bg: var(--lp-bg);
+  --card: var(--lp-surface);
+  --muted: var(--lp-muted);
+  --accent: var(--lp-accent);
+  --ok: var(--lp-ok);
+  --warn: var(--lp-warn);
+  --danger: var(--lp-danger);
+
   font-family: var(--font-sans), system-ui, sans-serif;
-  color: var(--lp-text);
+  color: var(--lp-text) !important;
   background: var(--lp-bg);
   flex: 1;
   min-height: 0;
@@ -235,7 +244,9 @@
 .legacy-portal-host #apiKeyModalConfirm,
 .legacy-portal-host #apiKeyModalCopyBtn,
 .legacy-portal-host #serviceAccountModalConfirm,
-.legacy-portal-host #serviceAccountModalCopyBtn {
+.legacy-portal-host #serviceAccountModalCopyBtn,
+.legacy-portal-host #cardZoomGetApi,
+.legacy-portal-host .get-api-btn {
   background: var(--lp-btn-primary-bg) !important;
   border-color: transparent !important;
   color: var(--lp-btn-primary-fg) !important;
@@ -250,22 +261,44 @@
 .legacy-portal-host #apiKeyModalConfirm:hover:not(:disabled),
 .legacy-portal-host #apiKeyModalCopyBtn:hover:not(:disabled),
 .legacy-portal-host #serviceAccountModalConfirm:hover:not(:disabled),
-.legacy-portal-host #serviceAccountModalCopyBtn:hover:not(:disabled) {
+.legacy-portal-host #serviceAccountModalCopyBtn:hover:not(:disabled),
+.legacy-portal-host #cardZoomGetApi:hover:not(:disabled),
+.legacy-portal-host .get-api-btn:hover:not(:disabled) {
   background: var(--lp-btn-primary-hover) !important;
   color: var(--lp-btn-primary-fg) !important;
   -webkit-text-fill-color: var(--lp-btn-primary-fg);
 }
 
 .legacy-portal-host table th {
-  color: var(--cc-text-secondary, #94a3b8);
-  font-weight: 500;
+  color: var(--cc-text-secondary, var(--lp-muted)) !important;
+  font-weight: 600;
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
+.legacy-portal-host table td,
+.legacy-portal-host table .v,
+.legacy-portal-host .dash-kpi .v,
+.legacy-portal-host .kpi .v {
+  color: var(--lp-text) !important;
+}
+
 .legacy-portal-host table td {
   font-size: 0.8125rem;
+}
+
+.legacy-portal-host .dash-media-list li,
+.legacy-portal-host .dash-mission-head strong,
+.legacy-portal-host .url-list code,
+.legacy-portal-host .key-mono,
+.legacy-portal-host .dash-compact-table {
+  color: var(--lp-text) !important;
+}
+
+.legacy-portal-host .card-zoom .dash-kpi,
+.legacy-portal-host .card-zoom .kpi {
+  background: var(--lp-bg) !important;
 }
 
 .legacy-portal-host th,
@@ -298,16 +331,19 @@
 .legacy-portal-host .pill.ok {
   background: color-mix(in srgb, var(--lp-ok) 18%, transparent) !important;
   color: var(--lp-ok) !important;
+  -webkit-text-fill-color: var(--lp-ok);
 }
 
 .legacy-portal-host .pill.bad {
   background: color-mix(in srgb, var(--lp-danger) 18%, transparent) !important;
   color: var(--lp-danger) !important;
+  -webkit-text-fill-color: var(--lp-danger);
 }
 
 .legacy-portal-host .pill.warn {
   background: color-mix(in srgb, var(--lp-warn) 18%, transparent) !important;
   color: var(--lp-warn) !important;
+  -webkit-text-fill-color: var(--lp-warn);
 }
 
 /* ─── FLEET: map-centric immersive canvas ─── */
@@ -668,6 +704,49 @@
 
 .legacy-portal-host .card-zoom-backdrop {
   z-index: 60;
+  background: color-mix(in srgb, var(--lp-bg) 28%, rgba(15, 23, 42, 0.72)) !important;
+}
+
+.legacy-portal-host .card-zoom {
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  color: var(--lp-text) !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28);
+}
+
+.legacy-portal-host .card-zoom-head {
+  border-bottom: 1px solid var(--lp-border) !important;
+  background: var(--lp-surface) !important;
+}
+
+.legacy-portal-host .card-zoom-head h3 {
+  color: var(--lp-text) !important;
+  font-weight: 650;
+}
+
+.legacy-portal-host .card-zoom-body {
+  color: var(--lp-text) !important;
+}
+
+.legacy-portal-host .card-zoom-close {
+  background: var(--lp-btn-bg) !important;
+  border: 1px solid var(--lp-btn-border) !important;
+  color: var(--lp-btn-fg) !important;
+  -webkit-text-fill-color: var(--lp-btn-fg);
+}
+
+.legacy-portal-host .fleet-zoom-table {
+  color: var(--lp-text) !important;
+}
+
+.legacy-portal-host .dash-kpi .small,
+.legacy-portal-host .kpi .small {
+  color: var(--lp-muted) !important;
+}
+
+.legacy-portal-host .dash-metric {
+  color: var(--lp-text) !important;
+  border-bottom-color: var(--lp-border) !important;
 }
 
 .legacy-portal-host .api-toast {

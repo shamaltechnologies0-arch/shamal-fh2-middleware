@@ -36,7 +36,7 @@ export function LoginScreen({ isAdmin = false, onSubmit }: LoginScreenProps) {
   return (
     <div className="relative flex min-h-svh flex-col bg-[var(--cc-background)]">
       <div className="absolute right-4 top-4 z-10">
-        <ThemeToggle />
+        <ThemeToggle className="text-white hover:bg-white/10 hover:text-white" />
       </div>
 
       <div

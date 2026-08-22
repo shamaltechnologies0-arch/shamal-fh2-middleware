@@ -369,21 +369,24 @@
                 <tr><td colspan="6" class="small">Loading…</td></tr>
               </tbody>
             </table>
+            <p class="small">Click a project row to select it for assignment. Names match Command Center.</p>
             <p id="adminProjectStatus" class="admin-status"></p>
           </div>
 
           <div class="admin-settings-card">
             <h4>Assign Viewers to Project</h4>
+            <p class="statusline">Click a project in the table above, or choose it here. The name matches Command Center.</p>
             <div class="admin-create-grid">
               <div>
                 <label for="adminAssignProject">Project</label>
-                <select id="adminAssignProject"></select>
+                <select id="adminAssignProject" style="width:100%"></select>
               </div>
               <div>
                 <label for="adminAssignViewer">Viewer Account</label>
-                <select id="adminAssignViewer"></select>
+                <select id="adminAssignViewer" style="width:100%"></select>
               </div>
             </div>
+            <p id="adminAssignSummary">No project selected.</p>
             <div class="row" style="margin-top:10px">
               <button id="adminAssignViewerBtn">Assign Viewer</button>
               <button id="adminRemoveViewerBtn" class="admin-delete-btn">Remove Viewer</button>

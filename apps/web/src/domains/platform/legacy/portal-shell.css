@@ -832,3 +832,27 @@
     height: 45vh !important;
   }
 }
+
+.legacy-portal-host .admin-create-grid select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.legacy-portal-host .admin-project-row {
+  cursor: pointer;
+}
+
+.legacy-portal-host .admin-project-row:hover td {
+  background: color-mix(in srgb, var(--lp-accent) 10%, transparent);
+}
+
+.legacy-portal-host .admin-project-row.is-selected td {
+  background: color-mix(in srgb, var(--lp-accent) 18%, transparent);
+}
+
+.legacy-portal-host #adminAssignSummary {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-text) !important;
+}

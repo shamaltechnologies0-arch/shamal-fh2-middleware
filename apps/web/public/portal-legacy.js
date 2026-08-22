@@ -26,6 +26,8 @@
       volcMod: null,
       adminViewers: [],
       adminProjects: [],
+      adminAssignProjectId: "",
+      adminAssignViewerId: "",
       viewerIntegration: null,
       restApiKeys: [],
       serviceAccounts: [],
@@ -1406,8 +1408,63 @@
       el.className = "admin-status" + (type ? ` ${type}` : "");
     }
 
+    function adminProjectDisplayName(project) {
+      return project?.projectName || project?.fh2ProjectCode || project?.fh2ProjectId || "";
+    }
+
+    function adminViewerDisplayName(viewer, fallbackId = "") {
+      return viewer?.displayName || viewer?.accountId || viewer?.viewerId || fallbackId;
+    }
+
+    function findAdminProject(projectId) {
+      return (state.adminProjects || []).find((p) => p.fh2ProjectId === projectId) || null;
+    }
+
+    function findAdminViewer(viewerId) {
+      return (state.adminViewers || []).find((v) => (v.accountId || v.viewerId) === viewerId) || null;
+    }
+
+    function syncAdminAssignSummary() {
+      const summary = $("adminAssignSummary");
+      if (!summary) return;
+      const projectId = $("adminAssignProject")?.value || state.adminAssignProjectId || "";
+      const viewerId = $("adminAssignViewer")?.value || state.adminAssignViewerId || "";
+      const project = findAdminProject(projectId);
+      const viewer = findAdminViewer(viewerId);
+      if (!project) {
+        summary.textContent = "No project selected. Click a row in the table or choose a project above.";
+        return;
+      }
+      const projectName = adminProjectDisplayName(project);
+      const viewerName = viewer ? adminViewerDisplayName(viewer, viewerId) : viewerId;
+      summary.textContent = viewerName
+        ? `Selected: ${projectName}  →  ${viewerName}`
+        : `Selected: ${projectName}`;
+    }
+
+    function highlightAdminProjectRow(projectId) {
+      document.querySelectorAll("#adminProjectListBody tr[data-project-id]").forEach((tr) => {
+        tr.classList.toggle("is-selected", tr.dataset.projectId === projectId);
+      });
+    }
+
+    function selectAdminAssignProject(projectId) {
+      const sel = $("adminAssignProject");
+      if (!sel) return;
+      const next = projectId && [...sel.options].some((o) => o.value === projectId) ? projectId : "";
+      sel.value = next;
+      state.adminAssignProjectId = next;
+      highlightAdminProjectRow(next);
+      syncAdminAssignSummary();
+    }
+
     function renderAdminProjects(projects) {
       state.adminProjects = projects;
+      const projectSel = $("adminAssignProject");
+      const viewerSel = $("adminAssignViewer");
+      const prevProject = projectSel.value || state.adminAssignProjectId || "";
+      const prevViewer = viewerSel.value || state.adminAssignViewerId || "";
+
       const tbody = $("adminProjectListBody");
       if (!projects.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="small">No FH2 projects synced yet. Click Sync from FlightHub 2.</td></tr>';
@@ -1415,8 +1472,9 @@
         tbody.innerHTML = projects
           .map((p) => {
             const viewers = (p.assignedViewers || []).map((v) => v.displayName).join(", ") || "—";
-            return `<tr>
-              <td>${escapeHtml(p.projectName)}</td>
+            const selected = p.fh2ProjectId === prevProject ? " is-selected" : "";
+            return `<tr data-project-id="${escapeHtml(p.fh2ProjectId)}" class="admin-project-row${selected}">
+              <td>${escapeHtml(adminProjectDisplayName(p))}</td>
               <td><code>${escapeHtml(p.fh2ProjectCode)}</code></td>
               <td>${escapeHtml(p.fh2Status || "unknown")}</td>
               <td>${escapeHtml(viewers)}</td>
@@ -1434,23 +1492,36 @@
           .join("");
       }
 
-      const projectSel = $("adminAssignProject");
       projectSel.innerHTML = "";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = projects.length ? "Select a project…" : "No projects synced";
+      projectSel.appendChild(placeholder);
       for (const p of projects) {
         const o = document.createElement("option");
         o.value = p.fh2ProjectId;
-        o.textContent = `${p.projectName} (${p.fh2ProjectCode})`;
+        o.textContent = adminProjectDisplayName(p);
+        o.title = `${adminProjectDisplayName(p)} (${p.fh2ProjectCode})`;
         projectSel.appendChild(o);
       }
-      const viewerSel = $("adminAssignViewer");
+      const projectStillExists = projects.some((p) => p.fh2ProjectId === prevProject);
+      projectSel.value = projectStillExists ? prevProject : "";
+      state.adminAssignProjectId = projectSel.value;
+
       viewerSel.innerHTML = "";
       for (const v of state.adminViewers) {
         const accountId = v.accountId || v.viewerId;
         const o = document.createElement("option");
         o.value = accountId;
-        o.textContent = `${v.displayName} (${accountId})`;
+        o.textContent = `${adminViewerDisplayName(v, accountId)} (${accountId})`;
         viewerSel.appendChild(o);
       }
+      if (prevViewer && [...viewerSel.options].some((o) => o.value === prevViewer)) {
+        viewerSel.value = prevViewer;
+      }
+      state.adminAssignViewerId = viewerSel.value;
+      highlightAdminProjectRow(projectSel.value);
+      syncAdminAssignSummary();
     }
 
     async function loadAdminProjects() {
@@ -1484,7 +1555,11 @@
         setAdminAssignmentStatus("Select both project and viewer.", "err");
         return;
       }
-      setAdminAssignmentStatus(remove ? "Removing…" : "Assigning…");
+      state.adminAssignProjectId = projectId;
+      state.adminAssignViewerId = viewerId;
+      const projectName = adminProjectDisplayName(findAdminProject(projectId)) || projectId;
+      const viewerName = adminViewerDisplayName(findAdminViewer(viewerId), viewerId);
+      setAdminAssignmentStatus(remove ? `Removing ${viewerName} from ${projectName}…` : `Assigning ${viewerName} to ${projectName}…`);
       if (remove) {
         await api(`/v1/platform/admin/fh2-projects/${encodeURIComponent(projectId)}/remove-viewer/${encodeURIComponent(viewerId)}`, {
           method: "DELETE",
@@ -1495,7 +1570,12 @@
           body: JSON.stringify({ viewerId }),
         });
       }
-      setAdminAssignmentStatus(remove ? "Viewer removed from project." : "Viewer assigned to project.", "ok");
+      setAdminAssignmentStatus(
+        remove
+          ? `Removed ${viewerName} from ${projectName}.`
+          : `Assigned ${viewerName} to ${projectName}.`,
+        "ok",
+      );
       await loadAdminProjects();
     }
 
@@ -3198,6 +3278,13 @@
     $("adminRemoveViewerBtn").onclick = () => {
       assignViewerToProject(true).catch((e) => setAdminAssignmentStatus(e.message, "err"));
     };
+    $("adminAssignProject").onchange = () => {
+      selectAdminAssignProject($("adminAssignProject").value);
+    };
+    $("adminAssignViewer").onchange = () => {
+      state.adminAssignViewerId = $("adminAssignViewer").value;
+      syncAdminAssignSummary();
+    };
     $("adminProjectListBody").onclick = (e) => {
       const syncBtn = e.target.closest("[data-project-sync]");
       if (syncBtn) {
@@ -3211,6 +3298,8 @@
         );
         return;
       }
+      const row = e.target.closest("tr[data-project-id]");
+      if (row) selectAdminAssignProject(row.dataset.projectId);
     };
     $("viewerProjectPicker").onchange = () => {
       if (!state.session) return;

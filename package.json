@@ -23,6 +23,7 @@
     "test:rest-api-keys": "tsx scripts/test-rest-api-keys.ts",
     "test:rest-api-keys-phase4": "tsx scripts/test-rest-api-keys-phase4.ts",
     "test:service-accounts": "tsx scripts/test-service-accounts.ts",
+    "test:client-permissions": "tsx scripts/test-client-data-permissions.ts",
     "test:readonly:monitor": "bash scripts/auto-test-monitor.sh 2 10",
     "test:readonly:report": "tsx scripts/generate-test-report.ts"
   },

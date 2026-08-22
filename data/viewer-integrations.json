@@ -1,35 +1,35 @@
 {
   "clientuser": {
     "enabled": true,
-    "tokenHash": "1305a3d1220bb68f68d5e18431295e368aa91a5b648f8470fa42835ce7a47328",
-    "tokenPrefix": "shm_live_d7870043",
-    "tokenCiphertext": "HFP1xej5a5xB6vuYlUJ1opYzAazrIEnkCq54oiwq2HDYdSJYDMOSdrn-ZIgvDyomEAvi-0od96Qumdkceb6mC7f7_IAVLqm-he16vPhjJ0JIvTAb2g",
+    "tokenHash": "2075a7209dd47fc387551a661d16f5b85dc3ede38f23f2f00436efe4f9ae9a85",
+    "tokenPrefix": "shm_live_8b6a3a5c",
+    "tokenCiphertext": "ndSyZmuVGYdrEg5OPBs-7hc57-jNGRhJ5wCedHnTs3-0n-PbVJq-okMFJLAS0tiTKjO4ka4X5wDKdeSf-1Yt9OvN_-vU8S1tDOeu_8t1NaD4gIWzqQ",
     "status": "active",
-    "generatedAt": "2026-07-12T07:14:36.202Z",
+    "generatedAt": "2026-08-22T10:32:59.858Z",
     "revokedAt": null,
     "expirationPreset": "1y",
-    "expiresAt": "2027-07-12T07:14:36.202Z"
+    "expiresAt": "2027-08-22T10:32:59.858Z"
   },
   "viewerA": {
     "enabled": true,
-    "tokenHash": "ebc0e3cc69facfba4fb4bc3bb52eb2b076440a7b7e09c3e84c62b73dffede620",
-    "tokenPrefix": "shm_live_b861afa0",
-    "tokenCiphertext": "0Iif2T5N9VPqUV6OcqQfrkqsT3YTaQbxlo-YEUbqBhJUSmwOR8zYI2pLnIITTVOoRJUK4OolEBO-5K5HfM2Vy6oltzK24c0y-Gdq5lBkGncUeq9TQw",
+    "tokenHash": "1dc4802df71d769c6264a1f51b0c6bb3f764f2657980916907f60ccf2e00d01c",
+    "tokenPrefix": "shm_live_af556e83",
+    "tokenCiphertext": "RN4YjsEtJS7MvcFFoySoDvjWOdH3Q2EuiQgx0epurl_nrNrCgckoGoBhtz9zktPYZjQhQJ7s-HfMA81tizMoX9bXOiRCZA92LOWpc60HLaZPezOBGQ",
     "status": "active",
-    "generatedAt": "2026-07-12T07:15:14.793Z",
+    "generatedAt": "2026-08-22T10:33:12.379Z",
     "revokedAt": null,
     "expirationPreset": "1y",
-    "expiresAt": "2027-07-12T07:15:14.793Z"
+    "expiresAt": "2027-08-22T10:33:12.379Z"
   },
   "viewerB": {
     "enabled": true,
-    "tokenHash": "15a25cee9a0d3f71847ab481b132e0ea6523ce561cc9582b5f180abb452752ab",
-    "tokenPrefix": "shm_live_2503d4ee",
-    "tokenCiphertext": "KLOyYyP_cdxWy4wTYIQ1y4seFuddMLo5Elw0dg5V3fwX6j6F-KNrX3qWBzssGe2JiG66pooz1FZQSKTuDUETv6kyQRrJETt-WI7cc6S7QFdFWs0W_A",
+    "tokenHash": "943f7cf6604ced108aa28ecf06694653af0728c1303bc3139806b35bd286b1ad",
+    "tokenPrefix": "shm_live_bd884b44",
+    "tokenCiphertext": "a1Jv7AzHuxb-3VSCRjOp2H-HRDCXQdlSiRdeMo1GB7sskeAnmYWiDEL-wxFqgO-ToqpO9YMMVFForHQwsyYS6KVxHs7nGcL3ng0ym99XUGvyFv1Y2w",
     "status": "active",
-    "generatedAt": "2026-07-12T07:14:35.474Z",
+    "generatedAt": "2026-08-22T10:33:12.380Z",
     "revokedAt": null,
     "expirationPreset": "1y",
-    "expiresAt": "2027-07-12T07:14:35.474Z"
+    "expiresAt": "2027-08-22T10:33:12.380Z"
   }
 }

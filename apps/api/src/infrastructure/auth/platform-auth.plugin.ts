@@ -13,6 +13,7 @@ import {
 } from "../../modules/auth/infrastructure/command-center-auth.service.js";
 import { normalizeApiPath, isPlatformApiPath } from "../../shared/http/viewer-paths.js";
 import { assertRoleAccess } from "../../shared/security/api-access.js";
+import { assertClientDataAccess } from "../../shared/security/data-access.js";
 import { refreshAuthStoresFromDb } from "../persistence/platform-data-store.js";
 import {
   hasConfiguredFh2Projects,
@@ -159,6 +160,10 @@ async function applyViewerProjectScope(
     return;
   }
 
+  if (!assertClientDataAccess(request, reply, path)) {
+    return;
+  }
+
   if (requiresOperatorRole(path, request.method)) {
     if (!hasMinRole(role, "operator")) {
       reply.status(403).send({
@@ -188,6 +193,7 @@ async function applyViewerProjectScope(
         error: "forbidden",
         message: "IP address not allowlisted",
       });
+      return;
     }
   }
 }
@@ -288,6 +294,12 @@ export async function registerPlatformAuth(app: FastifyInstance): Promise<void> 
       }
 
       request.viewerIntegration = ctx;
+      request.ccRole = "viewer";
+      request.ccUsername = ctx.viewerId;
+      request.viewerScopes = ctx.scopes;
+      if (!assertClientDataAccess(request, reply, path)) {
+        return;
+      }
       return;
     }
 

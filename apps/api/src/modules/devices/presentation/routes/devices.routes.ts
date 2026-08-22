@@ -5,8 +5,13 @@ import {
   flattenDevices,
   normalizeHms,
 } from "../../../../shared/normalize/normalize.service.js";
-import { cacheTelemetry, resolveTelemetry } from "../../application/telemetry-store.service.js";
+import { assertTelemetryScopeForSerial } from "../../application/telemetry-access.js";
+import { resolveTelemetry } from "../../application/telemetry-store.service.js";
 import { registerViewerGet } from "../../../../shared/http/viewer-paths.js";
+import {
+  hasViewerScope,
+  telemetryScopeForDeviceRole,
+} from "../../../integrations/application/viewer-scopes.service.js";
 
 export const deviceRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
@@ -52,12 +57,30 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
+      const device = flattenDevices([entry]).find((d) => d.serialNumber === sn);
+      const requiredScope = telemetryScopeForDeviceRole(device?.role);
+      const canReadTelemetry =
+        !request.viewerScopes || hasViewerScope(request.viewerScopes, requiredScope);
+
+      if (!canReadTelemetry) {
+        return reply.send({
+          data: {
+            device,
+            health: [],
+            stateSummary: null,
+          },
+          meta: {
+            source: "shamal-platform",
+            freshness: "restricted",
+            note: "Telemetry is disabled for this client account.",
+          },
+        });
+      }
+
       const [telemetryResult, hms] = await Promise.all([
         resolveTelemetry(sn, () => fh2.getDeviceState(sn)),
         fh2.getDeviceHms([sn]).catch(() => []),
       ]);
-
-      const device = flattenDevices([entry]).find((d) => d.serialNumber === sn);
 
       return reply.send({
         data: {
@@ -85,6 +108,7 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const { sn } = request.params as { sn: string };
+      if (!(await assertTelemetryScopeForSerial(fh2, request, reply, sn))) return;
       const result = await resolveTelemetry(sn, () => fh2.getDeviceState(sn));
       return reply.send({
         data: result.data,

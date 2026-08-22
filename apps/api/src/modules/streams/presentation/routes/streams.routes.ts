@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import { createFh2Client } from "../../../../infrastructure/fh2/client.js";
 import { registerViewerGet } from "../../../../shared/http/viewer-paths.js";
+import { sendDataAccessDenied } from "../../../../shared/security/data-access.js";
+import { hasViewerScope } from "../../../integrations/application/viewer-scopes.service.js";
 
 export const streamRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
@@ -47,8 +49,19 @@ export const streamRoutes: FastifyPluginAsync = async (app) => {
           camera?: "drone" | "dock" | "auto";
           share_url?: string;
         };
+        let camera = query.camera ?? "auto";
+        if (request.viewerScopes) {
+          const canDock = hasViewerScope(request.viewerScopes, "camera:read");
+          const canDrone = hasViewerScope(request.viewerScopes, "fpv:read");
+          if (camera === "drone" && !canDrone) return sendDataAccessDenied(reply);
+          if (camera === "dock" && !canDock) return sendDataAccessDenied(reply);
+          if (camera === "auto") {
+            if (canDrone && !canDock) camera = "drone";
+            else if (canDock && !canDrone) camera = "dock";
+          }
+        }
         const info = await fh2.getDeviceLiveStreamInfo(sn, {
-          camera: query.camera,
+          camera,
           shareUrl: query.share_url,
         });
         return reply.send({ data: info, meta: { source: "flighthub2" } });

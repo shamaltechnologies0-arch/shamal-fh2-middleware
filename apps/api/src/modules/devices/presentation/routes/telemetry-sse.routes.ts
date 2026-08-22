@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { config } from "../../../../config/env.js";
 import { createFh2Client } from "../../../../infrastructure/fh2/client.js";
+import { assertTelemetryScopeForSerial } from "../../application/telemetry-access.js";
 import { resolveTelemetry } from "../../application/telemetry-store.service.js";
 import { registerViewerGet } from "../../../../shared/http/viewer-paths.js";
 
@@ -20,6 +21,7 @@ export const telemetrySseRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const { sn } = request.params as { sn: string };
+      if (!(await assertTelemetryScopeForSerial(fh2, request, reply, sn))) return;
 
       reply.raw.writeHead(200, {
         "Content-Type": "text/event-stream",

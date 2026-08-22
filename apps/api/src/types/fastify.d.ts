@@ -21,5 +21,6 @@ declare module "fastify" {
       clientId: string;
       scopes: ViewerApiScope[];
     };
+    viewerScopes?: ViewerApiScope[];
   }
 }

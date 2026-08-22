@@ -97,6 +97,128 @@ export function scopeForIntegrationPath(path: string): ViewerApiScope | null {
   return INTEGRATION_ROUTE_SCOPES[normalizeApiPath(path)] ?? null;
 }
 
+export type DataScopeRequirement =
+  | { kind: "unrestricted" }
+  | { kind: "any"; scopes: ViewerApiScope[] }
+  | { kind: "deny" };
+
+const UNRESTRICTED_EXACT_PATHS = new Set([
+  "/v1/auth/me",
+  "/v1/capabilities",
+  "/v1/api-keys",
+  "/v1/service-accounts",
+  "/v1/platform/integration/profile",
+  "/v1/platform/integration/access-key",
+]);
+
+function isUnrestrictedPath(path: string): boolean {
+  if (UNRESTRICTED_EXACT_PATHS.has(path)) return true;
+  if (path.startsWith("/v1/api-keys/")) return true;
+  if (path.startsWith("/v1/service-accounts/")) return true;
+  return false;
+}
+
+function isClientDataPath(path: string): boolean {
+  return (
+    path.startsWith("/v1/devices") ||
+    path.startsWith("/v1/fleet") ||
+    path.startsWith("/v1/docks") ||
+    path.startsWith("/v1/tasks") ||
+    path.startsWith("/v1/media") ||
+    path.startsWith("/v1/events") ||
+    path.startsWith("/v1/mapping") ||
+    path.startsWith("/v1/platform/integration/")
+  );
+}
+
+function readCameraPref(query?: Record<string, unknown>): "drone" | "dock" | "auto" {
+  const raw = query?.camera;
+  if (raw === "drone" || raw === "dock" || raw === "auto") return raw;
+  return "auto";
+}
+
+/**
+ * Maps every client data route to Platform Admin permissions.
+ * Unmapped data paths deny by default so new endpoints cannot skip the check.
+ */
+export function dataScopeRequirementForPath(
+  path: string,
+  query?: Record<string, unknown>,
+): DataScopeRequirement {
+  const canonical = normalizeApiPath(path);
+
+  if (isUnrestrictedPath(canonical) || !isClientDataPath(canonical)) {
+    return { kind: "unrestricted" };
+  }
+
+  const integrationScope = INTEGRATION_ROUTE_SCOPES[canonical];
+  if (integrationScope) {
+    return { kind: "any", scopes: [integrationScope] };
+  }
+
+  if (canonical === "/v1/fleet/summary") {
+    return { kind: "any", scopes: ["fleet:read"] };
+  }
+  if (canonical === "/v1/fleet/positions") {
+    return { kind: "any", scopes: ["gps:read"] };
+  }
+
+  if (canonical === "/v1/devices") {
+    return { kind: "any", scopes: ["fleet:read"] };
+  }
+  if (/^\/v1\/devices\/[^/]+\/telemetry\/(latest|stream)$/.test(canonical)) {
+    return { kind: "any", scopes: ["drone:read", "dock:read"] };
+  }
+  if (/^\/v1\/devices\/[^/]+\/live-stream$/.test(canonical)) {
+    const camera = readCameraPref(query);
+    if (camera === "drone") return { kind: "any", scopes: ["fpv:read"] };
+    if (camera === "dock") return { kind: "any", scopes: ["camera:read"] };
+    return { kind: "any", scopes: ["camera:read", "fpv:read"] };
+  }
+  if (/^\/v1\/devices\/[^/]+$/.test(canonical)) {
+    return { kind: "any", scopes: ["fleet:read"] };
+  }
+
+  if (canonical === "/v1/docks" || /^\/v1\/docks\/[^/]+$/.test(canonical)) {
+    return { kind: "any", scopes: ["dock:read"] };
+  }
+
+  if (canonical === "/v1/events" || /^\/v1\/events\/[^/]+\/ack$/.test(canonical)) {
+    return { kind: "any", scopes: ["events:read"] };
+  }
+
+  if (
+    canonical === "/v1/media/recent" ||
+    canonical === "/v1/tasks" ||
+    /^\/v1\/tasks\/[^/]+$/.test(canonical) ||
+    /^\/v1\/tasks\/[^/]+\/media$/.test(canonical) ||
+    canonical.startsWith("/v1/mapping/")
+  ) {
+    return { kind: "any", scopes: ["media:read"] };
+  }
+
+  if (
+    /^\/v1\/tasks\/[^/]+\/trajectory/.test(canonical)
+  ) {
+    return { kind: "any", scopes: ["gps:read"] };
+  }
+
+  return { kind: "deny" };
+}
+
+export function hasAnyViewerScope(
+  scopes: ViewerApiScope[],
+  required: ViewerApiScope[],
+): boolean {
+  return required.some((scope) => scopes.includes(scope));
+}
+
+export function telemetryScopeForDeviceRole(
+  role: string | undefined,
+): ViewerApiScope {
+  return role === "gateway" ? "dock:read" : "drone:read";
+}
+
 export function enabledDataAccessLabels(
   permissions: ViewerDashboardPermissions,
 ): string[] {

@@ -141,6 +141,7 @@ export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
                   onSelect={() => {
                     setSelected(project.projectCode);
                     syncLegacyProject(project.projectCode);
+                    window.dispatchEvent(new CustomEvent("shamal-project-changed"));
                     setOpen(false);
                   }}
                 >

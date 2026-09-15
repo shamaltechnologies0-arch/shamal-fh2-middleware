@@ -162,9 +162,12 @@ export function dataScopeRequirementForPath(
   if (canonical === "/v1/fleet/positions") {
     return { kind: "any", scopes: ["gps:read"] };
   }
+  if (canonical === "/v1/fleet/battery") {
+    return { kind: "any", scopes: ["battery:read"] };
+  }
 
   if (canonical === "/v1/devices") {
-    return { kind: "any", scopes: ["fleet:read"] };
+    return { kind: "any", scopes: ["fleet:read", "status:read"] };
   }
   if (/^\/v1\/devices\/[^/]+\/telemetry\/(latest|stream)$/.test(canonical)) {
     return { kind: "any", scopes: ["drone:read", "dock:read"] };

@@ -25,7 +25,7 @@ export function LegacyPortal() {
     if (!scriptLoadedRef.current) {
       scriptLoadedRef.current = true;
       const script = document.createElement("script");
-      script.src = "/portal-legacy.js?v=assign-select-1";
+      script.src = "/portal-legacy.js?v=data-access-403-2";
       script.async = true;
       document.body.appendChild(script);
     } else if (window.shamalLegacy) {

@@ -403,6 +403,13 @@ export const PUBLIC_DOCS_OPERATIONS: PublicDocsOperation[] = [
   },
   {
     method: "GET",
+    path: "/v1/fleet/battery",
+    group: "fleet",
+    summary: "Fleet battery status without GPS coordinates",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
     path: "/v1/devices/{sn}/live-stream",
     group: "streams",
     summary: "Live video stream info (RTMP/WebRTC capacity)",

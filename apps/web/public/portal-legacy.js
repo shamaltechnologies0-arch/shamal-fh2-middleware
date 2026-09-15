@@ -491,9 +491,15 @@
       return /not_found|was not found/i.test(raw);
     }
 
+    function isDataAccessDenied(err) {
+      const raw = err?.message || String(err);
+      return /Access to this data is not enabled for your account/i.test(raw);
+    }
+
     function notifyApiError(err, prefix) {
       const message = err?.message || String(err);
       if (!message || message === SESSION_EXPIRED_SILENT) return;
+      if (isDataAccessDenied(err)) return;
       alert(prefix ? `${prefix}${message}` : message);
     }
 
@@ -1993,6 +1999,15 @@
       return res.json();
     }
 
+    async function apiMaybe(path, opts = {}) {
+      try {
+        return await api(path, opts);
+      } catch (err) {
+        if (isDataAccessDenied(err) || isNotFoundError(err)) return null;
+        throw err;
+      }
+    }
+
     const _loginBtn = $("loginBtn"); if (_loginBtn) _loginBtn.onclick = async () => {
       $("loginError").textContent = "";
       try {
@@ -2635,23 +2650,30 @@
         .join("");
     }
 
-    function renderViewerDashboardCards(sum, positions) {
+    function renderViewerDashboardCards(sum, positions, batteryOverride) {
       if (!isViewer() && state.activeTab !== "dashboard") return;
+      const summary = sum?.data || {
+        totalDevices: state.devices.length,
+        online: state.devices.filter((d) => d.online).length,
+        offline: state.devices.filter((d) => d.online === false).length,
+        drones: state.devices.filter((d) => d.role === "drone").length,
+        docks: state.devices.filter((d) => d.role === "gateway").length,
+      };
 
       if (cardAllowed("fleetOverview")) {
-        $("dashKTotal").textContent = sum.data.totalDevices;
-        $("dashKOnline").textContent = `${sum.data.online}/${sum.data.offline}`;
+        if ($("dashKTotal")) $("dashKTotal").textContent = summary.totalDevices;
+        if ($("dashKOnline")) $("dashKOnline").textContent = `${summary.online}/${summary.offline}`;
         ensureDashFleetMap();
         updateDashFleetMap(positions);
       }
 
       state.apiSamples.devicesSample = state.devices[0] || state.devices;
       state.apiSamples.onlineSample = {
-        totalDevices: sum.data.totalDevices,
-        drones: sum.data.drones,
-        docks: sum.data.docks,
-        online: sum.data.online,
-        offline: sum.data.offline,
+        totalDevices: summary.totalDevices,
+        drones: summary.drones,
+        docks: summary.docks,
+        online: summary.online,
+        offline: summary.offline,
       };
       state.apiSamples.positions = positions;
 
@@ -2681,14 +2703,16 @@
       }
 
       if (cardAllowed("batteryStatus") && $("dashBattery")) {
-        const battery = dronePos?.batteryPercent;
+        const battery = batteryOverride?.batteryPercent ?? dronePos?.batteryPercent;
+        const online = batteryOverride?.online ?? droneDev?.online;
+        const serial = batteryOverride?.serialNumber || droneDev?.serialNumber;
         $("dashBattery").innerHTML = battery != null
           ? `<div class="dash-kpi"><div class="small">Drone battery</div><div class="v">${battery}%</div></div>`
           : "<span class='small'>No battery data yet.</span>";
         state.apiSamples.batterySample = {
-          serial: droneDev?.serialNumber,
+          serial,
           batteryPercent: battery,
-          online: droneDev?.online,
+          online,
         };
       }
 
@@ -2781,7 +2805,8 @@
 
       if (cardAllowed("droneTelemetry") && drone) {
         fetches.push(
-          api(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
+          apiMaybe(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
+            if (!r) return;
             state.apiSamples.droneTelemetry = r.data;
             if ($("dashDroneTelem") && r.data) {
               const t = r.data.telemetry || r.data;
@@ -2800,7 +2825,8 @@
 
       if (cardAllowed("dockTelemetry") && dock) {
         fetches.push(
-          api(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
+          apiMaybe(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
+            if (!r) return;
             state.apiSamples.dockTelemetry = r.data;
             if ($("dashDockTelem") && r.data) {
               renderMetricList($("dashDockTelem"), [
@@ -2858,6 +2884,7 @@
 
       for (const id of ["camDevice", "opsDevice"]) {
         const sel = $(id);
+        if (!sel) continue;
         const prev = sel.value;
         sel.innerHTML = "";
         state.devices.forEach((d) => {
@@ -2876,39 +2903,53 @@
     };
 
     async function loadFleet(opts = {}) {
-      const [sum, devices, positionsRes] = await Promise.all([
-        api("/v1/viewer/fleet/summary"),
-        api("/v1/viewer/devices"),
-        api("/v1/viewer/fleet/positions"),
-      ]);
-      state.devices = devices.data || [];
-      const positions = positionsRes.data || [];
-      fillDeviceSelectors();
-      $("kTotal").textContent = sum.data.totalDevices;
-      $("kDrones").textContent = sum.data.drones;
-      $("kDocks").textContent = sum.data.docks;
-      $("kStatus").textContent = `${sum.data.online}/${sum.data.offline}`;
-      const now = new Date();
-      $("fleetStatus").textContent = opts.silent
-        ? `Source: ${sum.meta.source} • auto-updated ${now.toLocaleTimeString()}`
-        : `Source: ${sum.meta.source} • refreshed ${now.toLocaleTimeString()}`;
+      const wantSummary = !isViewer() || cardAllowed("fleetOverview");
+      const wantDevices = !isViewer() || cardAllowed("fleetOverview") || cardAllowed("onlineOffline");
+      const wantPositions = !isViewer() || cardAllowed("gpsLocation");
+      const wantBattery = isViewer() && cardAllowed("batteryStatus") && !wantPositions;
 
-      updateTelemetryBanner(positions);
-      updateFleetMap(positions);
+      const [sum, devices, positionsRes, batteryRes] = await Promise.all([
+        wantSummary ? apiMaybe("/v1/viewer/fleet/summary") : null,
+        wantDevices ? apiMaybe("/v1/viewer/devices") : null,
+        wantPositions ? apiMaybe("/v1/viewer/fleet/positions") : null,
+        wantBattery ? apiMaybe("/v1/viewer/fleet/battery") : null,
+      ]);
+      state.devices = devices?.data || state.devices || [];
+      const positions = positionsRes?.data || [];
+      const batteryOverride = batteryRes?.data || null;
+      fillDeviceSelectors();
+      if (sum?.data) {
+        if ($("kTotal")) $("kTotal").textContent = sum.data.totalDevices;
+        if ($("kDrones")) $("kDrones").textContent = sum.data.drones;
+        if ($("kDocks")) $("kDocks").textContent = sum.data.docks;
+        if ($("kStatus")) $("kStatus").textContent = `${sum.data.online}/${sum.data.offline}`;
+      }
+      const now = new Date();
+      if ($("fleetStatus")) {
+        $("fleetStatus").textContent = opts.silent
+          ? `Source: ${sum?.meta?.source || "—"} • auto-updated ${now.toLocaleTimeString()}`
+          : `Source: ${sum?.meta?.source || "—"} • refreshed ${now.toLocaleTimeString()}`;
+      }
+
+      if (wantPositions) {
+        updateTelemetryBanner(positions);
+        updateFleetMap(positions);
+      }
 
       const posBySn = Object.fromEntries(positions.map((p) => [p.serialNumber, p]));
       const tbody = document.querySelector("#fleetTable tbody");
-      tbody.innerHTML = "";
-      state.devices.forEach((d) => {
-        const p = posBySn[d.serialNumber] || {};
-        const lat = p.latitude;
-        const lng = p.longitude;
-        const loc =
-          lat != null && lng != null
-            ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}${p.freshness === "cached" ? " *" : ""}`
-            : "—";
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+      if (tbody) {
+        tbody.innerHTML = "";
+        state.devices.forEach((d) => {
+          const p = posBySn[d.serialNumber] || {};
+          const lat = p.latitude;
+          const lng = p.longitude;
+          const loc =
+            lat != null && lng != null
+              ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}${p.freshness === "cached" ? " *" : ""}`
+              : "—";
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
           <td>${d.serialNumber}</td>
           <td>${d.role}</td>
           <td>${d.modelName || "-"}</td>
@@ -2917,10 +2958,11 @@
           <td>${p.batteryPercent ?? "-"}</td>
           <td>${p.altitudeM ?? "-"}</td>
           <td><span class="pill ${p.freshness === "live" ? "ok" : p.freshness === "cached" ? "warn" : "bad"}">${p.freshness || "—"}</span></td>`;
-        tbody.appendChild(tr);
-      });
+          tbody.appendChild(tr);
+        });
+      }
 
-      renderViewerDashboardCards(sum, positions);
+      renderViewerDashboardCards(sum, positions, batteryOverride);
       if (isViewer()) {
         await refreshViewerExtras({ silent: opts.silent, skipStreams: true });
       }
@@ -3128,7 +3170,8 @@
       if (isViewer() && !cardAllowed("alertsEvents") && state.activeTab !== "alerts") {
         return;
       }
-      const res = await api("/v1/viewer/events?limit=25");
+      const res = await apiMaybe("/v1/viewer/events?limit=25");
+      if (!res) return;
       state.apiSamples.alertsSample = (res.data || []).slice(0, 2);
       if (!isViewer() || state.activeTab === "alerts") {
         renderEventsTable(res.data || []);

@@ -74,7 +74,8 @@ async function main(): Promise<void> {
   const expectMap: Array<{ path: string; query?: Record<string, string>; scope: string }> = [
     { path: "/v1/fleet/positions", scope: "gps:read" },
     { path: "/v1/fleet/summary", scope: "fleet:read" },
-    { path: "/v1/devices", scope: "fleet:read" },
+    { path: "/v1/fleet/battery", scope: "battery:read" },
+    { path: "/v1/devices", scope: "fleet:read|status:read" },
     { path: "/v1/devices/SN1/telemetry/latest", scope: "drone:read|dock:read" },
     { path: "/v1/devices/SN1/live-stream", query: { camera: "drone" }, scope: "fpv:read" },
     { path: "/v1/events", scope: "events:read" },
@@ -181,6 +182,17 @@ async function main(): Promise<void> {
       fail(`fleet summary should remain allowed: ${allowed.statusCode} ${allowed.body}`);
     } else {
       console.log(`OK   enabled Fleet Overview → /v1/fleet/summary ${allowed.statusCode}`);
+    }
+
+    const battery = await app.inject({
+      method: "GET",
+      url: "/v1/fleet/battery",
+      headers: clientHeaders,
+    });
+    if (battery.statusCode !== 200 && battery.statusCode !== 500) {
+      fail(`battery should remain allowed: ${battery.statusCode} ${battery.body}`);
+    } else {
+      console.log(`OK   enabled Battery Status → /v1/fleet/battery ${battery.statusCode}`);
     }
 
     const deniedRest = [

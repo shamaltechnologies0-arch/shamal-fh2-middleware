@@ -1,3 +1,10 @@
+(function shamalPortalLegacy() {
+  if (window.__SHAMAL_PORTAL_LEGACY_LOADED__) {
+    if (window.shamalLegacy?.resume) window.shamalLegacy.resume();
+    window.dispatchEvent(new CustomEvent("shamal-legacy-ready"));
+    return;
+  }
+  window.__SHAMAL_PORTAL_LEGACY_LOADED__ = true;
 
     const SHAMAL_REACT_SHELL = true;
     const state = {
@@ -52,6 +59,16 @@
     };
     const LIVE_INTERVAL_MS = 10_000;
     const $ = (id) => document.getElementById(id);
+
+    function bind(id, event, handler) {
+      const el = $(id);
+      if (el) el[event] = handler;
+    }
+
+    function setText(id, text) {
+      const el = $(id);
+      if (el) el.textContent = text;
+    }
 
     function isAdminPortal() {
       const path = window.location.pathname.replace(/\/$/, "") || "/";
@@ -112,8 +129,10 @@
         if (!isAdmin()) {
           clearSession();
           updateRoleUi();
-          $("loginError").textContent =
-            "Administrator credentials required. User accounts sign in at the main platform.";
+          setText(
+            "loginError",
+            "Administrator credentials required. User accounts sign in at the main platform.",
+          );
           return true;
         }
         return false;
@@ -1745,10 +1764,10 @@
         body.innerHTML = card.querySelector(".dash-card-body").innerHTML;
       }
 
-      $("cardZoomGetApi").onclick = (e) => {
+      bind("cardZoomGetApi", "onclick", (e) => {
         e.stopPropagation();
         copyApiForCard(cardId);
-      };
+      });
       $("cardZoomBackdrop").classList.add("open");
       $("cardZoomBackdrop").setAttribute("aria-hidden", "false");
       document.body.classList.add("zoom-open");
@@ -1759,17 +1778,20 @@
       const badge = $("userBadge");
       const main = $("appMain");
       const overlay = $("loginOverlay");
+      const logoutBtn = $("logoutBtn");
+      const liveBadge = $("liveBadge");
+      if (!badge || !main) return;
       if (!s) {
         badge.textContent = "Not signed in";
         badge.className = "pill role-viewer";
-        $("logoutBtn").style.display = "none";
-        $("liveBadge").style.display = "none";
-        if (!SHAMAL_REACT_SHELL) overlay.classList.remove("hidden");
+        if (logoutBtn) logoutBtn.style.display = "none";
+        if (liveBadge) liveBadge.style.display = "none";
+        if (!SHAMAL_REACT_SHELL) overlay?.classList.remove("hidden");
         if (!SHAMAL_REACT_SHELL) document.body.classList.add("logged-out");
         main.style.opacity = "0";
         main.style.pointerEvents = "none";
         document.getElementById("legacy-portal-root")?.classList.remove("viewer-layout");
-        $("appMain").classList.remove("viewer-no-nav");
+        main.classList.remove("viewer-no-nav");
         state.restApiKeys = [];
         state.adminRestApiKeys = [];
         renderRestApiKeysTable();
@@ -1779,8 +1801,8 @@
       }
       badge.textContent = s.displayName;
       badge.className = "pill";
-      $("logoutBtn").style.display = "inline-block";
-      if (!SHAMAL_REACT_SHELL) overlay.classList.add("hidden");
+      if (logoutBtn) logoutBtn.style.display = "inline-block";
+      if (!SHAMAL_REACT_SHELL) overlay?.classList.add("hidden");
       if (!SHAMAL_REACT_SHELL) document.body.classList.remove("logged-out");
       main.style.opacity = "1";
       main.style.pointerEvents = "auto";
@@ -1789,7 +1811,7 @@
       const legacyHost = document.getElementById("legacy-portal-root");
       if (legacyHost) legacyHost.classList.toggle("viewer-layout", viewer);
       document.body.classList.toggle("viewer-layout", viewer);
-      $("appMain").classList.remove("viewer-no-nav");
+      main.classList.remove("viewer-no-nav");
       document.querySelectorAll("[data-nav-viewer]").forEach((el) => {
         el.style.display = viewer ? "" : "none";
       });
@@ -1799,9 +1821,12 @@
       document.querySelectorAll("[data-nav-admin]").forEach((el) => {
         el.style.display = isAdmin() ? "" : "none";
       });
-      $("headerSub").textContent = viewer
-        ? "Live fleet intelligence — every asset, one screen."
-        : "Fleet monitoring, live camera, operations, alerts, missions";
+      const headerSub = $("headerSub");
+      if (headerSub) {
+        headerSub.textContent = viewer
+          ? "Live fleet intelligence — every asset, one screen."
+          : "Fleet monitoring, live camera, operations, alerts, missions";
+      }
 
       applyViewerDashboardPermissions();
       updateSettingsAccessUi();
@@ -1843,12 +1868,12 @@
       });
     });
 
-    $("cardZoomClose").onclick = closeCardZoom;
-    $("cardZoomBackdrop").onclick = (e) => {
+    bind("cardZoomClose", "onclick", closeCardZoom);
+    bind("cardZoomBackdrop", "onclick", (e) => {
       if (e.target === $("cardZoomBackdrop")) closeCardZoom();
-    };
+    });
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && $("cardZoomBackdrop").classList.contains("open")) closeCardZoom();
+      if (e.key === "Escape" && $("cardZoomBackdrop")?.classList.contains("open")) closeCardZoom();
     });
 
     document.querySelectorAll("nav button").forEach((btn) => btn.onclick = () => {
@@ -1877,6 +1902,7 @@
 
     function updateLiveBadge(active, lastAt) {
       const badge = $("liveBadge");
+      if (!badge) return;
       badge.style.display = state.session ? "inline-block" : "none";
       if (!state.session) return;
       if (active) {
@@ -1934,7 +1960,7 @@
         if (tab === "dashboard" && isViewer()) {
           await refreshViewerExtras({ silent: true, skipStreams: true });
         }
-        if (tab === "camera" && state.streamLoaded && $("camDevice").value) {
+        if (tab === "camera" && state.streamLoaded && $("camDevice")?.value) {
           await refreshCameraTelemetry();
         }
         updateLiveBadge(true, new Date());
@@ -1944,13 +1970,15 @@
     }
 
     async function refreshCameraTelemetry() {
-      const sn = $("camDevice").value;
+      const sn = $("camDevice")?.value;
       if (!sn) return;
       try {
         const telem = await api(`/v1/viewer/devices/${sn}/telemetry/latest`);
-        const existing = $("streamInfo").textContent;
+        const info = $("streamInfo");
+        if (!info) return;
+        const existing = info.textContent;
         const prefix = existing.includes("Snapshot") ? "" : existing + "\n\n";
-        $("streamInfo").textContent =
+        info.textContent =
           prefix + `Telemetry @ ${new Date().toLocaleTimeString()}\n` + JSON.stringify(telem.data, null, 2);
       } catch (e) {
         console.warn("camera telemetry", e);
@@ -2068,11 +2096,11 @@
         }
         await refreshDashboard();
       } catch (e) {
-        $("loginError").textContent = e.message;
+        setText("loginError", e.message);
       }
     };
 
-    $("logoutBtn").onclick = async () => {
+    async function performLogout() {
       stopLiveUpdates();
       try {
         await fetch("/v1/auth/logout", { method: "POST", credentials: "include" });
@@ -2083,7 +2111,9 @@
       destroyZoomStreams();
       state.streamLoaded = false;
       updateRoleUi();
-    };
+    }
+
+    bind("logoutBtn", "onclick", () => { void performLogout(); });
 
     async function loadVolcMod() {
       if (!state.volcMod) {
@@ -2630,6 +2660,7 @@
     }
 
     function renderMetricList(el, rows) {
+      if (!el) return;
       el.innerHTML = rows
         .map(([k, v]) => `<div class="dash-metric"><span>${k}</span><strong>${v}</strong></div>`)
         .join("");
@@ -2639,8 +2670,10 @@
       if (!isViewer() && state.activeTab !== "dashboard") return;
 
       if (cardAllowed("fleetOverview")) {
-        $("dashKTotal").textContent = sum.data.totalDevices;
-        $("dashKOnline").textContent = `${sum.data.online}/${sum.data.offline}`;
+        const total = $("dashKTotal");
+        const online = $("dashKOnline");
+        if (total) total.textContent = sum.data.totalDevices;
+        if (online) online.textContent = `${sum.data.online}/${sum.data.offline}`;
         ensureDashFleetMap();
         updateDashFleetMap(positions);
       }
@@ -2831,6 +2864,7 @@
 
     function updateTelemetryBanner(positions) {
       const banner = $("fleetTelemetryBanner");
+      if (!banner) return;
       const liveCount = positions.filter((p) => p.freshness === "live").length;
       const cachedCount = positions.filter((p) => p.freshness === "cached").length;
       if (liveCount > 0) {
@@ -2858,6 +2892,7 @@
 
       for (const id of ["camDevice", "opsDevice"]) {
         const sel = $(id);
+        if (!sel) continue;
         const prev = sel.value;
         sel.innerHTML = "";
         state.devices.forEach((d) => {
@@ -2871,9 +2906,9 @@
       }
     }
 
-    $("camDevice").onchange = () => {
+    bind("camDevice", "onchange", () => {
       if (state.activeTab === "camera" && state.session) loadAllStreams();
-    };
+    });
 
     async function loadFleet(opts = {}) {
       const [sum, devices, positionsRes] = await Promise.all([
@@ -2884,20 +2919,24 @@
       state.devices = devices.data || [];
       const positions = positionsRes.data || [];
       fillDeviceSelectors();
-      $("kTotal").textContent = sum.data.totalDevices;
-      $("kDrones").textContent = sum.data.drones;
-      $("kDocks").textContent = sum.data.docks;
-      $("kStatus").textContent = `${sum.data.online}/${sum.data.offline}`;
+      setText("kTotal", sum.data.totalDevices);
+      setText("kDrones", sum.data.drones);
+      setText("kDocks", sum.data.docks);
+      setText("kStatus", `${sum.data.online}/${sum.data.offline}`);
       const now = new Date();
-      $("fleetStatus").textContent = opts.silent
-        ? `Source: ${sum.meta.source} • auto-updated ${now.toLocaleTimeString()}`
-        : `Source: ${sum.meta.source} • refreshed ${now.toLocaleTimeString()}`;
+      setText(
+        "fleetStatus",
+        opts.silent
+          ? `Source: ${sum.meta.source} • auto-updated ${now.toLocaleTimeString()}`
+          : `Source: ${sum.meta.source} • refreshed ${now.toLocaleTimeString()}`,
+      );
 
       updateTelemetryBanner(positions);
       updateFleetMap(positions);
 
       const posBySn = Object.fromEntries(positions.map((p) => [p.serialNumber, p]));
       const tbody = document.querySelector("#fleetTable tbody");
+      if (tbody) {
       tbody.innerHTML = "";
       state.devices.forEach((d) => {
         const p = posBySn[d.serialNumber] || {};
@@ -2919,6 +2958,7 @@
           <td><span class="pill ${p.freshness === "live" ? "ok" : p.freshness === "cached" ? "warn" : "bad"}">${p.freshness || "—"}</span></td>`;
         tbody.appendChild(tr);
       });
+      }
 
       renderViewerDashboardCards(sum, positions);
       if (isViewer()) {
@@ -2926,14 +2966,15 @@
       }
     }
 
-    $("loadStream").onclick = () => loadAllStreams();
+    try {
+    bind("loadStream", "onclick", () => loadAllStreams());
 
-    $("snapshotBtn").onclick = async () => {
+    bind("snapshotBtn", "onclick", async () => {
       const sn = $("camDevice").value;
       const telem = await api(`/v1/viewer/devices/${sn}/telemetry/latest`);
       $("streamInfo").textContent =
         `Snapshot at ${new Date().toISOString()}\n` + JSON.stringify(telem.data, null, 2);
-    };
+    });
 
     function openConfirmModal(opDef) {
       state.pendingOp = opDef;
@@ -2956,17 +2997,17 @@
       state.pendingOp = null;
     }
 
-    $("confirmCancel").onclick = closeConfirmModal;
-    $("confirmBack").onclick = () => {
+    bind("confirmCancel", "onclick", closeConfirmModal);
+    bind("confirmBack", "onclick", () => {
       $("confirmStep2").style.display = "none";
       $("confirmStep1").style.display = "block";
-    };
-    $("confirmNext").onclick = () => {
+    });
+    bind("confirmNext", "onclick", () => {
       $("confirmStep1").style.display = "none";
       $("confirmStep2").style.display = "block";
-    };
+    });
 
-    $("confirmExecute").onclick = async () => {
+    bind("confirmExecute", "onclick", async () => {
       if (!$("confirmCheck").checked) {
         alert("Check the authorization box to continue.");
         return;
@@ -2996,7 +3037,7 @@
       } catch (e) {
         $("opsResult").textContent = "Error: " + e.message;
       }
-    };
+    });
 
     async function loadOpsCatalog() {
       const res = await api("/v1/platform/ops/catalog");
@@ -3092,8 +3133,8 @@
       }
     }
 
-    $("opsDevice").onchange = loadOpsReadiness;
-    $("opsRefreshReady").onclick = loadOpsReadiness;
+    bind("opsDevice", "onchange", loadOpsReadiness);
+    bind("opsRefreshReady", "onclick", loadOpsReadiness);
 
     async function loadOpsLog() {
       const res = await api("/v1/platform/ops/log?limit=20");
@@ -3159,7 +3200,7 @@
         };
       });
     }
-    $("refreshEvents").onclick = loadEvents;
+    bind("refreshEvents", "onclick", loadEvents);
 
     async function loadTasks() {
       const res = await api("/v1/viewer/tasks");
@@ -3174,15 +3215,15 @@
         sel.appendChild(o);
       }
     }
-    $("loadTasks").onclick = loadTasks;
+    bind("loadTasks", "onclick", loadTasks);
 
-    $("loadMedia").onclick = async () => {
+    bind("loadMedia", "onclick", async () => {
       const id = $("taskSelect").value;
       if (!id) return alert("Load tasks first");
       const res = await api(`/v1/viewer/tasks/${id}/media`);
       $("mediaInfo").textContent = JSON.stringify(res, null, 2);
-    };
-    $("loadTrack").onclick = async () => {
+    });
+    bind("loadTrack", "onclick", async () => {
       const id = $("taskSelect").value;
       if (!id) return alert("Load tasks first");
       const headers = {
@@ -3194,7 +3235,7 @@
         fetch(`/v1/viewer/tasks/${id}/trajectory.kml`, { headers }).then((r) => r.text()),
       ]);
       $("trackInfo").textContent = `GeoJSON:\n${geo.slice(0, 1200)}\n\nKML:\n${kml.slice(0, 1200)}`;
-    };
+    });
 
     async function loadFh2Links() {
       try {
@@ -3243,49 +3284,49 @@
       updateLiveBadge(true, new Date());
     }
 
-    $("refreshAll").onclick = async () => {
+    bind("refreshAll", "onclick", async () => {
       try {
         await refreshDashboard();
       } catch (e) {
         notifyApiError(e, "Refresh failed: ");
       }
-    };
+    });
 
-    $("adminViewerSelect").onchange = () => {
+    bind("adminViewerSelect", "onchange", () => {
       loadAdminViewerSettingsFor($("adminViewerSelect").value).catch((e) => {
         setAdminSettingsStatus(e.message, "err");
       });
-    };
-    $("adminSaveViewerSettings").onclick = () => {
+    });
+    bind("adminSaveViewerSettings", "onclick", () => {
       saveAdminViewerSettings().catch((e) => {
         setAdminSettingsStatus(e.message, "err");
       });
-    };
-    $("adminCreateViewer").onclick = () => {
+    });
+    bind("adminCreateViewer", "onclick", () => {
       createAdminViewer().catch((e) => setAdminViewerStatus(e.message, "err"));
-    };
-    $("adminViewerListBody").onclick = (e) => {
+    });
+    bind("adminViewerListBody", "onclick", (e) => {
       const btn = e.target.closest("[data-delete-account]");
       if (!btn) return;
       deleteAdminViewer(btn.dataset.deleteAccount).catch((err) => setAdminViewerStatus(err.message, "err"));
-    };
-    $("adminSyncProjects").onclick = () => {
+    });
+    bind("adminSyncProjects", "onclick", () => {
       syncAdminProjects().catch((e) => setAdminProjectStatus(e.message, "err"));
-    };
-    $("adminAssignViewerBtn").onclick = () => {
+    });
+    bind("adminAssignViewerBtn", "onclick", () => {
       assignViewerToProject(false).catch((e) => setAdminAssignmentStatus(e.message, "err"));
-    };
-    $("adminRemoveViewerBtn").onclick = () => {
+    });
+    bind("adminRemoveViewerBtn", "onclick", () => {
       assignViewerToProject(true).catch((e) => setAdminAssignmentStatus(e.message, "err"));
-    };
-    $("adminAssignProject").onchange = () => {
+    });
+    bind("adminAssignProject", "onchange", () => {
       selectAdminAssignProject($("adminAssignProject").value);
-    };
-    $("adminAssignViewer").onchange = () => {
+    });
+    bind("adminAssignViewer", "onchange", () => {
       state.adminAssignViewerId = $("adminAssignViewer").value;
       syncAdminAssignSummary();
-    };
-    $("adminProjectListBody").onclick = (e) => {
+    });
+    bind("adminProjectListBody", "onclick", (e) => {
       const syncBtn = e.target.closest("[data-project-sync]");
       if (syncBtn) {
         syncAdminProjects().catch((err) => setAdminProjectStatus(err.message, "err"));
@@ -3300,51 +3341,54 @@
       }
       const row = e.target.closest("tr[data-project-id]");
       if (row) selectAdminAssignProject(row.dataset.projectId);
-    };
-    $("viewerProjectPicker").onchange = () => {
+    });
+    bind("viewerProjectPicker", "onchange", () => {
       if (!state.session) return;
       state.session.selectedProjectCode = $("viewerProjectPicker").value;
       saveSession(state.session);
       refreshDashboard().catch((e) => notifyApiError(e));
-    };
-    $("adminIntegrationEnabled").onchange = () => {
+    });
+    bind("adminIntegrationEnabled", "onchange", () => {
       saveAdminIntegrationEnabled().catch((e) => setAdminIntegrationStatusMsg(e.message, "err"));
-    };
-    $("adminIntegrationGenerate").onclick = () => {
+    });
+    bind("adminIntegrationGenerate", "onclick", () => {
       adminIntegrationAction("generate").catch((e) => setAdminIntegrationStatusMsg(e.message, "err"));
-    };
-    $("adminIntegrationRegenerate").onclick = () => {
+    });
+    bind("adminIntegrationRegenerate", "onclick", () => {
       adminIntegrationAction("regenerate").catch((e) => setAdminIntegrationStatusMsg(e.message, "err"));
-    };
-    $("adminIntegrationRevoke").onclick = () => {
+    });
+    bind("adminIntegrationRevoke", "onclick", () => {
       adminIntegrationAction("revoke").catch((e) => setAdminIntegrationStatusMsg(e.message, "err"));
-    };
-    $("adminIntegrationCopyKey").onclick = () => {
+    });
+    bind("adminIntegrationCopyKey", "onclick", () => {
       if (state.adminIntegrationPlainKey) copyText(state.adminIntegrationPlainKey);
-    };
-    $("restApiKeysNewBtn").onclick = () => openRestApiKeyCreateModal();
-    $("serviceAccountsNewBtn").onclick = () => openServiceAccountCreateModal();
-    $("serviceAccountModalCancel").onclick = () => closeServiceAccountModal();
-    $("serviceAccountModalConfirm").onclick = () => submitServiceAccountModal();
-    $("serviceAccountModalCopyBtn").onclick = () => {
+    });
+    bind("restApiKeysNewBtn", "onclick", () => openRestApiKeyCreateModal());
+    bind("serviceAccountsNewBtn", "onclick", () => openServiceAccountCreateModal());
+    bind("serviceAccountModalCancel", "onclick", () => closeServiceAccountModal());
+    bind("serviceAccountModalConfirm", "onclick", () => submitServiceAccountModal());
+    bind("serviceAccountModalCopyBtn", "onclick", () => {
       copyText($("serviceAccountModalClientSecret").textContent);
-    };
-    $("serviceAccountModal").onclick = (e) => {
+    });
+    bind("serviceAccountModal", "onclick", (e) => {
       if (e.target === $("serviceAccountModal")) closeServiceAccountModal();
-    };
-    $("adminRestApiKeysNewBtn").onclick = () => openAdminRestApiKeyCreateModal();
-    $("apiKeyModalCancel").onclick = () => closeApiKeyModal();
-    $("apiKeyModalConfirm").onclick = () => submitApiKeyModal();
-    $("apiKeyModalCopyBtn").onclick = () => {
+    });
+    bind("adminRestApiKeysNewBtn", "onclick", () => openAdminRestApiKeyCreateModal());
+    bind("apiKeyModalCancel", "onclick", () => closeApiKeyModal());
+    bind("apiKeyModalConfirm", "onclick", () => submitApiKeyModal());
+    bind("apiKeyModalCopyBtn", "onclick", () => {
       const text = $("apiKeyModalPlain").textContent;
       if (text) copyText(text);
-    };
-    $("apiKeyModal").onclick = (e) => {
-      if (e.target === $("apiKeyModal")) closeApiKeyModal();
-    };
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && $("apiKeyModal").classList.contains("open")) closeApiKeyModal();
     });
+    bind("apiKeyModal", "onclick", (e) => {
+      if (e.target === $("apiKeyModal")) closeApiKeyModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && $("apiKeyModal")?.classList.contains("open")) closeApiKeyModal();
+    });
+    } catch (e) {
+      console.warn("legacy control bind", e);
+    }
 
 
     window.shamalLegacy = {
@@ -3358,13 +3402,12 @@
       loadAdminViewerSettings: () => loadAdminViewerSettings().catch((e) => notifyApiError(e)),
       loadSettingsPage: () => loadSettingsPage().catch((e) => notifyApiError(e)),
       refreshDashboard: () => refreshDashboard().catch((e) => notifyApiError(e)),
-      logout: () => {
-        const btn = $("logoutBtn");
-        if (btn) btn.click();
-        else {
-          clearSession();
-          updateRoleUi();
-        }
+      logout: () => { void performLogout(); },
+      suspend: () => { stopLiveUpdates(); },
+      resume: () => {
+        loadSession();
+        updateRoleUi();
+        if (state.session) startLiveUpdates();
       },
     };
     window.dispatchEvent(new CustomEvent("shamal-legacy-ready"));
@@ -3372,7 +3415,7 @@
     loadSession();
     if (typeof updateLoginPortalUi === "function") updateLoginPortalUi();
     const savedShare = localStorage.getItem("shamalFh2ShareUrl");
-    if (savedShare) $("fh2ShareUrl").value = savedShare;
+    if (savedShare && $("fh2ShareUrl")) $("fh2ShareUrl").value = savedShare;
     redirectToReturnToIfReady().then((redirected) => {
       if (redirected) return;
       if (SHAMAL_REACT_SHELL) { updateRoleUi(); }
@@ -3401,4 +3444,5 @@
         }
       }
     });
+})();
   

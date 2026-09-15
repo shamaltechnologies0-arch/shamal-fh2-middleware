@@ -2,6 +2,10 @@
  * Legacy portal — command center overrides (scoped under .legacy-portal-host)
  */
 
+.legacy-portal-host.is-parked {
+  display: none !important;
+}
+
 .legacy-portal-host {
   color-scheme: inherit;
   --lp-bg: var(--cc-background, #07111f);

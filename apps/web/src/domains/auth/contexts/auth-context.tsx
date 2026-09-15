@@ -95,12 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    const legacy = window.shamalLegacy;
-    if (legacy?.logout) {
-      legacy.logout();
-    } else {
-      clearSession();
-    }
+    window.shamalLegacy?.logout?.();
+    clearSession();
     setSession(null);
   }, []);
 
@@ -132,6 +128,8 @@ declare global {
       loadSettingsPage?: () => void;
       refreshDashboard: () => void;
       logout: () => void;
+      suspend?: () => void;
+      resume?: () => void;
     };
   }
 }

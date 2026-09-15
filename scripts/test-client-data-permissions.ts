@@ -79,6 +79,8 @@ async function main(): Promise<void> {
     { path: "/v1/devices/SN1/live-stream", query: { camera: "drone" }, scope: "fpv:read" },
     { path: "/v1/events", scope: "events:read" },
     { path: "/v1/media/recent", scope: "media:read" },
+    { path: "/v1/media/library", scope: "media:read" },
+    { path: "/v1/media/folders", scope: "media:read" },
     { path: "/v1/platform/integration/gps-location", scope: "gps:read" },
   ];
 
@@ -187,6 +189,7 @@ async function main(): Promise<void> {
       "/v1/fleet/positions",
       "/v1/events",
       "/v1/media/recent",
+      "/v1/media/library",
       "/v1/devices/MOCKSN/telemetry/latest",
       "/v1/devices/MOCKSN/live-stream",
     ];

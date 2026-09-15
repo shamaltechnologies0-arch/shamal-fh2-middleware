@@ -40,6 +40,7 @@
   <main id="appMain">
     <nav id="sideNav" class="legacy-hidden-chrome" aria-hidden="true">
       <button data-tab="dashboard" data-nav-viewer style="display:none">Monitoring Dashboard</button>
+      <button data-tab="history" data-nav-viewer style="display:none">Media Center</button>
       <button data-tab="settings" data-nav-viewer style="display:none">
         <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8m8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06M12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14"/></svg></span>
         Settings
@@ -48,7 +49,7 @@
       <button data-tab="camera" data-nav-staff>2) Live Camera Panel</button>
       <button data-tab="ops" data-nav-staff>3) Operations Panel</button>
       <button data-tab="alerts" data-nav-staff>4) Alerts &amp; Events</button>
-      <button data-tab="history" data-nav-staff>5) Mission &amp; Media History</button>
+      <button data-tab="history" data-nav-staff>5) Media Center</button>
       <button data-tab="admin" data-nav-admin style="display:none">Admin Settings</button>
     </nav>
     <div>
@@ -155,7 +156,8 @@
           </div>
           <div class="dash-card" data-card="missions" data-permission="missionMediaHistory" data-zoomable>
             <div class="dash-card-head">
-              <span class="dash-card-title">Mission &amp; Media History</span>
+              <span class="dash-card-title">Media Center</span>
+              <button type="button" class="dash-library-btn" data-open-media-library>Open library</button>
               <button type="button" class="get-api-btn" data-api-card="missions">Get API</button>
             </div>
             <div class="dash-card-body" id="dashMissions">Loading…</div>
@@ -312,7 +314,7 @@
       </section>
 
       <section id="history">
-        <h3>Mission & Media History</h3>
+        <h3>Media Center</h3>
         <div class="row"><button id="loadTasks">Load Tasks</button><select id="taskSelect"></select><button id="loadMedia">Load Media</button><button id="loadTrack">Load Trajectory</button></div>
         <div class="pre" id="taskInfo">Task list not loaded.</div>
         <div class="pre" id="mediaInfo">Media not loaded.</div>

@@ -6,7 +6,7 @@ import "@/styles/app-shell-fixes.css";
 import { PageLoadingSkeleton } from "@/components/shared/loading-skeleton";
 
 const LEGACY_SCRIPT_ID = "shamal-portal-legacy-script";
-const LEGACY_SCRIPT_SRC = "/portal-legacy.js?v=legacy-guard-1";
+const LEGACY_SCRIPT_SRC = "/portal-legacy.js?v=media-center-2";
 
 let parkedHost: HTMLDivElement | null = null;
 

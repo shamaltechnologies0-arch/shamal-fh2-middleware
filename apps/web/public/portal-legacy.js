@@ -212,7 +212,7 @@
       "camera:read": "Live Camera",
       "fpv:read": "Drone FPV",
       "events:read": "Alerts & Events",
-      "media:read": "Mission & Media History",
+      "media:read": "Media Library",
     };
 
     const ADMIN_PERMISSION_GROUPS = [
@@ -232,7 +232,7 @@
         items: [
           ["liveCamera", "Live Camera"],
           ["droneFpv", "Drone FPV"],
-          ["missionMediaHistory", "Mission & Media History"],
+          ["missionMediaHistory", "Media Library"],
         ],
       },
       {
@@ -478,7 +478,7 @@
       const requested = params.get("tab");
       if (window.location.pathname === "/settings") return "settings";
       if (requested && $(requested)) {
-        if (isViewer() && !["dashboard", "settings"].includes(requested)) return "dashboard";
+        if (isViewer() && !["dashboard", "settings", "history"].includes(requested)) return "dashboard";
         if (!isViewer() && requested === "settings") return "fleet";
         if (requested === "admin" && !isAdmin()) return isViewer() ? "dashboard" : "fleet";
         return requested;
@@ -1840,7 +1840,7 @@
           : "Operations are not available for your account.";
       }
 
-      const viewerTabs = ["dashboard", "settings"];
+      const viewerTabs = ["dashboard", "settings", "history"];
       if (viewer && !viewerTabs.includes(state.activeTab)) {
         state.activeTab = "dashboard";
       } else if (!viewer && state.activeTab === "dashboard") {
@@ -1864,6 +1864,7 @@
     document.querySelectorAll(".dash-card[data-zoomable]").forEach((card) => {
       card.addEventListener("click", (e) => {
         if (e.target.closest(".get-api-btn")) return;
+        if (e.target.closest("[data-open-media-library]")) return;
         openCardZoom(card.dataset.card);
       });
     });
@@ -2758,6 +2759,12 @@
         .replace(/"/g, "&quot;");
     }
 
+    function isVideoMediaItem(m) {
+      const type = String(m?.mediaType || "").toLowerCase();
+      const name = String(m?.name || "").toLowerCase();
+      return type.includes("video") || /\.(mp4|mov|m4v|avi|mkv|webm)$/.test(name);
+    }
+
     function renderMissionsDashboard(bundles, meta) {
       const el = $("dashMissions");
       if (!el) return;
@@ -2772,27 +2779,34 @@
         const status = task.mediaUploadStatus || task.status || "—";
         let body = "";
         if (bundle.media?.length) {
-          body =
-            '<ul class="dash-media-list">' +
-            bundle.media
-              .map((m) => {
-                const type = m.mediaType === "video" ? "video" : "photo";
-                return `<li><span class="pill ok">${type}</span><span>${escapeHtml(m.name)}</span></li>`;
-              })
-              .join("") +
-            "</ul>";
+          const thumbs = bundle.media
+            .slice(0, 6)
+            .map((m) => {
+              const video = isVideoMediaItem(m);
+              const src = m.previewUrl || m.downloadUrl || "";
+              const type = video ? "video" : "photo";
+              if (!src) {
+                return `<span class="dash-media-fallback">${type}</span>`;
+              }
+              const media = video
+                ? `<video src="${escapeHtml(src)}" muted playsinline preload="metadata"></video>`
+                : `<img src="${escapeHtml(src)}" alt="${escapeHtml(m.name || "")}" referrerpolicy="no-referrer" onerror="this.style.display='none'" />`;
+              return `<button type="button" class="dash-media-thumb" data-open-media-library title="${escapeHtml(m.name || type)}">${media}<span>${escapeHtml(m.name || type)}</span></button>`;
+            })
+            .join("");
+          body = `<div class="dash-media-thumbs">${thumbs}</div>`;
         } else {
           const folderHint = task.folderId
             ? `FlightHub folder #${task.folderId}`
             : "FlightHub media library";
-          body = `<p class="dash-media-note">${folderHint} — ${bundle.mediaError?.includes("219021") ? "enable <strong>Task Management</strong> on the Organization Key to load photo names via API." : "no files returned yet."}</p>`;
+          body = `<p class="dash-media-note">${folderHint} — ${bundle.mediaError?.includes("219021") ? "enable <strong>Task Management</strong> on the Organization Key to load photos via API." : "no files returned yet."}</p>`;
         }
         return `<div class="dash-mission-block"><div class="dash-mission-head"><strong>${escapeHtml(title)}</strong><span class="small">${escapeHtml(status)}</span></div>${body}</div>`;
       });
 
       if (meta?.mediaApiBlocked) {
         blocks.push(
-          `<p class="dash-media-note">Media file names exist in FlightHub but the OpenAPI media endpoint returned 219021. Regenerate the Organization Key with Task Management permission.</p>`,
+          `<p class="dash-media-note">Media files exist in FlightHub but the OpenAPI media endpoint returned 219021. Regenerate the Organization Key with Task Management permission.</p>`,
         );
       }
 
@@ -3390,6 +3404,15 @@
       console.warn("legacy control bind", e);
     }
 
+
+    document.addEventListener("click", (e) => {
+      const el = e.target instanceof Element ? e.target : null;
+      const trigger = el?.closest("[data-open-media-library]");
+      if (!trigger) return;
+      e.preventDefault();
+      activateTab("history");
+      window.dispatchEvent(new CustomEvent("shamal-open-media"));
+    });
 
     window.shamalLegacy = {
       activateTab,

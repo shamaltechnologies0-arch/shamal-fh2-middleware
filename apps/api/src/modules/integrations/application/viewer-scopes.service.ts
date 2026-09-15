@@ -41,7 +41,7 @@ export const DATA_ACCESS_LABELS: Partial<
   liveCamera: "Live Camera",
   droneFpv: "Drone FPV",
   alertsEvents: "Alerts & Events",
-  missionMediaHistory: "Mission & Media History",
+  missionMediaHistory: "Media Library",
 };
 
 const DATA_ACCESS_PERMISSION_KEYS = Object.keys(
@@ -188,7 +188,7 @@ export function dataScopeRequirementForPath(
   }
 
   if (
-    canonical === "/v1/media/recent" ||
+    canonical.startsWith("/v1/media") ||
     canonical === "/v1/tasks" ||
     /^\/v1\/tasks\/[^/]+$/.test(canonical) ||
     /^\/v1\/tasks\/[^/]+\/media$/.test(canonical) ||

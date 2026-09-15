@@ -14,6 +14,7 @@
         "run_at": "2024-10-29T08:51:50Z",
         "completed_at": "2024-10-29T08:53:55Z",
         "wayline_uuid": "6eb90ac7-4ec8-4a2c-a470-746e7444e77c",
+        "folder_id": 12345,
         "media_upload_status": "upload_finished",
         "current_waypoint_index": 12,
         "total_waypoints": 12

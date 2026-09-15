@@ -15,6 +15,7 @@ export type PublicDocsGroupId =
   | "gis"
   | "telemetry"
   | "tasks"
+  | "media"
   | "events";
 
 export type PublicDocsGroup = {
@@ -103,6 +104,12 @@ export const PUBLIC_DOCS_GROUPS: PublicDocsGroup[] = [
     id: "tasks",
     label: "Tasks",
     description: "Flight and inspection jobs, media, and trajectories.",
+  },
+  {
+    id: "media",
+    label: "Media",
+    description:
+      "Media Center: mission folders, photos, videos, search, and downloads from FlightHub 2.",
   },
   {
     id: "events",
@@ -474,8 +481,57 @@ export const PUBLIC_DOCS_OPERATIONS: PublicDocsOperation[] = [
   {
     method: "GET",
     path: "/v1/media/recent",
-    group: "tasks",
+    group: "media",
     summary: "Recent flight tasks with media file names",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
+    path: "/v1/media/library",
+    group: "media",
+    summary: "Media Center catalog (folders + files)",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
+    path: "/v1/media/folders",
+    group: "media",
+    summary: "Media folder tree",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
+    path: "/v1/media/folders/{id}",
+    group: "media",
+    summary: "Media folder detail",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
+    path: "/v1/media/files",
+    group: "media",
+    summary: "Search and filter Media Center files",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
+    path: "/v1/media/files/{id}",
+    group: "media",
+    summary: "Media file details",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
+    path: "/v1/media/files/{id}/download",
+    group: "media",
+    summary: "Download a media file",
+    auth: "apiKey",
+  },
+  {
+    method: "GET",
+    path: "/v1/media/archive",
+    group: "media",
+    summary: "Bulk-download media as a ZIP",
     auth: "apiKey",
   },
   {

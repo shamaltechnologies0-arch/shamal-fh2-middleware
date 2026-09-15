@@ -22,7 +22,7 @@ const TAB_TITLES: Record<PortalTab, string> = {
   camera: "Live View",
   ops: "Telemetry & Operations",
   alerts: "Events & Alerts",
-  history: "Media Center",
+  history: "Media History",
   admin: "Platform Administration",
 };
 
@@ -36,10 +36,6 @@ export function AppHeader({ activeTab }: AppHeaderProps) {
   const isAdminPanel = session?.role === "admin";
 
   function handleRefresh() {
-    if (activeTab === "history") {
-      window.dispatchEvent(new CustomEvent("shamal-refresh-media"));
-      return;
-    }
     window.shamalLegacy?.refreshDashboard();
   }
 

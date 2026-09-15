@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Camera,
-  Images,
+  History,
   LayoutDashboard,
   Map,
   Radio,
@@ -53,7 +53,7 @@ const ALL_NAV: NavItem[] = [
   { id: "camera", label: "Live View", icon: Camera, group: "operations" },
   { id: "ops", label: "Telemetry & Ops", icon: Radio, group: "operations" },
   { id: "alerts", label: "Events", icon: Bell, group: "operations" },
-  { id: "history", label: "Media Center", icon: Images, group: "operations" },
+  { id: "history", label: "Media History", icon: History, group: "operations" },
   { id: "settings", label: "API & Integrations", icon: Settings, group: "management" },
   { id: "admin", label: "Platform Admin", icon: Shield, group: "management" },
 ];
@@ -70,16 +70,10 @@ function useVisibleNav(): NavItem[] {
   return useMemo(() => {
     if (!session) return [];
     if (session.role === "viewer") {
-      const mediaEnabled = session.viewerDashboardPermissions?.missionMediaHistory !== false;
-      return ALL_NAV.filter(
-        (n) =>
-          n.group === "monitoring" ||
-          n.id === "settings" ||
-          (mediaEnabled && n.id === "history"),
-      );
+      return ALL_NAV.filter((n) => n.group === "monitoring" || n.id === "settings");
     }
     if (session.role === "admin" && isAdminRoute) {
-      return ALL_NAV.filter((n) => n.id === "admin" || n.id === "history");
+      return ALL_NAV.filter((n) => n.id === "admin");
     }
     return ALL_NAV.filter(
       (n) => n.id !== "admin" && n.id !== "dashboard" && n.group !== "monitoring",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import {
   AppSidebarProvider,
@@ -6,7 +6,6 @@ import {
   useLegacyTabSync,
   type PortalTab,
 } from "@/components/layout/app-sidebar";
-import { MediaLibrary } from "@/domains/media/components/media-library";
 import { LegacyPortal } from "@/domains/platform/components/legacy-portal";
 import { SidebarInset } from "@/components/ui/sidebar";
 
@@ -35,26 +34,11 @@ export function PortalLayout() {
 
   useLegacyTabSync(activeTab, setActiveTab);
 
-  useEffect(() => {
-    function onOpenMedia() {
-      handleTabChange("history");
-    }
-    window.addEventListener("shamal-open-media", onOpenMedia);
-    return () => window.removeEventListener("shamal-open-media", onOpenMedia);
-  }, [handleTabChange]);
-
   return (
     <AppSidebarProvider activeTab={activeTab} onTabChange={handleTabChange}>
       <SidebarInset className="flex h-svh min-w-0 flex-col overflow-hidden bg-background">
         <AppHeader activeTab={activeTab} />
-        <div className={activeTab === "history" ? "hidden h-0 overflow-hidden" : "relative min-h-0 flex-1 overflow-hidden"}>
-          <LegacyPortal />
-        </div>
-        {activeTab === "history" ? (
-          <div className="relative min-h-0 flex-1 overflow-hidden">
-            <MediaLibrary />
-          </div>
-        ) : null}
+        <LegacyPortal />
       </SidebarInset>
     </AppSidebarProvider>
   );

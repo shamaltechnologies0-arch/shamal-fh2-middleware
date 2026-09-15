@@ -193,7 +193,7 @@
       "camera:read": "Live Camera",
       "fpv:read": "Drone FPV",
       "events:read": "Alerts & Events",
-      "media:read": "Media Library",
+      "media:read": "Mission & Media History",
     };
 
     const ADMIN_PERMISSION_GROUPS = [
@@ -213,7 +213,7 @@
         items: [
           ["liveCamera", "Live Camera"],
           ["droneFpv", "Drone FPV"],
-          ["missionMediaHistory", "Media Library"],
+          ["missionMediaHistory", "Mission & Media History"],
         ],
       },
       {
@@ -459,7 +459,7 @@
       const requested = params.get("tab");
       if (window.location.pathname === "/settings") return "settings";
       if (requested && $(requested)) {
-        if (isViewer() && !["dashboard", "settings", "history"].includes(requested)) return "dashboard";
+        if (isViewer() && !["dashboard", "settings"].includes(requested)) return "dashboard";
         if (!isViewer() && requested === "settings") return "fleet";
         if (requested === "admin" && !isAdmin()) return isViewer() ? "dashboard" : "fleet";
         return requested;
@@ -491,15 +491,9 @@
       return /not_found|was not found/i.test(raw);
     }
 
-    function isDataAccessDenied(err) {
-      const raw = err?.message || String(err);
-      return /Access to this data is not enabled for your account/i.test(raw);
-    }
-
     function notifyApiError(err, prefix) {
       const message = err?.message || String(err);
       if (!message || message === SESSION_EXPIRED_SILENT) return;
-      if (isDataAccessDenied(err)) return;
       alert(prefix ? `${prefix}${message}` : message);
     }
 
@@ -1821,7 +1815,7 @@
           : "Operations are not available for your account.";
       }
 
-      const viewerTabs = ["dashboard", "settings", "history"];
+      const viewerTabs = ["dashboard", "settings"];
       if (viewer && !viewerTabs.includes(state.activeTab)) {
         state.activeTab = "dashboard";
       } else if (!viewer && state.activeTab === "dashboard") {
@@ -1845,7 +1839,6 @@
     document.querySelectorAll(".dash-card[data-zoomable]").forEach((card) => {
       card.addEventListener("click", (e) => {
         if (e.target.closest(".get-api-btn")) return;
-        if (e.target.closest("[data-open-media-library]")) return;
         openCardZoom(card.dataset.card);
       });
     });
@@ -1998,15 +1991,6 @@
       }
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       return res.json();
-    }
-
-    async function apiMaybe(path, opts = {}) {
-      try {
-        return await api(path, opts);
-      } catch (err) {
-        if (isDataAccessDenied(err) || isNotFoundError(err)) return null;
-        throw err;
-      }
     }
 
     const _loginBtn = $("loginBtn"); if (_loginBtn) _loginBtn.onclick = async () => {
@@ -2651,30 +2635,23 @@
         .join("");
     }
 
-    function renderViewerDashboardCards(sum, positions, batteryOverride) {
+    function renderViewerDashboardCards(sum, positions) {
       if (!isViewer() && state.activeTab !== "dashboard") return;
-      const summary = sum?.data || {
-        totalDevices: state.devices.length,
-        online: state.devices.filter((d) => d.online).length,
-        offline: state.devices.filter((d) => d.online === false).length,
-        drones: state.devices.filter((d) => d.role === "drone").length,
-        docks: state.devices.filter((d) => d.role === "gateway").length,
-      };
 
       if (cardAllowed("fleetOverview")) {
-        if ($("dashKTotal")) $("dashKTotal").textContent = summary.totalDevices;
-        if ($("dashKOnline")) $("dashKOnline").textContent = `${summary.online}/${summary.offline}`;
+        $("dashKTotal").textContent = sum.data.totalDevices;
+        $("dashKOnline").textContent = `${sum.data.online}/${sum.data.offline}`;
         ensureDashFleetMap();
         updateDashFleetMap(positions);
       }
 
       state.apiSamples.devicesSample = state.devices[0] || state.devices;
       state.apiSamples.onlineSample = {
-        totalDevices: summary.totalDevices,
-        drones: summary.drones,
-        docks: summary.docks,
-        online: summary.online,
-        offline: summary.offline,
+        totalDevices: sum.data.totalDevices,
+        drones: sum.data.drones,
+        docks: sum.data.docks,
+        online: sum.data.online,
+        offline: sum.data.offline,
       };
       state.apiSamples.positions = positions;
 
@@ -2704,16 +2681,14 @@
       }
 
       if (cardAllowed("batteryStatus") && $("dashBattery")) {
-        const battery = batteryOverride?.batteryPercent ?? dronePos?.batteryPercent;
-        const online = batteryOverride?.online ?? droneDev?.online;
-        const serial = batteryOverride?.serialNumber || droneDev?.serialNumber;
+        const battery = dronePos?.batteryPercent;
         $("dashBattery").innerHTML = battery != null
           ? `<div class="dash-kpi"><div class="small">Drone battery</div><div class="v">${battery}%</div></div>`
           : "<span class='small'>No battery data yet.</span>";
         state.apiSamples.batterySample = {
-          serial,
+          serial: droneDev?.serialNumber,
           batteryPercent: battery,
-          online,
+          online: droneDev?.online,
         };
       }
 
@@ -2750,12 +2725,6 @@
         .replace(/"/g, "&quot;");
     }
 
-    function isVideoMediaItem(m) {
-      const type = String(m?.mediaType || "").toLowerCase();
-      const name = String(m?.name || "").toLowerCase();
-      return type.includes("video") || /\.(mp4|mov|m4v|avi|mkv|webm)$/.test(name);
-    }
-
     function renderMissionsDashboard(bundles, meta) {
       const el = $("dashMissions");
       if (!el) return;
@@ -2770,34 +2739,27 @@
         const status = task.mediaUploadStatus || task.status || "—";
         let body = "";
         if (bundle.media?.length) {
-          const thumbs = bundle.media
-            .slice(0, 6)
-            .map((m) => {
-              const video = isVideoMediaItem(m);
-              const src = m.previewUrl || m.downloadUrl || "";
-              const type = video ? "video" : "photo";
-              if (!src) {
-                return `<span class="dash-media-fallback">${type}</span>`;
-              }
-              const media = video
-                ? `<video src="${escapeHtml(src)}" muted playsinline preload="metadata"></video>`
-                : `<img src="${escapeHtml(src)}" alt="${escapeHtml(m.name || "")}" referrerpolicy="no-referrer" onerror="this.style.display='none'" />`;
-              return `<button type="button" class="dash-media-thumb" data-open-media-library title="${escapeHtml(m.name || type)}">${media}<span>${escapeHtml(m.name || type)}</span></button>`;
-            })
-            .join("");
-          body = `<div class="dash-media-thumbs">${thumbs}</div>`;
+          body =
+            '<ul class="dash-media-list">' +
+            bundle.media
+              .map((m) => {
+                const type = m.mediaType === "video" ? "video" : "photo";
+                return `<li><span class="pill ok">${type}</span><span>${escapeHtml(m.name)}</span></li>`;
+              })
+              .join("") +
+            "</ul>";
         } else {
           const folderHint = task.folderId
             ? `FlightHub folder #${task.folderId}`
             : "FlightHub media library";
-          body = `<p class="dash-media-note">${folderHint} — ${bundle.mediaError?.includes("219021") ? "enable <strong>Task Management</strong> on the Organization Key to load photos via API." : "no files returned yet."}</p>`;
+          body = `<p class="dash-media-note">${folderHint} — ${bundle.mediaError?.includes("219021") ? "enable <strong>Task Management</strong> on the Organization Key to load photo names via API." : "no files returned yet."}</p>`;
         }
         return `<div class="dash-mission-block"><div class="dash-mission-head"><strong>${escapeHtml(title)}</strong><span class="small">${escapeHtml(status)}</span></div>${body}</div>`;
       });
 
       if (meta?.mediaApiBlocked) {
         blocks.push(
-          `<p class="dash-media-note">Media files exist in FlightHub but the OpenAPI media endpoint returned 219021. Regenerate the Organization Key with Task Management permission.</p>`,
+          `<p class="dash-media-note">Media file names exist in FlightHub but the OpenAPI media endpoint returned 219021. Regenerate the Organization Key with Task Management permission.</p>`,
         );
       }
 
@@ -2819,8 +2781,7 @@
 
       if (cardAllowed("droneTelemetry") && drone) {
         fetches.push(
-          apiMaybe(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
-            if (!r) return;
+          api(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
             state.apiSamples.droneTelemetry = r.data;
             if ($("dashDroneTelem") && r.data) {
               const t = r.data.telemetry || r.data;
@@ -2839,8 +2800,7 @@
 
       if (cardAllowed("dockTelemetry") && dock) {
         fetches.push(
-          apiMaybe(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
-            if (!r) return;
+          api(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
             state.apiSamples.dockTelemetry = r.data;
             if ($("dashDockTelem") && r.data) {
               renderMetricList($("dashDockTelem"), [
@@ -2898,7 +2858,6 @@
 
       for (const id of ["camDevice", "opsDevice"]) {
         const sel = $(id);
-        if (!sel) continue;
         const prev = sel.value;
         sel.innerHTML = "";
         state.devices.forEach((d) => {
@@ -2917,53 +2876,39 @@
     };
 
     async function loadFleet(opts = {}) {
-      const wantSummary = !isViewer() || cardAllowed("fleetOverview");
-      const wantDevices = !isViewer() || cardAllowed("fleetOverview") || cardAllowed("onlineOffline");
-      const wantPositions = !isViewer() || cardAllowed("gpsLocation");
-      const wantBattery = isViewer() && cardAllowed("batteryStatus") && !wantPositions;
-
-      const [sum, devices, positionsRes, batteryRes] = await Promise.all([
-        wantSummary ? apiMaybe("/v1/viewer/fleet/summary") : null,
-        wantDevices ? apiMaybe("/v1/viewer/devices") : null,
-        wantPositions ? apiMaybe("/v1/viewer/fleet/positions") : null,
-        wantBattery ? apiMaybe("/v1/viewer/fleet/battery") : null,
+      const [sum, devices, positionsRes] = await Promise.all([
+        api("/v1/viewer/fleet/summary"),
+        api("/v1/viewer/devices"),
+        api("/v1/viewer/fleet/positions"),
       ]);
-      state.devices = devices?.data || state.devices || [];
-      const positions = positionsRes?.data || [];
-      const batteryOverride = batteryRes?.data || null;
+      state.devices = devices.data || [];
+      const positions = positionsRes.data || [];
       fillDeviceSelectors();
-      if (sum?.data) {
-        if ($("kTotal")) $("kTotal").textContent = sum.data.totalDevices;
-        if ($("kDrones")) $("kDrones").textContent = sum.data.drones;
-        if ($("kDocks")) $("kDocks").textContent = sum.data.docks;
-        if ($("kStatus")) $("kStatus").textContent = `${sum.data.online}/${sum.data.offline}`;
-      }
+      $("kTotal").textContent = sum.data.totalDevices;
+      $("kDrones").textContent = sum.data.drones;
+      $("kDocks").textContent = sum.data.docks;
+      $("kStatus").textContent = `${sum.data.online}/${sum.data.offline}`;
       const now = new Date();
-      if ($("fleetStatus")) {
-        $("fleetStatus").textContent = opts.silent
-          ? `Source: ${sum?.meta?.source || "—"} • auto-updated ${now.toLocaleTimeString()}`
-          : `Source: ${sum?.meta?.source || "—"} • refreshed ${now.toLocaleTimeString()}`;
-      }
+      $("fleetStatus").textContent = opts.silent
+        ? `Source: ${sum.meta.source} • auto-updated ${now.toLocaleTimeString()}`
+        : `Source: ${sum.meta.source} • refreshed ${now.toLocaleTimeString()}`;
 
-      if (wantPositions) {
-        updateTelemetryBanner(positions);
-        updateFleetMap(positions);
-      }
+      updateTelemetryBanner(positions);
+      updateFleetMap(positions);
 
       const posBySn = Object.fromEntries(positions.map((p) => [p.serialNumber, p]));
       const tbody = document.querySelector("#fleetTable tbody");
-      if (tbody) {
-        tbody.innerHTML = "";
-        state.devices.forEach((d) => {
-          const p = posBySn[d.serialNumber] || {};
-          const lat = p.latitude;
-          const lng = p.longitude;
-          const loc =
-            lat != null && lng != null
-              ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}${p.freshness === "cached" ? " *" : ""}`
-              : "—";
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
+      tbody.innerHTML = "";
+      state.devices.forEach((d) => {
+        const p = posBySn[d.serialNumber] || {};
+        const lat = p.latitude;
+        const lng = p.longitude;
+        const loc =
+          lat != null && lng != null
+            ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}${p.freshness === "cached" ? " *" : ""}`
+            : "—";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
           <td>${d.serialNumber}</td>
           <td>${d.role}</td>
           <td>${d.modelName || "-"}</td>
@@ -2972,11 +2917,10 @@
           <td>${p.batteryPercent ?? "-"}</td>
           <td>${p.altitudeM ?? "-"}</td>
           <td><span class="pill ${p.freshness === "live" ? "ok" : p.freshness === "cached" ? "warn" : "bad"}">${p.freshness || "—"}</span></td>`;
-          tbody.appendChild(tr);
-        });
-      }
+        tbody.appendChild(tr);
+      });
 
-      renderViewerDashboardCards(sum, positions, batteryOverride);
+      renderViewerDashboardCards(sum, positions);
       if (isViewer()) {
         await refreshViewerExtras({ silent: opts.silent, skipStreams: true });
       }
@@ -3184,8 +3128,7 @@
       if (isViewer() && !cardAllowed("alertsEvents") && state.activeTab !== "alerts") {
         return;
       }
-      const res = await apiMaybe("/v1/viewer/events?limit=25");
-      if (!res) return;
+      const res = await api("/v1/viewer/events?limit=25");
       state.apiSamples.alertsSample = (res.data || []).slice(0, 2);
       if (!isViewer() || state.activeTab === "alerts") {
         renderEventsTable(res.data || []);
@@ -3403,14 +3346,6 @@
       if (e.key === "Escape" && $("apiKeyModal").classList.contains("open")) closeApiKeyModal();
     });
 
-
-    document.addEventListener("click", (e) => {
-      const trigger = e.target.closest("[data-open-media-library]");
-      if (!trigger) return;
-      e.preventDefault();
-      activateTab("history");
-      window.dispatchEvent(new CustomEvent("shamal-open-media"));
-    });
 
     window.shamalLegacy = {
       activateTab,

@@ -41,7 +41,7 @@ export const DATA_ACCESS_LABELS: Partial<
   liveCamera: "Live Camera",
   droneFpv: "Drone FPV",
   alertsEvents: "Alerts & Events",
-  missionMediaHistory: "Media Library",
+  missionMediaHistory: "Mission & Media History",
 };
 
 const DATA_ACCESS_PERMISSION_KEYS = Object.keys(
@@ -162,12 +162,9 @@ export function dataScopeRequirementForPath(
   if (canonical === "/v1/fleet/positions") {
     return { kind: "any", scopes: ["gps:read"] };
   }
-  if (canonical === "/v1/fleet/battery") {
-    return { kind: "any", scopes: ["battery:read"] };
-  }
 
   if (canonical === "/v1/devices") {
-    return { kind: "any", scopes: ["fleet:read", "status:read"] };
+    return { kind: "any", scopes: ["fleet:read"] };
   }
   if (/^\/v1\/devices\/[^/]+\/telemetry\/(latest|stream)$/.test(canonical)) {
     return { kind: "any", scopes: ["drone:read", "dock:read"] };
@@ -191,7 +188,7 @@ export function dataScopeRequirementForPath(
   }
 
   if (
-    canonical.startsWith("/v1/media") ||
+    canonical === "/v1/media/recent" ||
     canonical === "/v1/tasks" ||
     /^\/v1\/tasks\/[^/]+$/.test(canonical) ||
     /^\/v1\/tasks\/[^/]+\/media$/.test(canonical) ||

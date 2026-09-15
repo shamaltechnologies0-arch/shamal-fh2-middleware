@@ -39,7 +39,6 @@ async function main(): Promise<void> {
     { canonical: "/v1/capabilities", legacy: "/v1/viewer/capabilities" },
     { canonical: "/v1/fleet/summary", legacy: "/v1/viewer/fleet/summary" },
     { canonical: "/v1/fleet/positions", legacy: "/v1/viewer/fleet/positions" },
-    { canonical: "/v1/fleet/battery", legacy: "/v1/viewer/fleet/battery" },
     { canonical: "/v1/docks", legacy: "/v1/viewer/docks" },
     { canonical: "/v1/tasks", legacy: "/v1/viewer/tasks" },
     { canonical: "/v1/events", legacy: "/v1/viewer/events" },

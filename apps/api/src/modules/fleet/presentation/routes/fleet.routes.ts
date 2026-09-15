@@ -2,7 +2,6 @@ import type { FastifyPluginAsync } from "fastify";
 import { createFh2Client } from "../../../../infrastructure/fh2/client.js";
 import { flattenDevices } from "../../../../shared/normalize/normalize.service.js";
 import { resolveTelemetry } from "../../../devices/application/telemetry-store.service.js";
-import { fetchViewerBatteryStatus } from "../../../integrations/application/viewer-api-data.service.js";
 import { registerViewerGet } from "../../../../shared/http/viewer-paths.js";
 
 export const fleetRoutes: FastifyPluginAsync = async (app) => {
@@ -78,22 +77,6 @@ export const fleetRoutes: FastifyPluginAsync = async (app) => {
         data: positions,
         meta: { count: positions.length, source: "flighthub2" },
       });
-    },
-  );
-
-  registerViewerGet(
-    app,
-    "/v1/fleet/battery",
-    {
-      schema: {
-        summary: "Fleet battery status without GPS coordinates",
-        description:
-          "Battery percent for the primary drone. Does not include latitude/longitude.",
-        tags: ["Fleet"],
-      },
-    },
-    async (_request, reply) => {
-      return reply.send(await fetchViewerBatteryStatus());
     },
   );
 };

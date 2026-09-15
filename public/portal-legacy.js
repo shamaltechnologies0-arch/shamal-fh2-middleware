@@ -140,7 +140,6 @@
     function clearSession() {
       state.session = null;
       localStorage.removeItem("shamalCcSession");
-      window.dispatchEvent(new CustomEvent("shamal-session-cleared"));
     }
 
     function canOperate() {
@@ -324,22 +323,20 @@
         sel.appendChild(o);
       }
       const fallback = state.session.fallbackProjectCode;
-      const selected =
-        state.session.selectedProjectCode || projects[0]?.projectCode || fallback || "";
-      if (selected && projects.some((p) => p.projectCode === selected)) {
+      if (!projects.length && fallback) {
+        const o = document.createElement("option");
+        o.value = fallback;
+        o.textContent = `Default (${fallback})`;
+        sel.appendChild(o);
+      }
+      const selected = state.session.selectedProjectCode || projects[0]?.projectCode || fallback || "";
+      if (selected) {
         sel.value = selected;
         state.session.selectedProjectCode = selected;
         saveSession(state.session);
-      } else if (projects[0]?.projectCode) {
-        sel.value = projects[0].projectCode;
-        state.session.selectedProjectCode = projects[0].projectCode;
-        saveSession(state.session);
-      } else if (fallback) {
-        state.session.selectedProjectCode = fallback;
-        saveSession(state.session);
       }
       sel.style.display = projects.length > 1 ? "" : "none";
-      empty.style.display = projects.length === 0 ? "" : "none";
+      empty.style.display = projects.length === 0 && !fallback ? "" : "none";
     }
 
     async function syncSessionFromServer() {
@@ -433,10 +430,10 @@
       state.activeTab = tabId;
       updateNavActiveState();
       if (tabId === "admin" && isAdmin()) {
-        loadAdminViewerSettings().catch((e) => notifyApiError(e));
+        loadAdminViewerSettings().catch((e) => alert(e.message));
       }
       if (tabId === "settings" && canManageWorkspaceApi()) {
-        loadSettingsPage().catch((e) => notifyApiError(e));
+        loadSettingsPage().catch((e) => alert(e.message));
       }
       if (tabId === "settings") {
         history.replaceState(null, "", "/?tab=settings");
@@ -482,25 +479,6 @@
       if (status === "disabled") return '<span class="pill warn">DISABLED</span>';
       if (status === "expired") return '<span class="pill bad">EXPIRED</span>';
       return `<span class="pill bad">${escapeHtml((status || "unknown").toUpperCase())}</span>`;
-    }
-
-    const SESSION_EXPIRED_SILENT = "SESSION_EXPIRED_SILENT";
-
-    function isNotFoundError(err) {
-      const raw = err?.message || String(err);
-      return /not_found|was not found/i.test(raw);
-    }
-
-    function isDataAccessDenied(err) {
-      const raw = err?.message || String(err);
-      return /Access to this data is not enabled for your account/i.test(raw);
-    }
-
-    function notifyApiError(err, prefix) {
-      const message = err?.message || String(err);
-      if (!message || message === SESSION_EXPIRED_SILENT) return;
-      if (isDataAccessDenied(err)) return;
-      alert(prefix ? `${prefix}${message}` : message);
     }
 
     function parseApiErrorMessage(err) {
@@ -1225,20 +1203,11 @@
     }
 
     async function loadAdminViewerSettingsFor(accountId) {
-      if (!accountId) return;
-      try {
-        const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
-        fillAdminPermissionForm(res.data.permissions);
-        setAdminSettingsStatus("");
-        await loadAdminIntegrationSettings(accountId);
-        await loadAdminRestApiKeys(accountId);
-      } catch (e) {
-        if (isNotFoundError(e)) {
-          setAdminSettingsStatus("That account is no longer available. Refreshing the list…", "err");
-          return;
-        }
-        throw e;
-      }
+      const res = await api(`/v1/platform/admin/integration-accounts/${encodeURIComponent(accountId)}/access`);
+      fillAdminPermissionForm(res.data.permissions);
+      setAdminSettingsStatus("");
+      await loadAdminIntegrationSettings(accountId);
+      await loadAdminRestApiKeys(accountId);
     }
 
     function setAdminIntegrationStatusMsg(message, type = "") {
@@ -1392,14 +1361,10 @@
           method: "DELETE",
         });
         setAdminViewerStatus(`Account "${accountId}" deleted.`, "ok");
+        await loadAdminViewerSettings();
       } catch (e) {
-        if (!isNotFoundError(e)) {
-          setAdminViewerStatus(e.message, "err");
-          return;
-        }
-        setAdminViewerStatus(`Account "${accountId}" deleted.`, "ok");
+        setAdminViewerStatus(e.message, "err");
       }
-      await loadAdminViewerSettings();
     }
 
     function setAdminProjectStatus(message, type = "") {
@@ -1867,10 +1832,10 @@
         setTimeout(() => state.dashFleetMap.invalidateSize(), 120);
       }
       if (btn.dataset.tab === "admin" && isAdmin()) {
-        loadAdminViewerSettings().catch((e) => notifyApiError(e));
+        loadAdminViewerSettings().catch((e) => alert(e.message));
       }
       if (btn.dataset.tab === "settings" && canManageWorkspaceApi()) {
-        loadSettingsPage().catch((e) => notifyApiError(e));
+        loadSettingsPage().catch((e) => alert(e.message));
       }
       if (btn.dataset.tab === "camera" && $("camDevice").value && state.session) {
         loadAllStreams();
@@ -1988,24 +1953,14 @@
       if (opts.body != null && opts.body !== "") {
         headers["Content-Type"] = headers["Content-Type"] || "application/json";
       }
-      const res = await fetch(requestPath, { ...opts, headers, credentials: "include" });
+      const res = await fetch(requestPath, { ...opts, headers });
       if (res.status === 401) {
-        const shouldNotify = Boolean(state.session);
         clearSession();
         updateRoleUi();
-        throw new Error(shouldNotify ? "Session expired — sign in again" : SESSION_EXPIRED_SILENT);
+        throw new Error("Session expired — sign in again");
       }
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       return res.json();
-    }
-
-    async function apiMaybe(path, opts = {}) {
-      try {
-        return await api(path, opts);
-      } catch (err) {
-        if (isDataAccessDenied(err) || isNotFoundError(err)) return null;
-        throw err;
-      }
     }
 
     const _loginBtn = $("loginBtn"); if (_loginBtn) _loginBtn.onclick = async () => {
@@ -2650,30 +2605,23 @@
         .join("");
     }
 
-    function renderViewerDashboardCards(sum, positions, batteryOverride) {
+    function renderViewerDashboardCards(sum, positions) {
       if (!isViewer() && state.activeTab !== "dashboard") return;
-      const summary = sum?.data || {
-        totalDevices: state.devices.length,
-        online: state.devices.filter((d) => d.online).length,
-        offline: state.devices.filter((d) => d.online === false).length,
-        drones: state.devices.filter((d) => d.role === "drone").length,
-        docks: state.devices.filter((d) => d.role === "gateway").length,
-      };
 
       if (cardAllowed("fleetOverview")) {
-        if ($("dashKTotal")) $("dashKTotal").textContent = summary.totalDevices;
-        if ($("dashKOnline")) $("dashKOnline").textContent = `${summary.online}/${summary.offline}`;
+        $("dashKTotal").textContent = sum.data.totalDevices;
+        $("dashKOnline").textContent = `${sum.data.online}/${sum.data.offline}`;
         ensureDashFleetMap();
         updateDashFleetMap(positions);
       }
 
       state.apiSamples.devicesSample = state.devices[0] || state.devices;
       state.apiSamples.onlineSample = {
-        totalDevices: summary.totalDevices,
-        drones: summary.drones,
-        docks: summary.docks,
-        online: summary.online,
-        offline: summary.offline,
+        totalDevices: sum.data.totalDevices,
+        drones: sum.data.drones,
+        docks: sum.data.docks,
+        online: sum.data.online,
+        offline: sum.data.offline,
       };
       state.apiSamples.positions = positions;
 
@@ -2703,16 +2651,14 @@
       }
 
       if (cardAllowed("batteryStatus") && $("dashBattery")) {
-        const battery = batteryOverride?.batteryPercent ?? dronePos?.batteryPercent;
-        const online = batteryOverride?.online ?? droneDev?.online;
-        const serial = batteryOverride?.serialNumber || droneDev?.serialNumber;
+        const battery = dronePos?.batteryPercent;
         $("dashBattery").innerHTML = battery != null
           ? `<div class="dash-kpi"><div class="small">Drone battery</div><div class="v">${battery}%</div></div>`
           : "<span class='small'>No battery data yet.</span>";
         state.apiSamples.batterySample = {
-          serial,
+          serial: droneDev?.serialNumber,
           batteryPercent: battery,
-          online,
+          online: droneDev?.online,
         };
       }
 
@@ -2805,8 +2751,7 @@
 
       if (cardAllowed("droneTelemetry") && drone) {
         fetches.push(
-          apiMaybe(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
-            if (!r) return;
+          api(`/v1/viewer/devices/${drone.serialNumber}/telemetry/latest`).then((r) => {
             state.apiSamples.droneTelemetry = r.data;
             if ($("dashDroneTelem") && r.data) {
               const t = r.data.telemetry || r.data;
@@ -2825,8 +2770,7 @@
 
       if (cardAllowed("dockTelemetry") && dock) {
         fetches.push(
-          apiMaybe(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
-            if (!r) return;
+          api(`/v1/viewer/docks/${dock.serialNumber}`).then((r) => {
             state.apiSamples.dockTelemetry = r.data;
             if ($("dashDockTelem") && r.data) {
               renderMetricList($("dashDockTelem"), [
@@ -2884,7 +2828,6 @@
 
       for (const id of ["camDevice", "opsDevice"]) {
         const sel = $(id);
-        if (!sel) continue;
         const prev = sel.value;
         sel.innerHTML = "";
         state.devices.forEach((d) => {
@@ -2903,53 +2846,39 @@
     };
 
     async function loadFleet(opts = {}) {
-      const wantSummary = !isViewer() || cardAllowed("fleetOverview");
-      const wantDevices = !isViewer() || cardAllowed("fleetOverview") || cardAllowed("onlineOffline");
-      const wantPositions = !isViewer() || cardAllowed("gpsLocation");
-      const wantBattery = isViewer() && cardAllowed("batteryStatus") && !wantPositions;
-
-      const [sum, devices, positionsRes, batteryRes] = await Promise.all([
-        wantSummary ? apiMaybe("/v1/viewer/fleet/summary") : null,
-        wantDevices ? apiMaybe("/v1/viewer/devices") : null,
-        wantPositions ? apiMaybe("/v1/viewer/fleet/positions") : null,
-        wantBattery ? apiMaybe("/v1/viewer/fleet/battery") : null,
+      const [sum, devices, positionsRes] = await Promise.all([
+        api("/v1/viewer/fleet/summary"),
+        api("/v1/viewer/devices"),
+        api("/v1/viewer/fleet/positions"),
       ]);
-      state.devices = devices?.data || state.devices || [];
-      const positions = positionsRes?.data || [];
-      const batteryOverride = batteryRes?.data || null;
+      state.devices = devices.data || [];
+      const positions = positionsRes.data || [];
       fillDeviceSelectors();
-      if (sum?.data) {
-        if ($("kTotal")) $("kTotal").textContent = sum.data.totalDevices;
-        if ($("kDrones")) $("kDrones").textContent = sum.data.drones;
-        if ($("kDocks")) $("kDocks").textContent = sum.data.docks;
-        if ($("kStatus")) $("kStatus").textContent = `${sum.data.online}/${sum.data.offline}`;
-      }
+      $("kTotal").textContent = sum.data.totalDevices;
+      $("kDrones").textContent = sum.data.drones;
+      $("kDocks").textContent = sum.data.docks;
+      $("kStatus").textContent = `${sum.data.online}/${sum.data.offline}`;
       const now = new Date();
-      if ($("fleetStatus")) {
-        $("fleetStatus").textContent = opts.silent
-          ? `Source: ${sum?.meta?.source || "—"} • auto-updated ${now.toLocaleTimeString()}`
-          : `Source: ${sum?.meta?.source || "—"} • refreshed ${now.toLocaleTimeString()}`;
-      }
+      $("fleetStatus").textContent = opts.silent
+        ? `Source: ${sum.meta.source} • auto-updated ${now.toLocaleTimeString()}`
+        : `Source: ${sum.meta.source} • refreshed ${now.toLocaleTimeString()}`;
 
-      if (wantPositions) {
-        updateTelemetryBanner(positions);
-        updateFleetMap(positions);
-      }
+      updateTelemetryBanner(positions);
+      updateFleetMap(positions);
 
       const posBySn = Object.fromEntries(positions.map((p) => [p.serialNumber, p]));
       const tbody = document.querySelector("#fleetTable tbody");
-      if (tbody) {
-        tbody.innerHTML = "";
-        state.devices.forEach((d) => {
-          const p = posBySn[d.serialNumber] || {};
-          const lat = p.latitude;
-          const lng = p.longitude;
-          const loc =
-            lat != null && lng != null
-              ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}${p.freshness === "cached" ? " *" : ""}`
-              : "—";
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
+      tbody.innerHTML = "";
+      state.devices.forEach((d) => {
+        const p = posBySn[d.serialNumber] || {};
+        const lat = p.latitude;
+        const lng = p.longitude;
+        const loc =
+          lat != null && lng != null
+            ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}${p.freshness === "cached" ? " *" : ""}`
+            : "—";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
           <td>${d.serialNumber}</td>
           <td>${d.role}</td>
           <td>${d.modelName || "-"}</td>
@@ -2958,11 +2887,10 @@
           <td>${p.batteryPercent ?? "-"}</td>
           <td>${p.altitudeM ?? "-"}</td>
           <td><span class="pill ${p.freshness === "live" ? "ok" : p.freshness === "cached" ? "warn" : "bad"}">${p.freshness || "—"}</span></td>`;
-          tbody.appendChild(tr);
-        });
-      }
+        tbody.appendChild(tr);
+      });
 
-      renderViewerDashboardCards(sum, positions, batteryOverride);
+      renderViewerDashboardCards(sum, positions);
       if (isViewer()) {
         await refreshViewerExtras({ silent: opts.silent, skipStreams: true });
       }
@@ -3170,8 +3098,7 @@
       if (isViewer() && !cardAllowed("alertsEvents") && state.activeTab !== "alerts") {
         return;
       }
-      const res = await apiMaybe("/v1/viewer/events?limit=25");
-      if (!res) return;
+      const res = await api("/v1/viewer/events?limit=25");
       state.apiSamples.alertsSample = (res.data || []).slice(0, 2);
       if (!isViewer() || state.activeTab === "alerts") {
         renderEventsTable(res.data || []);
@@ -3290,7 +3217,7 @@
       try {
         await refreshDashboard();
       } catch (e) {
-        notifyApiError(e, "Refresh failed: ");
+        alert("Refresh failed: " + e.message);
       }
     };
 
@@ -3348,7 +3275,7 @@
       if (!state.session) return;
       state.session.selectedProjectCode = $("viewerProjectPicker").value;
       saveSession(state.session);
-      refreshDashboard().catch((e) => notifyApiError(e));
+      refreshDashboard().catch((e) => alert(e.message));
     };
     $("adminIntegrationEnabled").onchange = () => {
       saveAdminIntegrationEnabled().catch((e) => setAdminIntegrationStatusMsg(e.message, "err"));
@@ -3398,9 +3325,9 @@
       isViewer,
       isAdmin,
       canOperate,
-      loadAdminViewerSettings: () => loadAdminViewerSettings().catch((e) => notifyApiError(e)),
-      loadSettingsPage: () => loadSettingsPage().catch((e) => notifyApiError(e)),
-      refreshDashboard: () => refreshDashboard().catch((e) => notifyApiError(e)),
+      loadAdminViewerSettings: () => loadAdminViewerSettings().catch((e) => alert(e.message)),
+      loadSettingsPage: () => loadSettingsPage().catch((e) => alert(e.message)),
+      refreshDashboard: () => refreshDashboard().catch((e) => alert(e.message)),
       logout: () => {
         const btn = $("logoutBtn");
         if (btn) btn.click();
@@ -3426,7 +3353,7 @@
         const initialTab = resolveInitialTab();
         if (initialTab !== state.activeTab) activateTab(initialTab);
         else if (initialTab === "admin" && isAdmin()) {
-          loadAdminViewerSettings().catch((e) => notifyApiError(e));
+          loadAdminViewerSettings().catch((e) => alert(e.message));
         }
         activateSettingsTab(state.activeSettingsTab || "service-accounts");
         startLiveUpdates();
@@ -3438,9 +3365,9 @@
               }
               await refreshDashboard();
             })
-            .catch((e) => notifyApiError(e));
+            .catch((e) => alert(e.message));
         } else {
-          refreshDashboard().catch((e) => notifyApiError(e));
+          refreshDashboard().catch((e) => alert(e.message));
         }
       }
     });

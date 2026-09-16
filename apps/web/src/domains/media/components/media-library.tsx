@@ -278,7 +278,7 @@ export function MediaLibrary() {
               className="pl-8"
             />
           </div>
-          <div className="flex items-center gap-1 rounded-lg bg-muted p-[3px]">
+          <div className="flex flex-wrap items-center gap-1 rounded-lg bg-muted p-[3px]">
             {SORT_OPTIONS.map((option) => (
               <Button
                 key={option.id}

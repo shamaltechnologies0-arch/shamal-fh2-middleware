@@ -48,7 +48,7 @@ export function AppHeader({ activeTab }: AppHeaderProps) {
       role="banner"
       className={cn(
         "app-shell-header",
-        "flex shrink-0 items-center gap-2 border-b border-border px-3",
+        "flex min-w-0 shrink-0 items-center gap-2 border-b border-border px-3",
         isOperational ? "bg-background/80" : "bg-background/95",
       )}
     >

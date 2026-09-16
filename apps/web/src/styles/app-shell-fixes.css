@@ -33,10 +33,15 @@ main[data-slot="sidebar-inset"] {
   padding: 0 0.75rem !important;
   height: var(--cc-header-h, 3.5rem) !important;
   min-height: var(--cc-header-h, 3.5rem) !important;
+  min-width: 0 !important;
   border-bottom: 1px solid var(--cc-border-subtle) !important;
   background: color-mix(in srgb, var(--cc-background) 92%, transparent) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+main[data-slot="sidebar-inset"] > * {
+  min-width: 0;
 }
 
 button[data-slot="button"],

@@ -550,6 +550,89 @@
       el.style.color = isError && message ? "#ff9a9a" : "";
     }
 
+    function renderRowActions(buttons) {
+      const items = (buttons || []).filter(Boolean);
+      if (!items.length) return "—";
+      return `<div class="row-actions">
+        <button type="button" class="row-actions-trigger" aria-haspopup="menu" aria-expanded="false" title="Actions" aria-label="Actions">⋯</button>
+        <div class="row-actions-menu" role="menu">${items.join("")}</div>
+      </div>`;
+    }
+
+    function closeAllRowActions(except) {
+      document.querySelectorAll(".row-actions.is-open").forEach((el) => {
+        if (el === except) return;
+        el.classList.remove("is-open");
+        const trigger = el.querySelector(".row-actions-trigger");
+        if (trigger) trigger.setAttribute("aria-expanded", "false");
+        const menu = el.querySelector(".row-actions-menu");
+        if (menu) {
+          menu.style.position = "";
+          menu.style.left = "";
+          menu.style.top = "";
+          menu.style.minWidth = "";
+        }
+      });
+    }
+
+    function positionRowActionsMenu(wrap) {
+      const trigger = wrap.querySelector(".row-actions-trigger");
+      const menu = wrap.querySelector(".row-actions-menu");
+      if (!trigger || !menu) return;
+      if (getComputedStyle(trigger).display === "none") {
+        menu.style.position = "";
+        menu.style.left = "";
+        menu.style.top = "";
+        menu.style.minWidth = "";
+        return;
+      }
+      const rect = trigger.getBoundingClientRect();
+      menu.style.position = "fixed";
+      menu.style.minWidth = "11.5rem";
+      menu.style.visibility = "hidden";
+      menu.style.display = "flex";
+      const menuWidth = Math.max(menu.offsetWidth || 184, 184);
+      const menuHeight = menu.offsetHeight || 0;
+      let left = rect.right - menuWidth;
+      left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+      let top = rect.bottom + 6;
+      if (top + menuHeight > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - menuHeight - 6);
+      }
+      menu.style.left = `${left}px`;
+      menu.style.top = `${top}px`;
+      menu.style.visibility = "";
+      menu.style.display = "";
+    }
+
+    function bindRowActionsMenus() {
+      document.addEventListener("click", (e) => {
+        const el = e.target instanceof Element ? e.target : null;
+        if (!el) return;
+        const trigger = el.closest(".row-actions-trigger");
+        if (trigger) {
+          e.preventDefault();
+          e.stopPropagation();
+          const wrap = trigger.closest(".row-actions");
+          if (!wrap) return;
+          const willOpen = !wrap.classList.contains("is-open");
+          closeAllRowActions();
+          if (willOpen) {
+            wrap.classList.add("is-open");
+            trigger.setAttribute("aria-expanded", "true");
+            positionRowActionsMenu(wrap);
+          }
+          return;
+        }
+        if (!el.closest(".row-actions-menu")) closeAllRowActions();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeAllRowActions();
+      });
+      window.addEventListener("resize", () => closeAllRowActions());
+      document.addEventListener("scroll", () => closeAllRowActions(), true);
+    }
+
     function renderRestApiKeysTableRows(keys, options = {}) {
       const { viewerActions = false, adminActions = false } = options;
       if (!keys.length) {
@@ -590,18 +673,18 @@
             );
           }
           return `<tr>
-            <td>${primaryMark}${escapeHtml(key.label)}</td>
-            <td class="key-mono">${escapeHtml(key.keyMasked)}</td>
-            <td>${restApiKeyStatusPill(key.status)}</td>
-            <td>${key.isPrimary ? "Yes" : "—"}</td>
-            <td>${escapeHtml(formatRestApiKeyDate(key.createdAt))}</td>
-            <td>${escapeHtml(formatRestApiKeyDate(key.expiresAt))}</td>
-            <td>${escapeHtml(formatRestApiKeyDate(key.lastUsedAt))}</td>
-            <td class="actions">${actionButtons.join("")}</td>
+            <td data-label="Name">${primaryMark}${escapeHtml(key.label)}</td>
+            <td class="key-mono" data-label="Key">${escapeHtml(key.keyMasked)}</td>
+            <td data-label="Status">${restApiKeyStatusPill(key.status)}</td>
+            <td data-label="Primary">${key.isPrimary ? "Yes" : "—"}</td>
+            <td data-label="Created">${escapeHtml(formatRestApiKeyDate(key.createdAt))}</td>
+            <td data-label="Expires">${escapeHtml(formatRestApiKeyDate(key.expiresAt))}</td>
+            <td data-label="Last used">${escapeHtml(formatRestApiKeyDate(key.lastUsedAt))}</td>
+            <td class="actions" data-label="Actions">${renderRowActions(actionButtons)}</td>
           </tr>`;
         })
         .join("");
-      return `<table class="api-keys-table admin-viewer-table">
+      return `<table class="api-keys-table admin-viewer-table cols-api-keys">
         <thead>
           <tr>
             <th>Name</th><th>Key</th><th>Status</th><th>Primary</th><th>Created</th><th>Expires</th><th>Last used</th><th>Actions</th>
@@ -932,17 +1015,17 @@
               ? `<button type="button" data-sa-enable="${escapeHtml(acct.id)}">Enable</button>`
               : "",
           `<button type="button" class="admin-delete-btn" data-sa-delete="${escapeHtml(acct.id)}">Delete</button>`,
-        ].filter(Boolean).join("");
+        ];
         return `<tr>
-          <td>${escapeHtml(acct.name)}</td>
-          <td class="key-mono">${escapeHtml(acct.client_id || acct.clientId || "—")}</td>
-            <td class="key-mono">${escapeHtml((acct.scopes || []).join(", "))}</td>
-            <td>${restApiKeyStatusPill(acct.status)}</td>
-          <td>${escapeHtml(formatRestApiKeyDate(acct.expiresAt))}</td>
-          <td class="actions">${actions}</td>
+          <td data-label="Name">${escapeHtml(acct.name)}</td>
+          <td class="key-mono" data-label="Client ID">${escapeHtml(acct.client_id || acct.clientId || "—")}</td>
+          <td class="key-mono" data-label="Scopes">${escapeHtml((acct.scopes || []).join(", "))}</td>
+          <td data-label="Status">${restApiKeyStatusPill(acct.status)}</td>
+          <td data-label="Expires">${escapeHtml(formatRestApiKeyDate(acct.expiresAt))}</td>
+          <td class="actions" data-label="Actions">${renderRowActions(actions)}</td>
         </tr>`;
       }).join("");
-      wrap.innerHTML = `<table class="api-keys-table"><thead><tr><th>Name</th><th>Client ID</th><th>Scopes</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+      wrap.innerHTML = `<table class="api-keys-table cols-service-accounts"><thead><tr><th>Name</th><th>Client ID</th><th>Scopes</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
       wrap.querySelectorAll("[data-sa-disable]").forEach((btn) => {
         btn.onclick = () => patchServiceAccountStatus(btn.dataset.saDisable, "revoke");
       });
@@ -1187,10 +1270,10 @@
             : `<span class="small">.env only</span>`;
           const source = v.source === "env" ? ".env" : "Admin panel";
           return `<tr>
-            <td>${escapeHtml(v.displayName)}</td>
-            <td><code>${escapeHtml(accountId)}</code></td>
-            <td>${source}</td>
-            <td>${action}</td>
+            <td data-label="Client">${escapeHtml(v.displayName)}</td>
+            <td data-label="Username"><code>${escapeHtml(accountId)}</code></td>
+            <td data-label="Source">${source}</td>
+            <td class="actions" data-label="Actions">${action}</td>
           </tr>`;
         })
         .join("");
@@ -1492,20 +1575,19 @@
           .map((p) => {
             const viewers = (p.assignedViewers || []).map((v) => v.displayName).join(", ") || "—";
             const selected = p.fh2ProjectId === prevProject ? " is-selected" : "";
+            const actionButtons = [
+              `<button type="button" data-project-sync>Refresh/Sync</button>`,
+              p.localStatus === "active"
+                ? `<button type="button" data-project-deactivate="${escapeHtml(p.fh2ProjectId)}">Deactivate (Local)</button>`
+                : "",
+            ];
             return `<tr data-project-id="${escapeHtml(p.fh2ProjectId)}" class="admin-project-row${selected}">
-              <td>${escapeHtml(adminProjectDisplayName(p))}</td>
-              <td><code>${escapeHtml(p.fh2ProjectCode)}</code></td>
-              <td>${escapeHtml(p.fh2Status || "unknown")}</td>
-              <td>${escapeHtml(viewers)}</td>
-              <td>${p.lastSyncedAt ? new Date(p.lastSyncedAt).toLocaleString() : "—"}</td>
-              <td>
-                <button type="button" data-project-sync>Refresh/Sync</button>
-                ${
-                  p.localStatus === "active"
-                    ? `<button type="button" data-project-deactivate="${escapeHtml(p.fh2ProjectId)}">Deactivate (Local)</button>`
-                    : `<span class="small">Locally inactive</span>`
-                }
-              </td>
+              <td data-label="Project">${escapeHtml(adminProjectDisplayName(p))}</td>
+              <td data-label="FH2 ID / Code"><code>${escapeHtml(p.fh2ProjectCode)}</code></td>
+              <td data-label="FH2 Status">${escapeHtml(p.fh2Status || "unknown")}</td>
+              <td data-label="Assigned Viewers">${escapeHtml(viewers)}</td>
+              <td data-label="Last Synced">${p.lastSyncedAt ? new Date(p.lastSyncedAt).toLocaleString() : "—"}</td>
+              <td class="actions" data-label="Actions">${renderRowActions(actionButtons)}</td>
             </tr>`;
           })
           .join("");
@@ -3413,6 +3495,7 @@
       activateTab("history");
       window.dispatchEvent(new CustomEvent("shamal-open-media"));
     });
+    bindRowActionsMenus();
 
     window.shamalLegacy = {
       activateTab,

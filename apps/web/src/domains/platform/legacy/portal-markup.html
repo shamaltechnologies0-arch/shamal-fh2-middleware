@@ -310,7 +310,9 @@
       <section id="alerts">
         <h3>Alerts & Events</h3>
         <div class="row"><button id="refreshEvents">Refresh Events</button></div>
-        <table id="eventsTable"><thead><tr><th>Type</th><th>Source</th><th>Payload</th><th>Time</th><th>Ack</th></tr></thead><tbody></tbody></table>
+        <div class="table-scroll">
+          <table id="eventsTable"><thead><tr><th>Type</th><th>Source</th><th>Payload</th><th>Time</th><th>Ack</th></tr></thead><tbody></tbody></table>
+        </div>
       </section>
 
       <section id="history">
@@ -328,14 +330,16 @@
           <div class="admin-settings-card">
             <h4>Integration Accounts</h4>
             <p class="statusline">Create viewer logins for external companies. All accounts are stored here — not in <code>.env</code>.</p>
-            <table class="admin-viewer-table">
-              <thead>
-                <tr><th>Client</th><th>Username</th><th>Source</th><th></th></tr>
-              </thead>
-              <tbody id="adminViewerListBody">
-                <tr><td colspan="4" class="small">Loading…</td></tr>
-              </tbody>
-            </table>
+            <div class="table-scroll">
+              <table class="admin-viewer-table">
+                <thead>
+                  <tr><th>Client</th><th>Username</th><th>Source</th><th></th></tr>
+                </thead>
+                <tbody id="adminViewerListBody">
+                  <tr><td colspan="4" class="small">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
             <div class="admin-create-grid">
               <div>
                 <label for="adminNewViewerUser">Username</label>
@@ -363,14 +367,16 @@
               <button id="adminSyncProjects">Sync from FlightHub 2</button>
               <span id="adminProjectSyncMeta" class="small"></span>
             </div>
-            <table class="admin-viewer-table">
-              <thead>
-                <tr><th>Project</th><th>FH2 ID / Code</th><th>FH2 Status</th><th>Assigned Viewers</th><th>Last Synced</th><th>Actions</th></tr>
-              </thead>
-              <tbody id="adminProjectListBody">
-                <tr><td colspan="6" class="small">Loading…</td></tr>
-              </tbody>
-            </table>
+            <div class="table-scroll">
+              <table class="admin-viewer-table">
+                <thead>
+                  <tr><th>Project</th><th>FH2 ID / Code</th><th>FH2 Status</th><th>Assigned Viewers</th><th>Last Synced</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="adminProjectListBody">
+                  <tr><td colspan="6" class="small">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
             <p class="small">Click a project row to select it for assignment. Names match Command Center.</p>
             <p id="adminProjectStatus" class="admin-status"></p>
           </div>

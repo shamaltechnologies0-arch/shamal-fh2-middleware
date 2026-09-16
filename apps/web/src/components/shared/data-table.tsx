@@ -62,9 +62,9 @@ export function DataTable<T>({
         </TableHeader>
         <TableBody>
           {data.map((row, i) => (
-            <TableRow key={i} className="h-10">
+            <TableRow key={i} className="min-h-10">
               {columns.map((col) => (
-                <TableCell key={col.key} className={cn("px-3 py-2 text-xs", col.className)}>
+                <TableCell key={col.key} className={cn("px-3 py-2 text-xs whitespace-normal", col.className)}>
                   {col.cell(row)}
                 </TableCell>
               ))}

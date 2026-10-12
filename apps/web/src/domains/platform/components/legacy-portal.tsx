@@ -24,7 +24,7 @@ function getLegacyHost(): HTMLDivElement {
 
   const host = document.createElement("div");
   host.id = "legacy-portal-root";
-  host.className = "legacy-portal-host h-full overflow-auto";
+  host.className = "legacy-portal-host";
   host.innerHTML = portalMarkup;
   parkedHost = host;
   return host;
@@ -88,13 +88,13 @@ export function LegacyPortal() {
   }, []);
 
   return (
-    <div className="relative min-h-0 flex-1 overflow-hidden">
+    <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden">
       {!isReady ? (
         <div className="absolute inset-0 z-10 bg-background/80 p-6">
           <PageLoadingSkeleton />
         </div>
       ) : null}
-      <div ref={mountRef} className="h-full min-h-0" />
+      <div ref={mountRef} className="relative min-h-0 flex-1" />
     </div>
   );
 }

@@ -96,9 +96,7 @@ export const config = {
   viewerApiKeys,
   viewerIpAllowlist,
   fh2LiveReady:
-    parsed.data.FH2_MODE === "live" &&
-    Boolean(parsed.data.FH2_ORG_TOKEN) &&
-    Boolean(parsed.data.FH2_PROJECT_UUID),
+    parsed.data.FH2_MODE === "live" && Boolean(parsed.data.FH2_ORG_TOKEN),
   ccAdminId: (parsed.data.CC_ADMIN_ID ?? parsed.data.admin_id)?.trim(),
   ccAdminPassword: (parsed.data.CC_ADMIN_PASSWORD ?? parsed.data.admin_password)?.trim(),
   ccOperatorId: parsed.data.CC_OPERATOR_ID?.trim(),

@@ -60,6 +60,35 @@ export interface Fh2MediaItem {
   update_at: string;
 }
 
+/** Project media-library row from GET /openapi/v0.9/media/api/v1/workspaces/{proj_uuid}/files */
+export interface Fh2LibraryMediaItem {
+  id?: number;
+  uuid?: string;
+  name?: string;
+  file_type?: number | string;
+  sub_file_type?: number;
+  suffix?: string;
+  size?: number;
+  preview_url?: string;
+  original_url?: string;
+  create_at?: string;
+  update_at?: string;
+  p_infos?: {
+    pid?: number;
+    p_uuid?: string;
+    p_name?: string;
+  };
+}
+
+export interface Fh2LibraryMediaPage {
+  list: Fh2LibraryMediaItem[];
+  pagination?: {
+    page?: number;
+    page_size?: number;
+    total?: number;
+  };
+}
+
 export interface Fh2TrackPoint {
   timestamp: number;
   latitude: number;
@@ -126,6 +155,12 @@ export interface IFh2Client {
     droneSn?: string;
   }>;
   getTaskMedia(taskUuid: string): Promise<Fh2MediaItem[]>;
+  listProjectMediaFiles(params: {
+    projectUuid: string;
+    parentId?: number;
+    page?: number;
+    size?: number;
+  }): Promise<Fh2LibraryMediaPage>;
   getDeviceLiveStreamInfo(
     deviceSn: string,
     opts?: LiveStreamOptions,

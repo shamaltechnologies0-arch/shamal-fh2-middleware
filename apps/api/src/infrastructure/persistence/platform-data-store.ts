@@ -13,6 +13,7 @@ export const PLATFORM_STORE_KEYS = {
   VIEWER_INTEGRATIONS: "viewer_integrations",
   VIEWER_DASHBOARD_PERMISSIONS: "viewer_dashboard_permissions",
   FH2_PROJECTS: "fh2_projects",
+  FH2_MEDIA: "fh2_media",
   SERVICE_ACCOUNTS: "service_accounts",
 } as const;
 
@@ -36,6 +37,7 @@ const FILE_PATHS: Record<PlatformStoreKey, string> = {
     "viewer-dashboard-permissions.json",
   ),
   [PLATFORM_STORE_KEYS.FH2_PROJECTS]: join(dataRoot, "fh2-projects.json"),
+  [PLATFORM_STORE_KEYS.FH2_MEDIA]: join(dataRoot, "fh2-media.json"),
   [PLATFORM_STORE_KEYS.SERVICE_ACCOUNTS]: join(dataRoot, "service-accounts.json"),
 };
 

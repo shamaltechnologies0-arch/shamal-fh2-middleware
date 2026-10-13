@@ -6,6 +6,7 @@ import type {
   Fh2LiveStreamInfo,
   Fh2LiveStreamStartResult,
   Fh2MappingModel,
+  Fh2LibraryMediaPage,
   Fh2MediaItem,
   Fh2Project,
   Fh2Task,
@@ -119,6 +120,30 @@ export class LiveFh2Client implements IFh2Client {
       `/openapi/v0.1/flight-task/${encodeURIComponent(taskUuid)}/media`,
     );
     return res.data.list ?? [];
+  }
+
+  async listProjectMediaFiles(params: {
+    projectUuid: string;
+    parentId?: number;
+    page?: number;
+    size?: number;
+  }): Promise<Fh2LibraryMediaPage> {
+    const res = await fh2Fetch<Fh2LibraryMediaPage>(
+      `/openapi/v0.9/media/api/v1/workspaces/${encodeURIComponent(params.projectUuid)}/files`,
+      {
+        projectUuid: params.projectUuid,
+        query: {
+          page: params.page ?? 1,
+          size: params.size ?? 100,
+          parent_id: params.parentId,
+          sort_by: "-create_at",
+        },
+      },
+    );
+    return {
+      list: res.data?.list ?? [],
+      pagination: res.data?.pagination,
+    };
   }
 
   async listOrgDevices(): Promise<Fh2DeviceEntry[]> {

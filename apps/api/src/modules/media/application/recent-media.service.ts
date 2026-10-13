@@ -20,7 +20,7 @@ export interface RecentMediaResult {
 }
 
 const MEDIA_PERMISSION_HINT =
-  "FlightHub returned error 219021 for task media. Regenerate the Organization Key in FlightHub Sync with Task Management enabled (media read).";
+  "FlightHub returned error 219021 for task media. The v0.1 task media API does not return Fly-to or other manual flights. The organization key also needs media read, and this FlightHub host may not expose the project media file API.";
 
 async function safeTaskMedia(
   fh2: IFh2Client,

@@ -17,6 +17,8 @@ export interface MediaFile {
   droneSerialNumber?: string | null;
   taskId?: string;
   taskName?: string;
+  projectId?: string;
+  projectName?: string;
   downloadPath?: string;
   urlExpiresNote?: string;
 }

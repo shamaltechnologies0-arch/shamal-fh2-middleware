@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { createFh2Client } from "../../../../infrastructure/fh2/client.js";
 import { flattenDevices } from "../../../../shared/normalize/normalize.service.js";
@@ -8,11 +8,17 @@ import {
 } from "../../application/recent-media.service.js";
 import {
   filterCatalogFiles,
-  findCatalogFile,
-  loadMediaLibrary,
   type MediaCenterFile,
   type MediaLibraryCatalog,
 } from "../../application/media-library.service.js";
+import {
+  listMediaProjectsForUser,
+  requestedProjectAllowed,
+  toMediaProjectRef,
+  type MediaAccessRole,
+} from "../../application/media-access.js";
+import { loadSyncedProjectCatalog } from "../../application/project-media-sync.service.js";
+import { refreshFh2ProjectsStore } from "../../../projects/application/fh2-projects.service.js";
 import {
   archiveMediaFiles,
   fetchMediaBytes,
@@ -41,6 +47,9 @@ const libraryQuerySchema = z.object({
   kind: z.enum(["all", "image", "video"]).optional(),
   folderId: z.string().optional(),
   sort: z.enum(["newest", "oldest", "name", "size"]).optional(),
+  refresh: z.string().optional(),
+  projectId: z.string().optional(),
+  projectCode: z.string().optional(),
 });
 
 const archiveQuerySchema = z.object({
@@ -77,23 +86,59 @@ async function resolveDevice(
 export const mediaRoutes: FastifyPluginAsync = async (app) => {
   const fh2 = createFh2Client();
 
-  async function loadCatalog(query: {
-    sn?: string;
-    begin_at?: number;
-    end_at?: number;
-    task_limit?: number;
-    media_per_task?: number;
-  }): Promise<MediaLibraryCatalog | { error: string; status: number }> {
-    const range = defaultTimeRange(30);
-    const resolved = await resolveDevice(fh2, query.sn);
-    if ("error" in resolved) return { error: resolved.error, status: 400 };
-    return loadMediaLibrary(fh2, {
-      deviceSn: resolved.deviceSn,
-      beginAt: query.begin_at ?? range.beginAt,
-      endAt: query.end_at ?? range.endAt,
-      taskLimit: query.task_limit,
-      mediaPerTask: query.media_per_task,
-      dockLabel: resolved.dockLabel,
+    function requestRole(request: FastifyRequest): MediaAccessRole {
+    const role = request.ccRole;
+    if (role === "admin" || role === "operator" || role === "viewer") return role;
+    return undefined;
+  }
+
+  function requestedProject(request: FastifyRequest): string | undefined {
+    const query = request.query as { projectId?: string; projectCode?: string };
+    return query.projectId?.trim() || query.projectCode?.trim() || undefined;
+  }
+
+  async function loadCatalog(
+    request: FastifyRequest,
+    options?: { force?: boolean },
+  ): Promise<MediaLibraryCatalog | { error: string; status: number }> {
+    await refreshFh2ProjectsStore();
+    const role = requestRole(request);
+    const projects = listMediaProjectsForUser(role, request.ccUsername ?? "");
+    const requested = requestedProject(request);
+    if (role !== "admin" && requested && !requestedProjectAllowed(requested, projects)) {
+      return {
+        error: "Selected FH2 project is not assigned to this account.",
+        status: 403,
+      };
+    }
+    if (role !== "admin" && projects.length === 0) {
+      return { error: "No project assigned. Please contact your admin.", status: 403 };
+    }
+    const refresh = (request.query as { refresh?: string }).refresh;
+    return loadSyncedProjectCatalog(
+      fh2,
+      projects.map(toMediaProjectRef),
+      { force: options?.force === true || refresh === "1" || refresh === "true" },
+    );
+  }
+
+  function sendCatalogError(
+    reply: { status: (code: number) => { send: (body: unknown) => unknown } },
+    catalog: { error: string; status: number },
+  ) {
+    const code = catalog.status === 403 ? "forbidden" : "media_unavailable";
+    return reply.status(catalog.status).send({ error: code, message: catalog.error });
+  }
+
+  function findAuthorizedFile(
+    catalog: MediaLibraryCatalog,
+    fileId: string,
+    projectId?: string,
+  ): MediaCenterFile | undefined {
+    return catalog.files.find((file) => {
+      if (file.id !== fileId) return false;
+      if (projectId && file.projectId && file.projectId !== projectId) return false;
+      return true;
     });
   }
 
@@ -155,9 +200,11 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
       if (!parsed.success) {
         return reply.status(400).send({ error: "validation_error", details: parsed.error.flatten() });
       }
-      const catalog = await loadCatalog(parsed.data);
+      const catalog = await loadCatalog(request, {
+        force: parsed.data.refresh === "1" || parsed.data.refresh === "true",
+      });
       if ("error" in catalog) {
-        return reply.status(catalog.status).send({ error: "no_device", message: catalog.error });
+        return sendCatalogError(reply, catalog);
       }
       return reply.send({
         data: catalog,
@@ -188,9 +235,11 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
       if (!parsed.success) {
         return reply.status(400).send({ error: "validation_error", details: parsed.error.flatten() });
       }
-      const catalog = await loadCatalog(parsed.data);
+      const catalog = await loadCatalog(request, {
+        force: parsed.data.refresh === "1" || parsed.data.refresh === "true",
+      });
       if ("error" in catalog) {
-        return reply.status(catalog.status).send({ error: "no_device", message: catalog.error });
+        return sendCatalogError(reply, catalog);
       }
       return reply.send({
         data: { folders: catalog.folders, tree: catalog.tree },
@@ -211,9 +260,9 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const catalog = await loadCatalog({});
+      const catalog = await loadCatalog(request);
       if ("error" in catalog) {
-        return reply.status(catalog.status).send({ error: "no_device", message: catalog.error });
+        return sendCatalogError(reply, catalog);
       }
       const folder = catalog.folders.find((row) => row.id === id);
       if (!folder) {
@@ -242,9 +291,11 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
       if (!parsed.success) {
         return reply.status(400).send({ error: "validation_error", details: parsed.error.flatten() });
       }
-      const catalog = await loadCatalog(parsed.data);
+      const catalog = await loadCatalog(request, {
+        force: parsed.data.refresh === "1" || parsed.data.refresh === "true",
+      });
       if ("error" in catalog) {
-        return reply.status(catalog.status).send({ error: "no_device", message: catalog.error });
+        return sendCatalogError(reply, catalog);
       }
       const files = filterCatalogFiles(catalog, {
         q: parsed.data.q,
@@ -271,17 +322,15 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const taskId =
-        typeof (request.query as { taskId?: string }).taskId === "string"
-          ? (request.query as { taskId?: string }).taskId
+      const projectId =
+        typeof (request.query as { projectId?: string }).projectId === "string"
+          ? (request.query as { projectId?: string }).projectId
           : undefined;
-      const catalog = await loadCatalog({});
+      const catalog = await loadCatalog(request);
       if ("error" in catalog) {
-        return reply.status(catalog.status).send({ error: "no_device", message: catalog.error });
+        return sendCatalogError(reply, catalog);
       }
-      const file = taskId
-        ? catalog.files.find((row) => row.id === id && row.taskId === taskId)
-        : findCatalogFile(catalog, id);
+      const file = findAuthorizedFile(catalog, id, projectId);
       if (!file) {
         return reply.status(404).send({ error: "not_found", message: "Media file not found" });
       }
@@ -302,15 +351,29 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const catalog = await loadCatalog({});
+      const projectId =
+        typeof (request.query as { projectId?: string }).projectId === "string"
+          ? (request.query as { projectId?: string }).projectId
+          : undefined;
+      const catalog = await loadCatalog(request);
       if ("error" in catalog) {
-        return reply.status(catalog.status).send({ error: "no_device", message: catalog.error });
+        return sendCatalogError(reply, catalog);
       }
-      const file = findCatalogFile(catalog, id);
+      let file = findAuthorizedFile(catalog, id, projectId);
       if (!file) {
         return reply.status(404).send({ error: "not_found", message: "Media file not found" });
       }
-      const fetched = await fetchMediaBytes(file);
+      let fetched = await fetchMediaBytes(file);
+      if (!fetched) {
+        const refreshed = await loadCatalog(request, { force: true });
+        if (!("error" in refreshed)) {
+          const again = findAuthorizedFile(refreshed, id, file.projectId ?? projectId);
+          if (again) {
+            file = again;
+            fetched = await fetchMediaBytes(again);
+          }
+        }
+      }
       if (!fetched) {
         return reply.status(502).send({
           error: "download_unavailable",
@@ -341,9 +404,9 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
       if (!parsed.success) {
         return reply.status(400).send({ error: "validation_error", details: parsed.error.flatten() });
       }
-      const catalog = await loadCatalog({ sn: parsed.data.sn });
+      const catalog = await loadCatalog(request);
       if ("error" in catalog) {
-        return reply.status(catalog.status).send({ error: "no_device", message: catalog.error });
+        return sendCatalogError(reply, catalog);
       }
 
       let selected: MediaCenterFile[] = [];

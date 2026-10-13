@@ -20,7 +20,6 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { useAuth } from "@/domains/auth/contexts/auth-context";
@@ -38,8 +37,6 @@ import {
   isVideoMedia,
   matchesView,
   sortMediaFiles,
-  uploadStatusLabel,
-  uploadStatusVariant,
 } from "@/domains/media/utils";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -77,7 +74,7 @@ export function MediaLibrary() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  const loadLibrary = useCallback(async () => {
+  const loadLibrary = useCallback(async (force = false) => {
     if (!allowed) {
       setLoading(false);
       return;
@@ -85,7 +82,7 @@ export function MediaLibrary() {
     setLoading(true);
     setError(null);
     try {
-      const next = await fetchMediaLibrary();
+      const next = await fetchMediaLibrary({ refresh: force });
       setCatalog(next);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load the Media Center.");
@@ -101,7 +98,7 @@ export function MediaLibrary() {
 
   useEffect(() => {
     function onRefresh() {
-      void loadLibrary();
+      void loadLibrary(true);
     }
     window.addEventListener("shamal-refresh-media", onRefresh);
     window.addEventListener("shamal-project-changed", onRefresh);
@@ -224,9 +221,9 @@ export function MediaLibrary() {
     <div className="flex h-full min-h-0 flex-col overflow-auto p-4 sm:p-6">
       <PageHeader
         title="Media Center"
-        description="Browse, preview, and download drone-captured photos and videos."
+        description="Photos and videos synchronized from each FlightHub project you can access."
         actions={
-          <Button variant="outline" size="sm" onClick={() => void loadLibrary()} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => void loadLibrary(true)} disabled={loading}>
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
             Refresh
           </Button>
@@ -242,7 +239,7 @@ export function MediaLibrary() {
       ) : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Folders" value={totals.folders} hint="One folder per completed mission" />
+        <StatCard label="Folders" value={totals.folders} hint="One folder per assigned project" />
         <StatCard label="Files" value={totals.files} />
         <StatCard label="Images" value={totals.photos} />
         <StatCard label="Videos" value={totals.videos} />
@@ -326,7 +323,7 @@ export function MediaLibrary() {
           title="Media Center unavailable"
           description={error}
           action={
-            <Button variant="outline" onClick={() => void loadLibrary()}>
+            <Button variant="outline" onClick={() => void loadLibrary(true)}>
               Try again
             </Button>
           }
@@ -346,8 +343,8 @@ export function MediaLibrary() {
           <EmptyState
             className="mt-8"
             icon={<FolderOpen className="size-6" />}
-            title="No media folders yet"
-            description="When the drone captures photos or videos, each mission appears here as a folder."
+            title="No project media yet"
+            description="Projects assigned to you appear here. Photos and videos synchronize from each project's FlightHub media library."
           />
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -389,19 +386,14 @@ export function MediaLibrary() {
                 <div className="min-w-0">
                   <h2 className="truncate text-base font-semibold">{openFolder.name}</h2>
                   <p className="text-xs text-muted-foreground">
-                    {openFolder.fh2FolderId != null
-                      ? `FlightHub folder #${openFolder.fh2FolderId}`
-                      : "FlightHub mission folder"}
-                    {openFolder.deviceSerialNumber ? ` · Drone ${openFolder.deviceSerialNumber}` : ""}
-                    {openFolder.capturedAt ? ` · ${formatCapturedAt(openFolder.capturedAt)}` : ""}
+                    {openFolder.photoCount} photo{openFolder.photoCount === 1 ? "" : "s"}
+                    {` · ${openFolder.videoCount} video${openFolder.videoCount === 1 ? "" : "s"}`}
+                    {openFolder.capturedAt ? ` · Newest ${formatCapturedAt(openFolder.capturedAt)}` : ""}
                     {` · ${formatBytes(openFolder.totalBytes)}`}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <StatusBadge variant={uploadStatusVariant(openFolder.mediaUploadStatus)}>
-                  {uploadStatusLabel(openFolder.mediaUploadStatus || openFolder.taskStatus)}
-                </StatusBadge>
                 <Button
                   size="sm"
                   onClick={() => void handleDownloadFolder(openFolder.id, openFolder.name)}
@@ -429,7 +421,7 @@ export function MediaLibrary() {
             <EmptyState
               icon={view === "videos" ? <Film className="size-6" /> : <Images className="size-6" />}
               title={openFolder ? "This folder is empty" : "No files match this view"}
-              description="Captured media appears here after FlightHub finishes uploading from the aircraft."
+              description="Synchronized photos and videos for this project appear here, newest capture first."
             />
           ) : (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
@@ -506,18 +498,13 @@ function FolderCard({
           <div className="min-w-0">
             <h3 className="truncate font-medium">{folder.name}</h3>
             <p className="text-xs text-muted-foreground">
-              {folder.fileCount} file{folder.fileCount === 1 ? "" : "s"}
-              {folder.photoCount ? ` · ${folder.photoCount} image${folder.photoCount === 1 ? "" : "s"}` : ""}
-              {folder.videoCount ? ` · ${folder.videoCount} video${folder.videoCount === 1 ? "" : "s"}` : ""}
+              {folder.photoCount} photo{folder.photoCount === 1 ? "" : "s"}
+              {` · ${folder.videoCount} video${folder.videoCount === 1 ? "" : "s"}`}
             </p>
             <p className="truncate text-[11px] text-muted-foreground">
-              {folder.deviceSerialNumber ? `Drone ${folder.deviceSerialNumber}` : "Aircraft"}
-              {folder.capturedAt ? ` · ${formatCapturedAt(folder.capturedAt)}` : ""}
+              {folder.capturedAt ? `Newest ${formatCapturedAt(folder.capturedAt)}` : "No captures yet"}
             </p>
           </div>
-          <StatusBadge variant={uploadStatusVariant(folder.mediaUploadStatus)}>
-            {uploadStatusLabel(folder.mediaUploadStatus || folder.taskStatus)}
-          </StatusBadge>
         </div>
         <Button
           size="sm"
@@ -596,8 +583,8 @@ function FileCard({
             {formatBytes(file.sizeBytes)} · {formatCapturedAt(file.capturedAt)}
           </p>
           <p className="truncate text-[11px] text-muted-foreground">
-            {file.folderName || "Mission folder"}
-            {file.deviceSerialNumber ? ` · ${file.deviceSerialNumber}` : ""}
+            {file.projectName || file.folderName || "Project"}
+            {file.taskName ? ` · ${file.taskName}` : ""}
           </p>
         </div>
       </button>

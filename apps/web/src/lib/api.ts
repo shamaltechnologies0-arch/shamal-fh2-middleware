@@ -21,7 +21,6 @@ function currentSession(): ShamalSession | null {
 }
 
 function withProjectCode(path: string, session: ShamalSession): string {
-  if (session.role !== "viewer") return path;
   const projectCode =
     session.selectedProjectCode || session.assignedProjects?.[0]?.projectCode || null;
   if (!projectCode) return path;

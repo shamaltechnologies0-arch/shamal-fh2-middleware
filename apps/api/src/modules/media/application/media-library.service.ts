@@ -24,6 +24,8 @@ export interface MediaCenterFile {
   taskId: string;
   taskName: string;
   downloadPath: string;
+  projectId?: string;
+  projectName?: string;
 }
 
 export interface MediaCenterFolder {
@@ -53,7 +55,7 @@ export interface MediaFolderNode {
 export interface MediaLibraryCatalog {
   storage: {
     provider: "flighthub2";
-    container: "DJI FlightHub 2 media library";
+    container: string;
     nestedFoldersSupported: boolean;
     note: string;
   };
@@ -65,7 +67,7 @@ export interface MediaLibraryCatalog {
 }
 
 const STORAGE_NOTE =
-  "Drone photos and videos are stored in DJI FlightHub 2. Shamal does not keep a separate media archive; the Media Center lists FlightHub folders and issues time-limited download URLs (or a proxied/zipped download) for authorized users.";
+  "Drone photos and videos stay in each DJI FlightHub 2 project library. Shamal synchronizes file metadata for projects assigned to the signed-in user and requests a fresh FlightHub URL when a file is previewed or downloaded.";
 
 export function classifyMediaKind(file: {
   mediaType?: string;

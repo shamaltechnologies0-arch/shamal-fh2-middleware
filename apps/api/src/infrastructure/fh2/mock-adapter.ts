@@ -6,6 +6,7 @@ import type {
   Fh2HmsItem,
   Fh2LiveStreamInfo,
   Fh2MappingModel,
+  Fh2LibraryMediaPage,
   Fh2MediaItem,
   Fh2Project,
   Fh2Task,
@@ -94,6 +95,70 @@ export class MockFh2Client implements IFh2Client {
     void taskUuid;
     const res = loadFixture<{ data: { list: Fh2MediaItem[] } }>("task-media.json");
     return res.data.list;
+  }
+
+  async listProjectMediaFiles(params: {
+    projectUuid: string;
+    parentId?: number;
+    page?: number;
+    size?: number;
+  }): Promise<Fh2LibraryMediaPage> {
+    const page = params.page ?? 1;
+    if (page > 1) {
+      return { list: [], pagination: { page, page_size: params.size ?? 100, total: 0 } };
+    }
+    if (params.parentId != null) {
+      return {
+        list: [
+          {
+            id: params.parentId * 10 + 1,
+            uuid: `${params.projectUuid}-photo`,
+            name: "DJI_existing_0001_V",
+            file_type: 2,
+            suffix: ".jpeg",
+            size: 1163264,
+            preview_url: "https://example.invalid/preview.jpg",
+            original_url: "https://example.invalid/original.jpg",
+            create_at: "2026-06-22T09:51:58Z",
+            p_infos: {
+              pid: params.parentId,
+              p_name: "DJI Dock 3-FLY-TO-2026-06-22 09:51:58 (UTC)",
+              p_uuid: `${params.projectUuid}-folder`,
+            },
+          },
+          {
+            id: params.parentId * 10 + 2,
+            uuid: `${params.projectUuid}-video`,
+            name: "DJI_existing_0002_V",
+            file_type: 3,
+            suffix: ".mp4",
+            size: 24576000,
+            preview_url: "",
+            original_url: "https://example.invalid/original.mp4",
+            create_at: "2026-07-26T11:03:35Z",
+            p_infos: {
+              pid: params.parentId,
+              p_name: "DJI Dock 3-FLY-TO-2026-07-26 11:03:35 (UTC)",
+              p_uuid: `${params.projectUuid}-folder`,
+            },
+          },
+        ],
+        pagination: { page: 1, page_size: params.size ?? 100, total: 2 },
+      };
+    }
+    return {
+      list: [
+        {
+          id: 501,
+          uuid: `${params.projectUuid}-folder`,
+          name: "DJI Dock 3-FLY-TO-2026-07-26 11:03:35 (UTC)",
+          file_type: 1,
+          size: 0,
+          create_at: "2026-07-26T11:03:35Z",
+        },
+      ],
+      pagination: { page: 1, page_size: params.size ?? 100, total: 1 },
+    };
   }
 
   async getDeviceLiveStreamInfo(

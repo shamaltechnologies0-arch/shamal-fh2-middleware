@@ -1,8 +1,11 @@
 import { apiDownload, apiGet, saveBlob } from "@/lib/api";
 import type { MediaFile, MediaLibraryCatalog } from "@/domains/media/types";
 
-export async function fetchMediaLibrary(): Promise<MediaLibraryCatalog> {
-  const catalog = await apiGet<MediaLibraryCatalog>("/v1/media/library?task_limit=20&media_per_task=50");
+export async function fetchMediaLibrary(options?: { refresh?: boolean }): Promise<MediaLibraryCatalog> {
+  const refresh = options?.refresh ? "&refresh=1" : "";
+  const catalog = await apiGet<MediaLibraryCatalog>(
+    `/v1/media/library?task_limit=20&media_per_task=50${refresh}`,
+  );
   return {
     storage: catalog.storage,
     folders: Array.isArray(catalog.folders) ? catalog.folders : [],

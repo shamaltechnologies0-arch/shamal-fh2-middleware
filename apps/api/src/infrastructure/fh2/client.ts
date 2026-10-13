@@ -5,13 +5,27 @@ import type { Fh2Response, IFh2Client } from "./types.js";
 import { MockFh2Client } from "./mock-adapter.js";
 import { LiveFh2Client } from "./live-adapter.js";
 
+async function readFh2Body<T>(response: Response): Promise<Fh2Response<T>> {
+  const raw = await response.text();
+  if (!raw) {
+    return { code: response.ok ? 0 : response.status, message: response.statusText, data: undefined as T };
+  }
+  try {
+    return JSON.parse(raw) as Fh2Response<T>;
+  } catch {
+    throw new Error(
+      `FH2 HTTP ${response.status}: ${raw.replace(/\s+/g, " ").slice(0, 180)}`,
+    );
+  }
+}
+
 export function createFh2Client(): IFh2Client {
   if (config.FH2_MODE === "live" && config.fh2LiveReady) {
     return new LiveFh2Client();
   }
   if (config.FH2_MODE === "live" && !config.fh2LiveReady) {
     console.warn(
-      "[fh2] FH2_MODE=live but FH2_ORG_TOKEN or FH2_PROJECT_UUID missing — using mock adapter",
+      "[fh2] FH2_MODE=live but FH2_ORG_TOKEN is missing — using mock adapter",
     );
   }
   return new MockFh2Client();
@@ -23,6 +37,7 @@ export async function fh2Fetch<T>(
     method?: string;
     query?: Record<string, string | number | undefined>;
     projectScoped?: boolean;
+    projectUuid?: string;
   } = {},
 ): Promise<Fh2Response<T>> {
   const url = new URL(path, config.FH2_BASE_URL);
@@ -35,7 +50,8 @@ export async function fh2Fetch<T>(
   }
 
   const ctx = getFh2RequestContext();
-  const selectedProjectCode = ctx.projectCode || config.FH2_PROJECT_UUID;
+  const selectedProjectCode =
+    options.projectUuid || ctx.projectCode || config.FH2_PROJECT_UUID;
   const headers: Record<string, string> = {
     "X-User-Token": config.FH2_ORG_TOKEN ?? "",
     "X-Request-Id": randomUUID(),
@@ -52,7 +68,7 @@ export async function fh2Fetch<T>(
     headers,
   });
 
-  const body = (await response.json()) as Fh2Response<T>;
+  const body = await readFh2Body<T>(response);
   if (!response.ok) {
     throw new Error(
       `FH2 HTTP ${response.status}: ${body.message ?? response.statusText}`,
@@ -90,7 +106,7 @@ export async function fh2Post<T>(
     body: JSON.stringify(body),
   });
 
-  const parsed = (await response.json()) as Fh2Response<T>;
+  const parsed = await readFh2Body<T>(response);
   if (!response.ok) {
     throw new Error(
       `FH2 HTTP ${response.status}: ${parsed.message ?? response.statusText}`,

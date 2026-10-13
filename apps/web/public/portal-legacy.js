@@ -70,6 +70,23 @@
       if (el) el.textContent = text;
     }
 
+    function resetDashboardPlaceholders() {
+      state.devices = [];
+      state.tasks = [];
+      state.apiSamples = {};
+      setText("kTotal", "-");
+      setText("kDrones", "-");
+      setText("kDocks", "-");
+      setText("kStatus", "-");
+      setText("dashKTotal", "-");
+      setText("dashKOnline", "-");
+      setText("fleetStatus", "Loading...");
+      setText("dashDroneTelem", "Loading…");
+      setText("dashDockTelem", "Loading…");
+      const fleetBody = document.querySelector("#fleetTable tbody");
+      if (fleetBody) fleetBody.innerHTML = "";
+    }
+
     function isAdminPortal() {
       const path = window.location.pathname.replace(/\/$/, "") || "/";
       return path === "/admin";
@@ -3062,7 +3079,6 @@
       }
     }
 
-    try {
     bind("loadStream", "onclick", () => loadAllStreams());
 
     bind("snapshotBtn", "onclick", async () => {
@@ -3482,10 +3498,6 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && $("apiKeyModal")?.classList.contains("open")) closeApiKeyModal();
     });
-    } catch (e) {
-      console.warn("legacy control bind", e);
-    }
-
 
     document.addEventListener("click", (e) => {
       const el = e.target instanceof Element ? e.target : null;
@@ -3511,9 +3523,15 @@
       logout: () => { void performLogout(); },
       suspend: () => { stopLiveUpdates(); },
       resume: () => {
+        const previousToken = state.session?.sessionToken || null;
         loadSession();
+        const nextToken = state.session?.sessionToken || null;
+        if (previousToken !== nextToken) resetDashboardPlaceholders();
         updateRoleUi();
-        if (state.session) startLiveUpdates();
+        if (state.session) {
+          startLiveUpdates();
+          refreshDashboard().catch((e) => notifyApiError(e));
+        }
       },
     };
     window.dispatchEvent(new CustomEvent("shamal-legacy-ready"));

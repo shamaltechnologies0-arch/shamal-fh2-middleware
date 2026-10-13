@@ -15,7 +15,7 @@ import { z } from "zod";
 const PAGE_SIZE_DEFAULT = 100;
 const MAX_PAGES = 30;
 const MAX_FOLDERS = 80;
-const MAX_FOLDER_DEPTH = 2;
+const MAX_FOLDER_DEPTH = 3;
 const FRESH_MS = 90_000;
 const TASK_LOOKBACK_SEC = 365 * 24 * 60 * 60;
 const MAX_FALLBACK_TASKS = 80;
@@ -229,7 +229,18 @@ function displayName(item: Fh2LibraryMediaItem): string {
   return `${name}${normalized}`;
 }
 
-function draftFromLibraryItem(item: Fh2LibraryMediaItem, kind: "image" | "video"): MediaDraft | null {
+function flightFolderName(item: Fh2LibraryMediaItem): string {
+  const name = item.name?.trim() || "Folder";
+  if (name === "Record") return "Livestream Recordings";
+  if (name === "ZipRecord") return "Compressed Files";
+  return name;
+}
+
+function draftFromLibraryItem(
+  item: Fh2LibraryMediaItem,
+  kind: "image" | "video",
+  mission: { name: string | null; folderId: number | null },
+): MediaDraft | null {
   const id = item.uuid?.trim() || (item.id != null ? String(item.id) : "");
   if (!id) return null;
   return {
@@ -241,8 +252,8 @@ function draftFromLibraryItem(item: Fh2LibraryMediaItem, kind: "image" | "video"
     previewUrl: item.preview_url ?? "",
     downloadUrl: item.original_url ?? "",
     capturedAt: item.create_at || item.update_at || null,
-    missionFolderName: item.p_infos?.p_name ?? null,
-    fh2FolderId: item.p_infos?.pid ?? null,
+    missionFolderName: mission.name || item.p_infos?.p_name || null,
+    fh2FolderId: mission.folderId ?? item.p_infos?.pid ?? null,
     suffix: item.suffix ?? null,
     deviceSerialNumber: null,
   };
@@ -295,26 +306,36 @@ async function collectLibraryMedia(
   const files: MediaDraft[] = [];
   let truncated = false;
   let foldersSeen = 0;
+  const seenFolderIds = new Set<number>();
 
-  async function paginate(parentId: number | undefined, depth: number): Promise<void> {
+  async function paginate(
+    parentId: number | undefined,
+    depth: number,
+    mission: { name: string | null; folderId: number | null },
+  ): Promise<void> {
     for (let page = 1; page <= MAX_PAGES; page += 1) {
       const batch = await listMediaPage(fh2, projectUuid, parentId, page, pageSize, delayMs);
       if (batch.list.length === 0) break;
       for (const item of batch.list) {
         const kind = libraryKind(item);
         if (kind === "image" || kind === "video") {
-          const draft = draftFromLibraryItem(item, kind);
+          const draft = draftFromLibraryItem(item, kind, mission);
           if (draft) files.push(draft);
           continue;
         }
         if (kind !== "folder" || depth >= MAX_FOLDER_DEPTH) continue;
-        if (typeof item.id !== "number") continue;
+        if (typeof item.id !== "number" || seenFolderIds.has(item.id)) continue;
+        seenFolderIds.add(item.id);
         foldersSeen += 1;
         if (foldersSeen > MAX_FOLDERS) {
           truncated = true;
           continue;
         }
-        await paginate(item.id, depth + 1);
+        const nextMission =
+          depth === 0
+            ? { name: flightFolderName(item), folderId: item.id }
+            : mission;
+        await paginate(item.id, depth + 1, nextMission);
       }
       const covered = page * pageSize;
       if (batch.list.length < pageSize) break;
@@ -323,19 +344,18 @@ async function collectLibraryMedia(
     }
   }
 
-  let listedWithoutParent = false;
+  const emptyMission = { name: null, folderId: null };
+  let listedFlightFolders = false;
   try {
-    await paginate(undefined, 0);
-    listedWithoutParent = true;
+    await paginate(undefined, 0, emptyMission);
+    listedFlightFolders = true;
   } catch (err) {
     if (files.length > 0 || foldersSeen > 0) throw err;
   }
-  if (files.length === 0 && foldersSeen === 0) {
-    try {
-      await paginate(0, 0);
-    } catch (err) {
-      if (!listedWithoutParent) throw err;
-    }
+  try {
+    await paginate(0, 0, emptyMission);
+  } catch (err) {
+    if (!listedFlightFolders && files.length === 0 && foldersSeen === 0) throw err;
   }
 
   return { files: dedupeDrafts(files), complete: !truncated };
@@ -532,51 +552,79 @@ export function buildProjectMediaCatalog(
   hints: string[],
 ): MediaLibraryCatalog {
   const visible = filesForProjects(files, projects);
-  const orderedProjects = [...projects].sort((a, b) => a.projectName.localeCompare(b.projectName));
-  const folders = orderedProjects.map((project) => {
-    const projectFiles = visible.filter((file) => file.projectId === project.projectId);
-    const photos = projectFiles.filter((file) => file.mediaType === "image").length;
-    const videos = projectFiles.filter((file) => file.mediaType === "video").length;
-    const newest = [...projectFiles].sort(
-      (a, b) => captureMillis(b.capturedAt) - captureMillis(a.capturedAt),
-    )[0];
-    return {
-      id: project.projectId,
-      name: project.projectName,
-      parentId: null,
-      fh2FolderId: null,
-      deviceSerialNumber: "",
-      capturedAt: newest?.capturedAt ?? null,
-      mediaUploadStatus: null,
-      taskStatus: "synced",
-      fileCount: projectFiles.length,
-      photoCount: photos,
-      videoCount: videos,
-      totalBytes: projectFiles.reduce((sum, file) => sum + (file.sizeBytes || 0), 0),
-    };
-  });
+  const projectNameById = new Map(projects.map((project) => [project.projectId, project.projectName]));
+  const groups = new Map<string, StoredProjectMedia[]>();
+  for (const file of visible) {
+    const folderName = file.missionFolderName?.trim() || projectNameById.get(file.projectId) || file.projectName;
+    const key = `${file.projectId}:${file.fh2FolderId ?? folderName}`;
+    const group = groups.get(key) ?? [];
+    group.push(file);
+    groups.set(key, group);
+  }
+
+  const folders = [...groups.entries()]
+    .map(([key, groupFiles]) => {
+      const sample = groupFiles[0]!;
+      const projectName = projectNameById.get(sample.projectId) || sample.projectName;
+      const name = sample.missionFolderName?.trim() || projectName;
+      const photos = groupFiles.filter((file) => file.mediaType === "image").length;
+      const videos = groupFiles.filter((file) => file.mediaType === "video").length;
+      const newest = [...groupFiles].sort(
+        (a, b) => captureMillis(b.capturedAt) - captureMillis(a.capturedAt),
+      )[0];
+      return {
+        id: key,
+        name,
+        parentId: sample.projectId,
+        projectId: sample.projectId,
+        projectName,
+        fh2FolderId: sample.fh2FolderId ?? null,
+        deviceSerialNumber: sample.deviceSerialNumber ?? "",
+        capturedAt: newest?.capturedAt ?? null,
+        mediaUploadStatus: null,
+        taskStatus: "synced",
+        fileCount: groupFiles.length,
+        photoCount: photos,
+        videoCount: videos,
+        totalBytes: groupFiles.reduce((sum, file) => sum + (file.sizeBytes || 0), 0),
+      };
+    })
+    .sort((a, b) => {
+      const byProject = a.projectName.localeCompare(b.projectName);
+      if (byProject !== 0) return byProject;
+      return captureMillis(b.capturedAt) - captureMillis(a.capturedAt);
+    });
+
+  const folderIdByFile = new Map<string, string>();
+  for (const [key, groupFiles] of groups) {
+    for (const file of groupFiles) folderIdByFile.set(`${file.projectId}:${file.id}`, key);
+  }
 
   const catalogFiles = [...visible]
     .sort((a, b) => captureMillis(b.capturedAt) - captureMillis(a.capturedAt))
-    .map((file) => ({
-      id: file.id,
-      name: file.name,
-      mediaType: file.mediaType,
-      sizeBytes: file.sizeBytes,
-      previewUrl: file.previewUrl,
-      downloadUrl: file.downloadUrl,
-      capturedAt: file.capturedAt ?? null,
-      folderId: file.projectId,
-      folderName: file.projectName,
-      projectId: file.projectId,
-      projectName: file.projectName,
-      fh2FolderId: file.fh2FolderId ?? null,
-      deviceSerialNumber: file.deviceSerialNumber ?? "",
-      droneSerialNumber: null,
-      taskId: "",
-      taskName: file.missionFolderName ?? "",
-      downloadPath: `/v1/media/files/${encodeURIComponent(file.id)}/download?projectId=${encodeURIComponent(file.projectId)}`,
-    }));
+    .map((file) => {
+      const folderId = folderIdByFile.get(`${file.projectId}:${file.id}`) ?? file.projectId;
+      const folder = folders.find((item) => item.id === folderId);
+      return {
+        id: file.id,
+        name: file.name,
+        mediaType: file.mediaType,
+        sizeBytes: file.sizeBytes,
+        previewUrl: file.previewUrl,
+        downloadUrl: file.downloadUrl,
+        capturedAt: file.capturedAt ?? null,
+        folderId,
+        folderName: folder?.name ?? file.projectName,
+        projectId: file.projectId,
+        projectName: projectNameById.get(file.projectId) || file.projectName,
+        fh2FolderId: file.fh2FolderId ?? null,
+        deviceSerialNumber: file.deviceSerialNumber ?? "",
+        droneSerialNumber: null,
+        taskId: "",
+        taskName: file.missionFolderName ?? "",
+        downloadPath: `/v1/media/files/${encodeURIComponent(file.id)}/download?projectId=${encodeURIComponent(file.projectId)}`,
+      };
+    });
 
   const uniqueHints = [...new Set(hints.filter(Boolean))];
   return {
@@ -584,7 +632,7 @@ export function buildProjectMediaCatalog(
       provider: "flighthub2",
       container: "DJI FlightHub 2 project media",
       nestedFoldersSupported: false,
-      note: "Each folder is a FlightHub project assigned to you. Photos and videos are synchronized from that project's media library and listed with the newest capture first. File bytes stay in FlightHub; preview and download use FlightHub URLs.",
+      note: "Folders match the FlightHub media library, grouped by project. Opening a folder shows that flight's photos and videos, newest capture first. File bytes stay in FlightHub.",
     },
     folders,
     files: catalogFiles,

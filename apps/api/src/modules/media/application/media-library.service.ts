@@ -32,6 +32,8 @@ export interface MediaCenterFolder {
   id: string;
   name: string;
   parentId: string | null;
+  projectId?: string;
+  projectName?: string;
   fh2FolderId: number | null;
   deviceSerialNumber: string;
   capturedAt: string | null;

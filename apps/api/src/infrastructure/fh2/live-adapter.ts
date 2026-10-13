@@ -128,22 +128,34 @@ export class LiveFh2Client implements IFh2Client {
     page?: number;
     size?: number;
   }): Promise<Fh2LibraryMediaPage> {
-    const res = await fh2Fetch<Fh2LibraryMediaPage>(
-      `/openapi/v0.9/media/api/v1/workspaces/${encodeURIComponent(params.projectUuid)}/files`,
-      {
-        projectUuid: params.projectUuid,
-        query: {
-          page: params.page ?? 1,
-          size: params.size ?? 100,
-          parent_id: params.parentId,
-          sort_by: "-create_at",
-        },
-      },
-    );
-    return {
-      list: res.data?.list ?? [],
-      pagination: res.data?.pagination,
+    const query = {
+      page: params.page ?? 1,
+      size: params.size ?? 100,
+      parent_id: params.parentId,
+      sort_by: "-create_at",
     };
+    const paths = [
+      `/media/api/v1/workspaces/${encodeURIComponent(params.projectUuid)}/files`,
+      `/openapi/v0.9/media/api/v1/workspaces/${encodeURIComponent(params.projectUuid)}/files`,
+    ];
+    let lastError: unknown;
+    for (const path of paths) {
+      try {
+        const res = await fh2Fetch<Fh2LibraryMediaPage>(path, {
+          projectUuid: params.projectUuid,
+          query,
+        });
+        return {
+          list: res.data?.list ?? [],
+          pagination: res.data?.pagination,
+        };
+      } catch (err) {
+        lastError = err;
+        const message = err instanceof Error ? err.message : String(err);
+        if (!message.includes("404")) throw err;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("FlightHub media file list is unavailable");
   }
 
   async listOrgDevices(): Promise<Fh2DeviceEntry[]> {

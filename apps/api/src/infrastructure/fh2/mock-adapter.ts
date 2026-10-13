@@ -107,7 +107,7 @@ export class MockFh2Client implements IFh2Client {
     if (page > 1) {
       return { list: [], pagination: { page, page_size: params.size ?? 100, total: 0 } };
     }
-    if (params.parentId != null) {
+    if (params.parentId != null && params.parentId !== 0) {
       return {
         list: [
           {

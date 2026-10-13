@@ -122,7 +122,7 @@ async function testSyncSortDedupeAndScope(): Promise<void> {
         },
       ]);
     }
-    if (params.parentId == null) {
+    if (params.parentId == null || params.parentId === 0) {
       if (pageNumber === 1) round += 1;
       return {
         list: [

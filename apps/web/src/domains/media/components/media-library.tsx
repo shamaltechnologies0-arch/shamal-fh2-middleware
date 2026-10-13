@@ -70,6 +70,7 @@ export function MediaLibrary() {
   const [view, setView] = useState<MediaView>("folders");
   const [sort, setSort] = useState<MediaSort>("newest");
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [openMission, setOpenMission] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -111,22 +112,61 @@ export function MediaLibrary() {
   const needle = query.trim().toLowerCase();
   const openFolder = catalog?.folders.find((folder) => folder.id === openFolderId) ?? null;
 
+  const projectFiles = useMemo(() => {
+    const files = catalog?.files ?? [];
+    if (!openFolderId) return files;
+    return files.filter((file) => file.folderId === openFolderId || file.projectId === openFolderId);
+  }, [catalog, openFolderId]);
+
+  const missionFolders = useMemo(() => {
+    if (!openFolderId || openMission) return [];
+    const groups = new Map<string, MediaFile[]>();
+    for (const file of projectFiles) {
+      const name = file.taskName?.trim() || "Captured media";
+      const current = groups.get(name) ?? [];
+      current.push(file);
+      groups.set(name, current);
+    }
+    return [...groups.entries()]
+      .map(([name, files]) => {
+        const sorted = sortMediaFiles(files, "newest");
+        return {
+          name,
+          files: sorted,
+          capturedAt: sorted[0]?.capturedAt ?? null,
+          photoCount: files.filter((file) => !isVideoMedia(file)).length,
+          videoCount: files.filter((file) => isVideoMedia(file)).length,
+          totalBytes: files.reduce((sum, file) => sum + (file.sizeBytes || 0), 0),
+        };
+      })
+      .sort((a, b) => {
+        const ta = a.capturedAt ? new Date(a.capturedAt).getTime() : 0;
+        const tb = b.capturedAt ? new Date(b.capturedAt).getTime() : 0;
+        return tb - ta;
+      });
+  }, [openFolderId, openMission, projectFiles]);
+
   const visibleFiles = useMemo(() => {
     const files = catalog?.files ?? [];
     const filtered = files.filter((file) => {
-      if (view === "folders" && openFolderId && file.folderId !== openFolderId) return false;
+      if (view === "folders" && openFolderId && file.folderId !== openFolderId && file.projectId !== openFolderId) {
+        return false;
+      }
+      if (view === "folders" && openMission && (file.taskName?.trim() || "Captured media") !== openMission) {
+        return false;
+      }
       if (view !== "folders" && !matchesView(file, view)) return false;
       if (!needle) return true;
-      return [file.name, file.folderName, file.taskName, file.deviceSerialNumber]
+      return [file.name, file.folderName, file.taskName, file.projectName, file.deviceSerialNumber]
         .join(" ")
         .toLowerCase()
         .includes(needle);
     });
     return sortMediaFiles(filtered, sort);
-  }, [catalog, view, openFolderId, needle, sort]);
+  }, [catalog, view, openFolderId, openMission, needle, sort]);
 
   const visibleFolders = useMemo(() => {
-    const folders = catalog?.folders ?? [];
+    const folders = (catalog?.folders ?? []).filter((folder) => !folder.parentId);
     if (view !== "folders" || openFolderId) return [];
     if (!needle) return folders;
     return folders.filter((folder) => {
@@ -137,8 +177,11 @@ export function MediaLibrary() {
 
   const totals = useMemo(() => {
     const files = catalog?.files ?? [];
+    const flightFolders = new Set(
+      files.map((file) => file.taskName?.trim()).filter((name): name is string => Boolean(name)),
+    );
     return {
-      folders: catalog?.folders.length ?? 0,
+      folders: flightFolders.size || (catalog?.folders.length ?? 0),
       files: files.length,
       photos: files.filter((file) => !isVideoMedia(file)).length,
       videos: files.filter((file) => isVideoMedia(file)).length,
@@ -215,7 +258,9 @@ export function MediaLibrary() {
     );
   }
 
-  const showingFiles = view !== "folders" || Boolean(openFolderId);
+  const showingMissionFolders =
+    view === "folders" && Boolean(openFolderId) && !openMission && missionFolders.length > 0;
+  const showingFiles = view !== "folders" || (Boolean(openFolderId) && !showingMissionFolders);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-auto p-4 sm:p-6">
@@ -223,9 +268,9 @@ export function MediaLibrary() {
         title="Media Center"
         description="Photos and videos synchronized from each FlightHub project you can access."
         actions={
-          <Button variant="outline" size="sm" onClick={() => void loadLibrary(true)} disabled={loading}>
+          <Button size="sm" onClick={() => void loadLibrary(true)} disabled={loading}>
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-            Refresh
+            Sync
           </Button>
         }
       />
@@ -239,7 +284,7 @@ export function MediaLibrary() {
       ) : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Folders" value={totals.folders} hint="One folder per assigned project" />
+        <StatCard label="Folders" value={totals.folders} hint="Projects and FlightHub flight folders" />
         <StatCard label="Files" value={totals.files} />
         <StatCard label="Images" value={totals.photos} />
         <StatCard label="Videos" value={totals.videos} />
@@ -257,7 +302,10 @@ export function MediaLibrary() {
                 setView(option.id);
                 setLightboxIndex(null);
                 setSelected(new Set());
-                if (option.id !== "folders") setOpenFolderId(null);
+                if (option.id !== "folders") {
+                  setOpenFolderId(null);
+                  setOpenMission(null);
+                }
               }}
             >
               <option.icon />
@@ -313,7 +361,7 @@ export function MediaLibrary() {
 
       {catalog?.hint ? (
         <Alert className="mt-4">
-          <AlertTitle>FlightHub media permission</AlertTitle>
+          <AlertTitle>Sync needs attention</AlertTitle>
           <AlertDescription>{catalog.hint}</AlertDescription>
         </Alert>
       ) : null}
@@ -356,6 +404,7 @@ export function MediaLibrary() {
                 downloading={downloading}
                 onOpen={() => {
                   setOpenFolderId(folder.id);
+                  setOpenMission(null);
                   setSelected(new Set());
                   setLightboxIndex(null);
                 }}
@@ -364,6 +413,70 @@ export function MediaLibrary() {
             ))}
           </div>
         )
+      ) : null}
+
+      {!loading && !error && showingMissionFolders ? (
+        <div className="mt-4 flex flex-col gap-4">
+          <div className="flex min-w-0 items-start gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOpenFolderId(null);
+                setOpenMission(null);
+                setSelected(new Set());
+              }}
+            >
+              <ArrowLeft />
+              All projects
+            </Button>
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold">{openFolder?.name}</h2>
+              <p className="text-xs text-muted-foreground">
+                {missionFolders.length} flight folder{missionFolders.length === 1 ? "" : "s"} from FlightHub
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {missionFolders
+              .filter((mission) => !needle || mission.name.toLowerCase().includes(needle))
+              .map((mission) => (
+                <FolderCard
+                  key={mission.name}
+                  folder={{
+                    id: mission.name,
+                    name: mission.name,
+                    parentId: openFolderId,
+                    fh2FolderId: null,
+                    deviceSerialNumber: "",
+                    capturedAt: mission.capturedAt,
+                    mediaUploadStatus: null,
+                    taskStatus: "synced",
+                    fileCount: mission.files.length,
+                    photoCount: mission.photoCount,
+                    videoCount: mission.videoCount,
+                    totalBytes: mission.totalBytes,
+                  }}
+                  previews={mission.files.slice(0, 4)}
+                  downloading={downloading}
+                  onOpen={() => {
+                    setOpenMission(mission.name);
+                    setSelected(new Set());
+                    setLightboxIndex(null);
+                  }}
+                  onDownload={() => {
+                    setDownloading(true);
+                    void downloadMediaArchive({ fileIds: mission.files.map((file) => file.id).slice(0, 25) })
+                      .then(() => toast.success(`Downloaded folder “${mission.name}”`))
+                      .catch((err: unknown) => {
+                        toast.error(err instanceof ApiError ? err.message : "Folder download failed");
+                      })
+                      .finally(() => setDownloading(false));
+                  }}
+                />
+              ))}
+          </div>
+        </div>
       ) : null}
 
       {!loading && !error && showingFiles ? (
@@ -375,16 +488,20 @@ export function MediaLibrary() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setOpenFolderId(null);
+                    if (openMission) {
+                      setOpenMission(null);
+                    } else {
+                      setOpenFolderId(null);
+                    }
                     setSelected(new Set());
                     setLightboxIndex(null);
                   }}
                 >
                   <ArrowLeft />
-                  All folders
+                  {openMission ? openFolder.name : "All projects"}
                 </Button>
                 <div className="min-w-0">
-                  <h2 className="truncate text-base font-semibold">{openFolder.name}</h2>
+                  <h2 className="truncate text-base font-semibold">{openMission || openFolder.name}</h2>
                   <p className="text-xs text-muted-foreground">
                     {openFolder.photoCount} photo{openFolder.photoCount === 1 ? "" : "s"}
                     {` · ${openFolder.videoCount} video${openFolder.videoCount === 1 ? "" : "s"}`}

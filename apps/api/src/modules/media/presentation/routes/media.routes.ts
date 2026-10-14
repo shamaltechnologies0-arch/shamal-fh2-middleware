@@ -421,7 +421,9 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
         selected = catalog.files.filter((file) => idSet.has(file.id));
       } else if (parsed.data.folderId) {
         selected = catalog.files
-          .filter((file) => file.folderId === parsed.data.folderId)
+          .filter(
+            (file) => file.folderId === parsed.data.folderId || file.projectId === parsed.data.folderId,
+          )
           .slice(0, MAX_ARCHIVE_FILES);
       }
 

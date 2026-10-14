@@ -181,9 +181,13 @@ async function testSyncSortDedupeAndScope(): Promise<void> {
 
   assert.deepEqual(
     first.folders.map((folder) => folder.name),
-    ["Project 1", "Project 2"],
+    ["DJI Dock 3-FLY-TO-2026-07-26 11:03:35 (UTC)", "Project 2"],
   );
   const project1 = first.files.filter((file) => file.projectId === PROJECT_1);
+  assert.equal(
+    project1.every((file) => file.taskName === "DJI Dock 3-FLY-TO-2026-07-26 11:03:35 (UTC)"),
+    true,
+  );
   assert.deepEqual(
     project1.map((file) => file.name),
     ["NewVideo.mp4", "ExistingPhoto.jpeg"],
@@ -212,7 +216,7 @@ async function testSyncSortDedupeAndScope(): Promise<void> {
   assert.equal(photos[0]?.name, "ExistingPhotoRenamed.jpeg");
   const stillThere = (await store.read()).files.filter((file) => file.projectId === PROJECT_2);
   assert.equal(stillThere.length, 1);
-  assert.ok(calls.some((call) => call.startsWith(`${PROJECT_1}:root:1`)));
+  assert.ok(calls.some((call) => call.startsWith(`${PROJECT_1}:0:1`)));
   assert.ok(calls.some((call) => call.startsWith(`${PROJECT_1}:10:`)));
 }
 

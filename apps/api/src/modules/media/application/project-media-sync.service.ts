@@ -347,15 +347,17 @@ async function collectLibraryMedia(
   const emptyMission = { name: null, folderId: null };
   let listedFlightFolders = false;
   try {
-    await paginate(undefined, 0, emptyMission);
-    listedFlightFolders = true;
+    await paginate(0, 0, emptyMission);
+    listedFlightFolders = files.length > 0 || foldersSeen > 0;
   } catch (err) {
     if (files.length > 0 || foldersSeen > 0) throw err;
   }
-  try {
-    await paginate(0, 0, emptyMission);
-  } catch (err) {
-    if (!listedFlightFolders && files.length === 0 && foldersSeen === 0) throw err;
+  if (!listedFlightFolders) {
+    try {
+      await paginate(undefined, 0, emptyMission);
+    } catch (err) {
+      if (files.length === 0 && foldersSeen === 0) throw err;
+    }
   }
 
   return { files: dedupeDrafts(files), complete: !truncated };
